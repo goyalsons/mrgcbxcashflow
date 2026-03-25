@@ -216,65 +216,65 @@ export default function CollectionTargets() {
       </div>
 
       {/* Overall Progress */}
-      {monthlyTargets.length > 0 && (
-        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-sm font-medium text-muted-foreground">Team Overall — {MONTHS[selectedMonth - 1]} {selectedYear}</div>
-                <div className="text-2xl font-bold mt-0.5">{formatINR(totalCollected)} <span className="text-muted-foreground text-base font-normal">/ {formatINR(totalTarget)}</span></div>
-              </div>
-              <div className="text-4xl font-bold text-primary">{overallPct}%</div>
-            </div>
-            <Progress value={overallPct} className="h-3" />
-            <div className="flex justify-between text-xs text-muted-foreground mt-1.5">
-              <span>₹0</span>
-              <span>{formatINR(totalTarget)}</span>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+       {monthlyTargets.length > 0 && (
+         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+           <CardContent className="p-3">
+             <div className="flex items-center justify-between mb-2">
+               <div>
+                 <div className="text-xs font-medium text-muted-foreground">Team Overall — {MONTHS[selectedMonth - 1]} {selectedYear}</div>
+                 <div className="text-sm font-bold mt-0.5">{formatINR(totalCollected)} <span className="text-muted-foreground text-xs font-normal">/ {formatINR(totalTarget)}</span></div>
+               </div>
+               <div className="text-2xl font-bold text-primary">{overallPct}%</div>
+             </div>
+             <Progress value={overallPct} className="h-2" />
+             <div className="flex justify-between text-xs text-muted-foreground mt-1">
+               <span>₹0</span>
+               <span>{formatINR(totalTarget)}</span>
+             </div>
+           </CardContent>
+         </Card>
+       )}
 
       {/* Leaderboard */}
       {monthlyTargets.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3 flex items-center gap-2">
-            <Trophy className="w-4 h-4" /> Leaderboard
+          <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
+            <Trophy className="w-3.5 h-3.5" /> Leaderboard
           </h2>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {monthlyTargets.map((t, idx) => (
-              <Card key={t.id} className={idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="shrink-0 w-8 flex justify-center">
+              <Card key={t.id} className={`${idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}`}>
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-3">
+                    <div className="shrink-0 w-6 flex justify-center">
                       <RankIcon rank={idx + 1} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <div>
-                          <span className="font-semibold">{t.manager_name || t.manager_email}</span>
-                          <span className="text-xs text-muted-foreground ml-2">{t.manager_email}</span>
+                          <span className="text-sm font-semibold">{t.manager_name || t.manager_email}</span>
+                          <span className="text-xs text-muted-foreground ml-1">{t.manager_email}</span>
                         </div>
                         <div className="text-right">
-                          <span className="font-bold text-primary text-lg">{t.pct}%</span>
+                          <span className="font-bold text-primary text-sm">{t.pct}%</span>
                         </div>
                       </div>
-                      <Progress value={t.pct} className="h-2" />
-                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                        <span className="text-emerald-600 font-medium">{formatINR(t.collected)} collected</span>
-                        <span>Target: {formatINR(t.target_amount)}</span>
+                      <Progress value={t.pct} className="h-1.5" />
+                      <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
+                        <span className="text-emerald-600 font-medium">{formatINR(t.collected)}</span>
+                        <span>{formatINR(t.target_amount)}</span>
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0"><MoreHorizontal className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                          <Pencil className="w-4 h-4 mr-2" />Edit Target
+                          <Pencil className="w-3.5 h-3.5 mr-2" />Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
-                          <Trash2 className="w-4 h-4 mr-2" />Delete
+                          <Trash2 className="w-3.5 h-3.5 mr-2" />Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -288,8 +288,8 @@ export default function CollectionTargets() {
 
       {/* All Targets Table */}
       <div>
-        <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3 flex items-center gap-2">
-          <Target className="w-4 h-4" /> All Targets
+        <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
+          <Target className="w-3.5 h-3.5" /> All Targets
         </h2>
         {isLoading ? (
           <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}</div>
