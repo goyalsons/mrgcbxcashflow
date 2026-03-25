@@ -32,27 +32,26 @@ function ReminderModal({ receivables, onClose }) {
     queryFn: () => base44.entities.Customer.list(),
   });
 
-  // Group receivables by customer email (fetch from Customer if not on Receivable)
+  // Group receivables by customer ID and fetch from Customer master
   const customerGroups = useMemo(() => {
     const groups = {};
     receivables.forEach(r => {
-      // Use email from receivable or fetch from Customer master
-      let email = r.customer_email;
-      if (!email && r.customer_id) {
+      if (r.customer_id) {
         const customer = allCustomers.find(c => c.id === r.customer_id);
-        email = customer?.email;
-      }
-      
-      if (email) {
-        if (!groups[email]) groups[email] = [];
-        groups[email].push(r);
+        if (customer && customer.email) {
+          const key = customer.id;
+          if (!groups[key]) {
+            groups[key] = {
+              email: customer.email,
+              customer: customer.name,
+              receivables: [],
+            };
+          }
+          groups[key].receivables.push(r);
+        }
       }
     });
-    return Object.entries(groups).map(([email, items]) => ({
-      email,
-      customer: items[0].customer_name,
-      receivables: items,
-    }));
+    return Object.values(groups);
   }, [receivables, allCustomers]);
 
   const handleTemplateChange = (id) => {
