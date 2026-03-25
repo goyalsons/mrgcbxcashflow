@@ -18,7 +18,8 @@ export default function DebtorForm({ open, onClose, onSave, editData }) {
     queryKey: ['users'],
     queryFn: () => base44.entities.User.list(),
   });
-  const accountManagers = users.filter(u => u.role === 'account_manager');
+  // Sales team handles collections/follow-ups; accounts team handles finance — both can be assigned
+  const accountManagers = users.filter(u => u.role === 'sales_team' || u.role === 'accounts_team' || u.role === 'account_manager');
 
   useEffect(() => {
     setForm(editData ? { ...EMPTY, ...editData } : EMPTY);
