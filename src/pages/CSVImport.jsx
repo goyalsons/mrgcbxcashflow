@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, FileText, CheckCircle, AlertCircle, X, Play } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, X, Play, Download } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
@@ -43,6 +43,10 @@ const ENTITY_CONFIGS = {
     label: 'Debtors',
     fields: ['name', 'email', 'phone', 'gstin', 'contact_person', 'address'],
     required: ['name'],
+    sampleData: [
+      ['Acme Corporation', 'contact@acme.com', '+91 98765 43210', '27AAAAA0000A1Z5', 'Raj Kumar', '123 Business Street, Mumbai'],
+      ['Tech Solutions Ltd', 'admin@techsol.com', '+91 88765 43210', '27BBBBB1111B2Z6', 'Priya Singh', '456 Tech Park, Bangalore'],
+    ],
     transform: (row) => ({
       name: row.name || row.company || row.debtor_name,
       email: row.email,
@@ -57,6 +61,11 @@ const ENTITY_CONFIGS = {
     label: 'Invoices',
     fields: ['invoice_number', 'debtor_name', 'amount', 'invoice_date', 'due_date'],
     required: ['debtor_name', 'amount'],
+    sampleData: [
+      ['INV-2025-001', 'Acme Corporation', '50000', '01/03/2025', '15/04/2025'],
+      ['INV-2025-002', 'Tech Solutions Ltd', '75500', '05/03/2025', '20/04/2025'],
+      ['INV-2025-003', 'Acme Corporation', '125000', '10/03/2025', '25/04/2025'],
+    ],
     transform: (row) => ({
       invoice_number: row.invoice_number || row.invoice_no || row.inv_no,
       debtor_name: row.debtor_name || row.customer || row.client,
@@ -71,6 +80,10 @@ const ENTITY_CONFIGS = {
     label: 'Receivables',
     fields: ['invoice_number', 'customer_name', 'amount', 'due_date'],
     required: ['customer_name', 'amount'],
+    sampleData: [
+      ['REC-001', 'Global Exports Inc', '150000', '18/04/2025'],
+      ['REC-002', 'Digital Ventures Ltd', '85000', '22/04/2025'],
+    ],
     transform: (row) => ({
       invoice_number: row.invoice_number || row.invoice_no,
       customer_name: row.customer_name || row.customer || row.client,
@@ -85,6 +98,11 @@ const ENTITY_CONFIGS = {
     label: 'Expenses',
     fields: ['description', 'amount', 'expense_date', 'category'],
     required: ['description', 'amount'],
+    sampleData: [
+      ['Office Stationery', '5000', '15/03/2025', 'office_supplies'],
+      ['Internet Bill', '2500', '01/03/2025', 'utilities'],
+      ['Client Meeting Travel', '8500', '20/03/2025', 'travel'],
+    ],
     transform: (row) => ({
       description: row.description || row.narration || row.particulars,
       amount: parseIndianAmount(row.amount || row.total),
@@ -164,6 +182,20 @@ export default function CSVImport() {
 
   const config = ENTITY_CONFIGS[entityType];
 
+  const downloadSampleCSV = () => {
+    const csv = [
+      config.fields.join(','),
+      ...config.sampleData.map(row => row.join(','))
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sample-${entityType}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="CSV Import" subtitle="Import data from CSV files with Indian format support (DD/MM/YYYY, ₹ currency)" />
@@ -194,12 +226,15 @@ export default function CSVImport() {
                 <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
               </div>
 
-              <div className="p-3 rounded-lg bg-muted/40 text-xs space-y-1">
+              <div className="p-3 rounded-lg bg-muted/40 text-xs space-y-2">
                 <p className="font-medium">Expected columns for {config.label}:</p>
                 <p className="text-muted-foreground">{config.fields.join(', ')}</p>
                 <p className="text-muted-foreground mt-1">Required: <span className="text-red-600">{config.required.join(', ')}</span></p>
                 <p className="text-muted-foreground">Dates: DD/MM/YYYY or YYYY-MM-DD</p>
                 <p className="text-muted-foreground">Amounts: ₹1,23,456 or 123456</p>
+                <Button onClick={downloadSampleCSV} variant="outline" size="sm" className="w-full gap-2 mt-2">
+                  <Download className="w-3.5 h-3.5" />Download Sample CSV
+                </Button>
               </div>
             </CardContent>
           </Card>
