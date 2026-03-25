@@ -6,7 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
-import { Upload, Sparkles, Loader2, FileText, X, CheckCircle } from 'lucide-react';
+import { Upload, Sparkles, Loader2, FileText, X, CheckCircle, Cloud } from 'lucide-react';
+import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/utils/cloudinary';
 
 const EMPTY = { invoice_number: '', amount: '', invoice_date: '', due_date: '', description: '', notes: '', status: 'pending' };
 
@@ -45,9 +46,26 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
     setExtracting(true);
 
     try {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      const cloudConfig = getCloudinaryConfig();
+      let fileUrl;
+
+      // Try Cloudinary first, fallback to Base44 upload
+      if (cloudConfig.cloud_name) {
+        try {
+          const result = await uploadToCloudinary(file, 'invoices');
+          fileUrl = result.url;
+        } catch (err) {
+          console.warn('Cloudinary upload failed, using Base44 upload:', err.message);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          fileUrl = file_url;
+        }
+      } else {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        fileUrl = file_url;
+      }
+
       const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
-        file_url,
+        file_url: fileUrl,
         json_schema: EXTRACT_SCHEMA,
       });
 
@@ -60,7 +78,7 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
           invoice_date: extracted.invoice_date || prev.invoice_date,
           due_date: extracted.due_date || prev.due_date,
           description: extracted.description || prev.description,
-          document_url: file_url,
+          document_url: fileUrl,
         }));
         setExtractSuccess(true);
       }
@@ -97,27 +115,34 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
         {!editData && (
           <div className="shrink-0">
             {!uploadedFile ? (
-              <label
-                htmlFor="invoice-file-upload"
-                className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 cursor-pointer hover:bg-primary/10 hover:border-primary/60 transition-colors"
-              >
-                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-primary">AI Auto-fill from Invoice</p>
-                  <p className="text-xs text-muted-foreground">Upload PDF, JPG or PNG — fields will be filled automatically</p>
-                </div>
-                <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
-                <input
-                  ref={fileInputRef}
-                  id="invoice-file-upload"
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={handleFileChange}
-                />
-              </label>
+              <>
+                <label
+                  htmlFor="invoice-file-upload"
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 cursor-pointer hover:bg-primary/10 hover:border-primary/60 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Sparkles className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-primary">AI Auto-fill from Invoice</p>
+                    <p className="text-xs text-muted-foreground">Upload PDF, JPG or PNG — fields will be filled automatically</p>
+                  </div>
+                  <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <input
+                    ref={fileInputRef}
+                    id="invoice-file-upload"
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    className="hidden"
+                    onChange={handleFileChange}
+                  />
+                </label>
+                {getCloudinaryConfig().cloud_name && (
+                  <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <Cloud className="w-3 h-3" /> Files uploaded to Cloudinary
+                  </div>
+                )}
+              </>
             ) : (
               <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
                 extracting ? 'bg-blue-50 border-blue-200' :

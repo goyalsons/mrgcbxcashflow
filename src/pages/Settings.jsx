@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, MessageSquare, Save, CheckCircle } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import { base44 } from '@/api/base44Client';
@@ -28,16 +28,18 @@ export default function Settings() {
   const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '' });
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
   const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_number_id: '', from_number: '' });
+  const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
 
   useEffect(() => {
     const s = loadSettings();
     if (s.company) setCompany(s.company);
     if (s.smtp) setSmtp(s.smtp);
     if (s.whatsapp) setWhatsapp(s.whatsapp);
+    if (s.cloudinary) setCloudinary(s.cloudinary);
   }, []);
 
   const handleSave = () => {
-    saveSettings({ company, smtp, whatsapp });
+    saveSettings({ company, smtp, whatsapp, cloudinary });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -46,6 +48,7 @@ export default function Settings() {
   const setC = (k, v) => setCompany(f => ({ ...f, [k]: v }));
   const setS = (k, v) => setSmtp(f => ({ ...f, [k]: v }));
   const setW = (k, v) => setWhatsapp(f => ({ ...f, [k]: v }));
+  const setCl = (k, v) => setCloudinary(f => ({ ...f, [k]: v }));
 
   return (
     <div className="space-y-6">
@@ -56,6 +59,7 @@ export default function Settings() {
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
           <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email / SMTP</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
+          <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Cloudinary</TabsTrigger>
         </TabsList>
 
         {/* Company */}
@@ -162,6 +166,35 @@ export default function Settings() {
               </div>
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
                 <strong>Setup:</strong> Register at <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline">Meta for Developers</a>, create a WhatsApp Business app, and get your credentials from the dashboard.
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Cloudinary */}
+        <TabsContent value="cloudinary" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Cloudinary File Storage</CardTitle>
+              <p className="text-sm text-muted-foreground">Configure Cloudinary to store invoices, bills, and documents in the cloud.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Cloud Name *</Label>
+                  <Input value={cloudinary.cloud_name} onChange={e => setCl('cloud_name', e.target.value)} placeholder="your-cloud-name" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>API Key *</Label>
+                  <Input value={cloudinary.api_key} onChange={e => setCl('api_key', e.target.value)} placeholder="Your API Key" />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label>API Secret *</Label>
+                  <Input type="password" value={cloudinary.api_secret} onChange={e => setCl('api_secret', e.target.value)} placeholder="Your API Secret" />
+                </div>
+              </div>
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
+                <strong>Setup:</strong> Sign up at <a href="https://cloudinary.com" target="_blank" rel="noreferrer" className="underline">Cloudinary</a>, then go to Settings &gt; API Keys to find your Cloud Name, API Key, and API Secret.
               </div>
             </CardContent>
           </Card>
