@@ -27,6 +27,7 @@ import BankAccounts from '@/pages/BankAccounts';
 import Customers from '@/pages/Customers';
 import Vendors from '@/pages/Vendors';
 import FollowUpSchedule from '@/pages/FollowUpSchedule';
+import Notifications from '@/pages/Notifications';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
         <Route path="/customers" element={<ProtectedRoute user={user} featureKey="customers"><Customers /></ProtectedRoute>} />
         <Route path="/vendors" element={<ProtectedRoute user={user} featureKey="vendors"><Vendors /></ProtectedRoute>} />
         <Route path="/follow-up-schedule" element={<FollowUpSchedule />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
