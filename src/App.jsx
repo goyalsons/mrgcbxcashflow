@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from '@/components/layout/AppLayout';
+import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import Dashboard from '@/pages/Dashboard';
 import Debtors from '@/pages/Debtors';
 import MyCollections from '@/pages/MyCollections';
@@ -54,24 +55,24 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route element={<AppLayout user={user} />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/debtors" element={<Debtors />} />
-        <Route path="/my-collections" element={<MyCollections />} />
-        <Route path="/collection-targets" element={<CollectionTargets />} />
-        <Route path="/aging-analysis" element={<AgingAnalysis />} />
-        <Route path="/cash-flow-forecast" element={<CashFlowForecast />} />
-        <Route path="/ai-insights" element={<AIInsights />} />
-        <Route path="/payment-reminders" element={<PaymentReminders />} />
-        <Route path="/reports" element={<Reports />} />
-        <Route path="/csv-import" element={<CSVImport />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/admin-panel" element={<AdminPanel />} />
-        <Route path="/audit-logs" element={<AuditLogs />} />
-        <Route path="/receivables" element={<Receivables />} />
-        <Route path="/payables" element={<Payables />} />
-        <Route path="/expenses" element={<Expenses />} />
-        <Route path="/bank-accounts" element={<BankAccounts />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/vendors" element={<Vendors />} />
+        <Route path="/debtors" element={<ProtectedRoute user={user} featureKey="debtors"><Debtors /></ProtectedRoute>} />
+        <Route path="/my-collections" element={<ProtectedRoute user={user} featureKey="my_collections"><MyCollections /></ProtectedRoute>} />
+        <Route path="/collection-targets" element={<ProtectedRoute user={user} featureKey="collection_targets"><CollectionTargets /></ProtectedRoute>} />
+        <Route path="/aging-analysis" element={<ProtectedRoute user={user} featureKey="aging_analysis"><AgingAnalysis /></ProtectedRoute>} />
+        <Route path="/cash-flow-forecast" element={<ProtectedRoute user={user} featureKey="cash_flow_forecast"><CashFlowForecast /></ProtectedRoute>} />
+        <Route path="/ai-insights" element={<ProtectedRoute user={user} featureKey="ai_insights"><AIInsights /></ProtectedRoute>} />
+        <Route path="/payment-reminders" element={<ProtectedRoute user={user} featureKey="payment_reminders"><PaymentReminders /></ProtectedRoute>} />
+        <Route path="/reports" element={<ProtectedRoute user={user} featureKey="reports"><Reports /></ProtectedRoute>} />
+        <Route path="/csv-import" element={<ProtectedRoute user={user} featureKey="csv_import"><CSVImport /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute user={user} featureKey="settings"><Settings /></ProtectedRoute>} />
+        <Route path="/admin-panel" element={<ProtectedRoute user={user} featureKey="admin_panel"><AdminPanel /></ProtectedRoute>} />
+        <Route path="/audit-logs" element={<ProtectedRoute user={user} featureKey="audit_logs"><AuditLogs /></ProtectedRoute>} />
+        <Route path="/receivables" element={<ProtectedRoute user={user} featureKey="receivables"><Receivables /></ProtectedRoute>} />
+        <Route path="/payables" element={<ProtectedRoute user={user} featureKey="payables"><Payables /></ProtectedRoute>} />
+        <Route path="/expenses" element={<ProtectedRoute user={user} featureKey="expenses"><Expenses /></ProtectedRoute>} />
+        <Route path="/bank-accounts" element={<ProtectedRoute user={user} featureKey="bank_accounts"><BankAccounts /></ProtectedRoute>} />
+        <Route path="/customers" element={<ProtectedRoute user={user} featureKey="customers"><Customers /></ProtectedRoute>} />
+        <Route path="/vendors" element={<ProtectedRoute user={user} featureKey="vendors"><Vendors /></ProtectedRoute>} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
