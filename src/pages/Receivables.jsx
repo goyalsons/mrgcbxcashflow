@@ -23,12 +23,18 @@ export default function Receivables() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selected, setSelected] = useState(new Set());
+  const [expandedId, setExpandedId] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: receivables = [], isLoading } = useQuery({
     queryKey: ['receivables'],
     queryFn: () => base44.entities.Receivable.list('-created_date'),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => base44.entities.Invoice.list('-created_date'),
   });
 
   const createMut = useMutation({
@@ -162,48 +168,74 @@ export default function Receivables() {
                   const balance = (r.amount || 0) - (r.amount_received || 0);
                   const days = daysUntilDue(r.due_date);
                   const isSelected = selected.has(r.id);
+                  const isExpanded = expandedId === r.id;
+                  const linkedInvoices = invoices.filter(inv => inv.invoice_number === r.invoice_number);
                   return (
-                    <TableRow key={r.id} className={`group cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => toggleOne(r.id)}>
-                      <TableCell onClick={e => e.stopPropagation()}>
-                        <Checkbox
-                          checked={isSelected}
-                          onCheckedChange={() => toggleOne(r.id)}
-                          aria-label="Select row"
-                          className="translate-y-0.5"
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{r.invoice_number || '-'}</TableCell>
-                      <TableCell>{r.customer_name}</TableCell>
-                      <TableCell className="text-right font-medium">{formatINR(r.amount)}</TableCell>
-                      <TableCell className="text-right text-emerald-600">{formatINR(r.amount_received)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
-                      <TableCell>
-                        <div>
-                          <span className="text-sm">{formatDateIN(r.due_date)}</span>
-                          {days !== null && days < 0 && r.status !== 'paid' && (
-                            <span className="block text-xs text-red-500">{Math.abs(days)} days overdue</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell><StatusBadge status={r.status} /></TableCell>
-                      <TableCell onClick={e => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
-                              <MoreHorizontal className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEdit(r)}>
-                              <Pencil className="w-4 h-4 mr-2" /> Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleDelete(r.id)} className="text-destructive">
-                              <Trash2 className="w-4 h-4 mr-2" /> Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
+                    <React.Fragment key={r.id}>
+                      <TableRow className={`group cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => setExpandedId(isExpanded ? null : r.id)}>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <Checkbox
+                            checked={isSelected}
+                            onCheckedChange={() => toggleOne(r.id)}
+                            aria-label="Select row"
+                            className="translate-y-0.5"
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{r.invoice_number || '-'}</TableCell>
+                        <TableCell>{r.customer_name}</TableCell>
+                        <TableCell className="text-right font-medium">{formatINR(r.amount)}</TableCell>
+                        <TableCell className="text-right text-emerald-600">{formatINR(r.amount_received)}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
+                        <TableCell>
+                          <div>
+                            <span className="text-sm">{formatDateIN(r.due_date)}</span>
+                            {days !== null && days < 0 && r.status !== 'paid' && (
+                              <span className="block text-xs text-red-500">{Math.abs(days)} days overdue</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
+                                <MoreHorizontal className="w-4 h-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleEdit(r)}>
+                                <Pencil className="w-4 h-4 mr-2" /> Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(r.id)} className="text-destructive">
+                                <Trash2 className="w-4 h-4 mr-2" /> Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                      {isExpanded && linkedInvoices.length > 0 && (
+                        <TableRow className="bg-muted/50">
+                          <TableCell colSpan="9" className="p-4">
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase">Linked Invoices:</p>
+                              {linkedInvoices.map(inv => (
+                                <div key={inv.id} className="flex items-center justify-between text-sm bg-background rounded p-3 border">
+                                  <div>
+                                    <p className="font-medium">{inv.invoice_number}</p>
+                                    <p className="text-xs text-muted-foreground">{inv.description}</p>
+                                    <p className="text-xs text-muted-foreground">Invoice Date: {formatDateIN(inv.invoice_date)}</p>
+                                  </div>
+                                  <div className="text-right">
+                                    <p className="font-semibold">{formatINR(inv.amount)}</p>
+                                    <p className="text-xs text-emerald-600">Paid: {formatINR(inv.amount_paid)}</p>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
                   );
                 })}
               </TableBody>
