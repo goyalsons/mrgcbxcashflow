@@ -7,6 +7,9 @@ import StatCard from '@/components/shared/StatCard';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import CollectionTrendsChart from '@/components/dashboard/CollectionTrendsChart';
 import OutstandingReceivablesChart from '@/components/dashboard/OutstandingReceivablesChart';
+import OutstandingByStatusChart from '@/components/dashboard/OutstandingByStatusChart';
+import MonthlyTrendsChart from '@/components/dashboard/MonthlyTrendsChart';
+import AgingReport from '@/components/dashboard/AgingReport';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import OverdueAlerts from '@/components/dashboard/OverdueAlerts';
 import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRangePicker';
@@ -138,6 +141,15 @@ export default function Dashboard() {
         <CollectionTrendsChart payments={filteredPayments} debtors={debtors} dateRange={dateRange} />
         <OutstandingReceivablesChart receivables={receivables} />
       </div>
+
+      {/* Status Breakdown + Monthly Trends */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <OutstandingByStatusChart receivables={receivables} />
+        <MonthlyTrendsChart receivables={filteredReceivables} payments={filteredPayments} />
+      </div>
+
+      {/* Aging Report */}
+      <AgingReport receivables={receivables} />
 
       {/* Recent Transactions */}
       <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} debtors={debtors} />
