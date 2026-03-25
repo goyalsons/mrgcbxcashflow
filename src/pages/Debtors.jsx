@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, BarChart2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, BarChart2, X } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import DebtorCard from '@/components/debtors/DebtorCard';
@@ -37,6 +37,8 @@ export default function Debtors() {
   const [search, setSearch] = useState('');
   const [filterManager, setFilterManager] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterAmount, setFilterAmount] = useState('all');
+  const [filterDebtorStatus, setFilterDebtorStatus] = useState('all');
   const [viewMode, setViewMode] = useState('card');
 
   const { data: debtors = [], isLoading } = useQuery({
@@ -96,9 +98,19 @@ export default function Debtors() {
         filterStatus === 'partial' ? outstanding > 0 && received > 0 :
         filterStatus === 'paid' ? outstanding <= 0 && invoiced > 0 :
         true;
-      return matchSearch && matchManager && matchStatus;
+      
+      const matchAmount =
+        filterAmount === 'all' ? true :
+        filterAmount === 'high' ? outstanding > 100000 :
+        filterAmount === 'medium' ? outstanding > 10000 && outstanding <= 100000 :
+        filterAmount === 'low' ? outstanding > 0 && outstanding <= 10000 :
+        true;
+      
+      const matchDebtorStatus = filterDebtorStatus === 'all' || d.status === filterDebtorStatus;
+      
+      return matchSearch && matchManager && matchStatus && matchAmount && matchDebtorStatus;
     });
-  }, [debtors, search, filterManager, filterStatus]);
+  }, [debtors, search, filterManager, filterStatus, filterAmount, filterDebtorStatus]);
 
   // Sort debtors: overdue first, then other outstanding, then paid
   const sortedDebtors = useMemo(() => {
@@ -219,8 +231,8 @@ export default function Debtors() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
+      <div className="flex flex-col gap-3">
+        <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Search debtors..."
@@ -229,16 +241,55 @@ export default function Debtors() {
             className="pl-9"
           />
         </div>
-        {managers.length > 0 && (
-          <Select value={filterManager} onValueChange={setFilterManager}>
+        <div className="flex flex-col sm:flex-row gap-3">
+          {managers.length > 0 && (
+            <Select value={filterManager} onValueChange={setFilterManager}>
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="All Managers" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Managers</SelectItem>
+                {managers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          <Select value={filterAmount} onValueChange={setFilterAmount}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="All Managers" />
+              <SelectValue placeholder="Outstanding Amount" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Managers</SelectItem>
-              {managers.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+              <SelectItem value="all">All Amounts</SelectItem>
+              <SelectItem value="high">High (>₹1,00,000)</SelectItem>
+              <SelectItem value="medium">Medium (₹10,000 - ₹1,00,000)</SelectItem>
+              <SelectItem value="low">Low (₹0 - ₹10,000)</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterDebtorStatus} onValueChange={setFilterDebtorStatus}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Debtor Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="paid">Paid</SelectItem>
+              <SelectItem value="written_off">Written Off</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {(search || filterManager !== 'all' || filterAmount !== 'all' || filterDebtorStatus !== 'all') && (
+          <button
+            onClick={() => {
+              setSearch('');
+              setFilterManager('all');
+              setFilterAmount('all');
+              setFilterDebtorStatus('all');
+            }}
+            className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-3 h-3" />
+            Clear all filters
+          </button>
         )}
       </div>
 
