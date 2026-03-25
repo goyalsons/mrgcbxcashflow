@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import ContactForm from '@/components/contacts/ContactForm';
@@ -14,6 +15,7 @@ import { useToast } from '@/components/ui/use-toast';
 export default function Vendors() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -40,15 +42,34 @@ export default function Vendors() {
     else await createMut.mutateAsync(formData);
   };
 
+  const filtered = useMemo(() => {
+    if (!search) return vendors;
+    const q = search.toLowerCase();
+    return vendors.filter(v =>
+      (v.name || '').toLowerCase().includes(q) ||
+      (v.email || '').toLowerCase().includes(q) ||
+      (v.phone || '').toLowerCase().includes(q) ||
+      (v.contact_person || '').toLowerCase().includes(q)
+    );
+  }, [vendors, search]);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Vendors" subtitle={`${vendors.length} vendors`} actionLabel="Add Vendor" onAction={() => { setEditing(null); setShowForm(true); }} />
+
+      {/* Search */}
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="Search vendors..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+      </div>
 
       <Card>
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
         ) : vendors.length === 0 ? (
           <EmptyState title="No vendors yet" description="Add your vendors to track payables" actionLabel="Add Vendor" onAction={() => setShowForm(true)} />
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No vendors match your search</div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -63,7 +84,7 @@ export default function Vendors() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vendors.map((v) => (
+                {filtered.map((v) => (
                   <TableRow key={v.id} className="group">
                     <TableCell className="font-medium">{v.name}</TableCell>
                     <TableCell>{v.contact_person || '-'}</TableCell>
@@ -85,6 +106,7 @@ export default function Vendors() {
                 ))}
               </TableBody>
             </Table>
+            {search && <div className="px-4 py-3 border-t text-xs text-muted-foreground">Showing {filtered.length} of {vendors.length}</div>}
           </div>
         )}
       </Card>

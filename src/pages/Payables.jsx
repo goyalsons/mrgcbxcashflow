@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR, formatDateIN, daysUntilDue } from '@/lib/utils/currency';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -16,6 +18,9 @@ import { useToast } from '@/components/ui/use-toast';
 export default function Payables() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterCategory, setFilterCategory] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -46,6 +51,17 @@ export default function Payables() {
     .filter(p => p.status !== 'paid')
     .reduce((sum, p) => sum + ((p.amount || 0) - (p.amount_paid || 0)), 0);
 
+  const filtered = useMemo(() => {
+    return payables.filter(p => {
+      const matchSearch = !search ||
+        (p.bill_number || '').toLowerCase().includes(search.toLowerCase()) ||
+        (p.vendor_name || '').toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === 'all' || p.status === filterStatus;
+      const matchCategory = filterCategory === 'all' || p.category === filterCategory;
+      return matchSearch && matchStatus && matchCategory;
+    });
+  }, [payables, search, filterStatus, filterCategory]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -55,11 +71,48 @@ export default function Payables() {
         onAction={() => { setEditing(null); setShowForm(true); }}
       />
 
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search by vendor or bill #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-40">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="partially_paid">Partially Paid</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterCategory} onValueChange={setFilterCategory}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="raw_materials">Raw Materials</SelectItem>
+            <SelectItem value="services">Services</SelectItem>
+            <SelectItem value="rent">Rent</SelectItem>
+            <SelectItem value="utilities">Utilities</SelectItem>
+            <SelectItem value="salary">Salary</SelectItem>
+            <SelectItem value="taxes">Taxes</SelectItem>
+            <SelectItem value="other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
       <Card>
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
         ) : payables.length === 0 ? (
           <EmptyState title="No payables yet" description="Track bills and payments to vendors" actionLabel="Add Payable" onAction={() => setShowForm(true)} />
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No results match your filters</div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -77,7 +130,7 @@ export default function Payables() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payables.map((p) => {
+                {filtered.map((p) => {
                   const balance = (p.amount || 0) - (p.amount_paid || 0);
                   const days = daysUntilDue(p.due_date);
                   return (

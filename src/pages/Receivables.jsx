@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR, formatDateIN, daysUntilDue } from '@/lib/utils/currency';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -16,6 +18,8 @@ import { useToast } from '@/components/ui/use-toast';
 export default function Receivables() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
+  const [search, setSearch] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -38,11 +42,8 @@ export default function Receivables() {
   });
 
   const handleSave = async (formData) => {
-    if (editing) {
-      await updateMut.mutateAsync({ id: editing.id, data: formData });
-    } else {
-      await createMut.mutateAsync(formData);
-    }
+    if (editing) await updateMut.mutateAsync({ id: editing.id, data: formData });
+    else await createMut.mutateAsync(formData);
   };
 
   const handleEdit = (item) => { setEditing(item); setShowForm(true); };
@@ -52,6 +53,16 @@ export default function Receivables() {
     .filter(r => r.status !== 'paid' && r.status !== 'written_off')
     .reduce((sum, r) => sum + ((r.amount || 0) - (r.amount_received || 0)), 0);
 
+  const filtered = useMemo(() => {
+    return receivables.filter(r => {
+      const matchSearch = !search ||
+        (r.invoice_number || '').toLowerCase().includes(search.toLowerCase()) ||
+        (r.customer_name || '').toLowerCase().includes(search.toLowerCase());
+      const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [receivables, search, filterStatus]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -60,6 +71,27 @@ export default function Receivables() {
         actionLabel="New Receivable"
         onAction={() => { setEditing(null); setShowForm(true); }}
       />
+
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input placeholder="Search by customer or invoice #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        </div>
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="w-44">
+            <SelectValue placeholder="All Statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="partially_paid">Partially Paid</SelectItem>
+            <SelectItem value="paid">Paid</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="written_off">Written Off</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       <Card>
         {isLoading ? (
@@ -71,6 +103,8 @@ export default function Receivables() {
             actionLabel="Add Receivable"
             onAction={() => setShowForm(true)}
           />
+        ) : filtered.length === 0 ? (
+          <div className="p-12 text-center text-muted-foreground text-sm">No results match your filters</div>
         ) : (
           <div className="overflow-x-auto">
             <Table>
@@ -87,7 +121,7 @@ export default function Receivables() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {receivables.map((r) => {
+                {filtered.map((r) => {
                   const balance = (r.amount || 0) - (r.amount_received || 0);
                   const days = daysUntilDue(r.due_date);
                   return (
