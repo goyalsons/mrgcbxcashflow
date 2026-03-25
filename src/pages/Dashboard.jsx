@@ -130,7 +130,7 @@ export default function Dashboard() {
         <div className="lg:col-span-2">
           <CashFlowChart receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} dateRange={dateRange} />
         </div>
-        <OverdueAlerts receivables={receivables} payables={payables} />
+        <OverdueAlerts receivables={receivables} payables={payables} debtors={debtors} />
       </div>
 
       {/* Collection Trends + Outstanding Receivables */}
@@ -140,7 +140,7 @@ export default function Dashboard() {
       </div>
 
       {/* Recent Transactions */}
-      <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} />
+      <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} debtors={debtors} />
     </div>
   );
 }

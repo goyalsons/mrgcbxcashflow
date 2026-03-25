@@ -3,8 +3,15 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { ArrowDownLeft, ArrowUpRight, Receipt } from 'lucide-react';
 import { formatINR, formatDateIN } from '@/lib/utils/currency';
 import StatusBadge from '@/components/shared/StatusBadge';
+import { Link } from 'react-router-dom';
 
-export default function RecentTransactions({ receivables, payables, expenses }) {
+export default function RecentTransactions({ receivables, payables, expenses, debtors = [] }) {
+  const debtorByName = React.useMemo(() => {
+    const map = {};
+    debtors.forEach(d => { map[d.name?.toLowerCase()] = d.id; });
+    return map;
+  }, [debtors]);
+
   // Combine and sort by date, take latest 8
   const items = [
     ...receivables.map(r => ({ type: 'receivable', name: r.customer_name, amount: r.amount, date: r.invoice_date, status: r.status })),
@@ -34,7 +41,13 @@ export default function RecentTransactions({ receivables, payables, expenses }) 
                 {typeIcons[item.type]}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{item.name}</p>
+                {debtorByName[item.name?.toLowerCase()] ? (
+                  <Link to={`/debtors?profile=${debtorByName[item.name?.toLowerCase()]}`} className="text-sm font-medium truncate block hover:text-primary hover:underline transition-colors">
+                    {item.name}
+                  </Link>
+                ) : (
+                  <p className="text-sm font-medium truncate">{item.name}</p>
+                )}
                 <p className="text-xs text-muted-foreground">{formatDateIN(item.date)}</p>
               </div>
               <div className="text-right">

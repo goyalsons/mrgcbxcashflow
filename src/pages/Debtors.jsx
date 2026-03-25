@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
@@ -29,7 +29,10 @@ export default function Debtors() {
   const [showForm, setShowForm] = useState(false);
   const [editingDebtor, setEditingDebtor] = useState(null);
   const [viewingDebtor, setViewingDebtor] = useState(null);
-  const [profileDebtorId, setProfileDebtorId] = useState(null);
+  const [profileDebtorId, setProfileDebtorId] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('profile') || null;
+  });
   const [showPaid, setShowPaid] = useState(false);
   const [search, setSearch] = useState('');
   const [filterManager, setFilterManager] = useState('all');
