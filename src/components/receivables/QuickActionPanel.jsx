@@ -326,9 +326,6 @@ export default function QuickActionBar({ selectedReceivables, onClear }) {
           <span className="text-xs text-muted-foreground bg-muted/20 rounded-full px-2 py-0.5">{formatINR(totalSelected)}</span>
         </div>
         <div className="w-px h-5 bg-muted-foreground/30" />
-        <Button size="sm" variant="secondary" onClick={() => setActiveModal('reminder')} className="h-8 gap-1.5 rounded-full text-xs">
-          <Mail className="w-3.5 h-3.5" /> Reminder
-        </Button>
         <Button size="sm" variant="secondary" onClick={() => setActiveModal('followup')} className="h-8 gap-1.5 rounded-full text-xs">
           <MessageSquare className="w-3.5 h-3.5" /> Follow-Up
         </Button>
@@ -340,9 +337,6 @@ export default function QuickActionBar({ selectedReceivables, onClear }) {
         </button>
       </div>
 
-      {activeModal === 'reminder' && (
-        <ReminderModal receivables={selectedReceivables} onClose={() => setActiveModal(null)} />
-      )}
       {activeModal === 'followup' && (
         <FollowUpModal receivables={selectedReceivables} type="note" onClose={() => setActiveModal(null)} />
       )}

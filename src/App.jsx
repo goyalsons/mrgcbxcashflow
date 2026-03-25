@@ -15,7 +15,6 @@ import CollectionTargets from '@/pages/CollectionTargets';
 import AgingAnalysis from '@/pages/AgingAnalysis';
 import CashFlowForecast from '@/pages/CashFlowForecast';
 import AIInsights from '@/pages/AIInsights';
-import PaymentReminders from '@/pages/PaymentReminders';
 import Reports from '@/pages/Reports';
 import CSVImport from '@/pages/CSVImport';
 import Settings from '@/pages/Settings';
@@ -62,7 +61,6 @@ const AuthenticatedApp = () => {
         <Route path="/aging-analysis" element={<ProtectedRoute user={user} featureKey="aging_analysis"><AgingAnalysis /></ProtectedRoute>} />
         <Route path="/cash-flow-forecast" element={<ProtectedRoute user={user} featureKey="cash_flow_forecast"><CashFlowForecast /></ProtectedRoute>} />
         <Route path="/ai-insights" element={<ProtectedRoute user={user} featureKey="ai_insights"><AIInsights /></ProtectedRoute>} />
-        <Route path="/payment-reminders" element={<ProtectedRoute user={user} featureKey="payment_reminders"><PaymentReminders /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute user={user} featureKey="reports"><Reports /></ProtectedRoute>} />
         <Route path="/csv-import" element={<ProtectedRoute user={user} featureKey="csv_import"><CSVImport /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} featureKey="settings"><Settings /></ProtectedRoute>} />
