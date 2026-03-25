@@ -6,6 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
@@ -13,6 +14,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
 import ReceivableForm from '@/components/receivables/ReceivableForm';
+import QuickActionBar from '@/components/receivables/QuickActionPanel';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Receivables() {
@@ -20,6 +22,7 @@ export default function Receivables() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selected, setSelected] = useState(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,6 +66,24 @@ export default function Receivables() {
     });
   }, [receivables, search, filterStatus]);
 
+  // Selection helpers
+  const allFilteredIds = filtered.map(r => r.id);
+  const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
+  const someSelected = allFilteredIds.some(id => selected.has(id));
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(prev => { const next = new Set(prev); allFilteredIds.forEach(id => next.delete(id)); return next; });
+    } else {
+      setSelected(prev => new Set([...prev, ...allFilteredIds]));
+    }
+  };
+  const toggleOne = (id) => {
+    setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  };
+
+  const selectedReceivables = filtered.filter(r => selected.has(r.id));
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -93,6 +114,14 @@ export default function Receivables() {
         </Select>
       </div>
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+          <span className="font-medium text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
+          <span className="text-muted-foreground">— use the action bar at the bottom to send reminders, log follow-ups, or log a call</span>
+          <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
+        </div>
+      )}
+
       <Card>
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
@@ -110,6 +139,14 @@ export default function Receivables() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={toggleAll}
+                      aria-label="Select all"
+                      className="translate-y-0.5"
+                    />
+                  </TableHead>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
@@ -124,8 +161,17 @@ export default function Receivables() {
                 {filtered.map((r) => {
                   const balance = (r.amount || 0) - (r.amount_received || 0);
                   const days = daysUntilDue(r.due_date);
+                  const isSelected = selected.has(r.id);
                   return (
-                    <TableRow key={r.id} className="group">
+                    <TableRow key={r.id} className={`group cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => toggleOne(r.id)}>
+                      <TableCell onClick={e => e.stopPropagation()}>
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleOne(r.id)}
+                          aria-label="Select row"
+                          className="translate-y-0.5"
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{r.invoice_number || '-'}</TableCell>
                       <TableCell>{r.customer_name}</TableCell>
                       <TableCell className="text-right font-medium">{formatINR(r.amount)}</TableCell>
@@ -140,7 +186,7 @@ export default function Receivables() {
                         </div>
                       </TableCell>
                       <TableCell><StatusBadge status={r.status} /></TableCell>
-                      <TableCell>
+                      <TableCell onClick={e => e.stopPropagation()}>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
@@ -171,6 +217,11 @@ export default function Receivables() {
         onClose={() => { setShowForm(false); setEditing(null); }}
         onSave={handleSave}
         editData={editing}
+      />
+
+      <QuickActionBar
+        selectedReceivables={selectedReceivables}
+        onClear={() => setSelected(new Set())}
       />
     </div>
   );
