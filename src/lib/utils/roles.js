@@ -8,9 +8,9 @@
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'debtors', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'collection_targets', 'settings'],
-  user: ['dashboard', 'debtors', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors'],
-  account_manager: ['dashboard', 'my_collections', 'debtors', 'receivables', 'customers'],
+  admin: ['dashboard', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
+  user: ['dashboard', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
+  account_manager: ['dashboard', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders'],
 };
 
 export function hasPermission(role, feature) {
@@ -24,12 +24,21 @@ export function getNavigationItems(role) {
     { key: 'my_collections', label: 'My Collections', path: '/my-collections', icon: 'Briefcase' },
     { key: 'debtors', label: 'Debtors', path: '/debtors', icon: 'Users' },
     { key: 'collection_targets', label: 'Collection Targets', path: '/collection-targets', icon: 'Target' },
+    { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
+    { key: 'cash_flow_forecast', label: 'Cash Flow Forecast', path: '/cash-flow-forecast', icon: 'TrendingUp' },
+    { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
+    { key: 'payment_reminders', label: 'Payment Reminders', path: '/payment-reminders', icon: 'Bell' },
     { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
     { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },
     { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },
     { key: 'bank_accounts', label: 'Bank Accounts', path: '/bank-accounts', icon: 'Landmark' },
     { key: 'customers', label: 'Customers', path: '/customers', icon: 'Users' },
     { key: 'vendors', label: 'Vendors', path: '/vendors', icon: 'Building2' },
+    { key: 'reports', label: 'Reports', path: '/reports', icon: 'FileText' },
+    { key: 'csv_import', label: 'CSV Import', path: '/csv-import', icon: 'Upload' },
+    { key: 'admin_panel', label: 'Admin Panel', path: '/admin-panel', icon: 'Shield' },
+    { key: 'audit_logs', label: 'Audit Logs', path: '/audit-logs', icon: 'ClipboardList' },
+    { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
   ];
 
   const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['user'];

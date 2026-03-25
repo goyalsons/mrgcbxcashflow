@@ -3,7 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
-  IndianRupee, Briefcase, Target
+  IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
+  Bell, FileText, Upload, Shield, ClipboardList, Settings
 } from 'lucide-react';
 import { getNavigationItems, getRoleLabel } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
@@ -11,7 +12,9 @@ import { base44 } from '@/api/base44Client';
 
 const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
-  Landmark, Users, Building2, Briefcase, Target,
+  Landmark, Users, Building2, Briefcase, Target, Clock,
+  TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
+  ClipboardList, Settings,
 };
 
 export default function Sidebar({ user, collapsed, onToggle }) {

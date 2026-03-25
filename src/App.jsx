@@ -11,6 +11,15 @@ import Dashboard from '@/pages/Dashboard';
 import Debtors from '@/pages/Debtors';
 import MyCollections from '@/pages/MyCollections';
 import CollectionTargets from '@/pages/CollectionTargets';
+import AgingAnalysis from '@/pages/AgingAnalysis';
+import CashFlowForecast from '@/pages/CashFlowForecast';
+import AIInsights from '@/pages/AIInsights';
+import PaymentReminders from '@/pages/PaymentReminders';
+import Reports from '@/pages/Reports';
+import CSVImport from '@/pages/CSVImport';
+import Settings from '@/pages/Settings';
+import AdminPanel from '@/pages/AdminPanel';
+import AuditLogs from '@/pages/AuditLogs';
 import Receivables from '@/pages/Receivables';
 import Payables from '@/pages/Payables';
 import Expenses from '@/pages/Expenses';
@@ -48,6 +57,15 @@ const AuthenticatedApp = () => {
         <Route path="/debtors" element={<Debtors />} />
         <Route path="/my-collections" element={<MyCollections />} />
         <Route path="/collection-targets" element={<CollectionTargets />} />
+        <Route path="/aging-analysis" element={<AgingAnalysis />} />
+        <Route path="/cash-flow-forecast" element={<CashFlowForecast />} />
+        <Route path="/ai-insights" element={<AIInsights />} />
+        <Route path="/payment-reminders" element={<PaymentReminders />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/csv-import" element={<CSVImport />} />
+        <Route path="/settings" element={<Settings />} />
+        <Route path="/admin-panel" element={<AdminPanel />} />
+        <Route path="/audit-logs" element={<AuditLogs />} />
         <Route path="/receivables" element={<Receivables />} />
         <Route path="/payables" element={<Payables />} />
         <Route path="/expenses" element={<Expenses />} />
