@@ -31,7 +31,6 @@ const NAV_GROUPS = [
       { key: 'debtors', label: 'Debtors', path: '/debtors', icon: 'Users' },
       { key: 'collection_targets', label: 'Targets', path: '/collection-targets', icon: 'Target' },
       { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
-      { key: 'payment_reminders', label: 'Reminders', path: '/payment-reminders', icon: 'Bell' },
       { key: 'follow_up_schedule', label: 'Follow-Up Schedule', path: '/follow-up-schedule', icon: 'CalendarClock' },
     ],
   },
