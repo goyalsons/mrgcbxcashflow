@@ -199,8 +199,15 @@ export default function DebtorProfile({ debtorId, onBack }) {
   const [amountMax, setAmountMax] = useState('');
   const [paidMin, setPaidMin] = useState('');
   const [paidMax, setPaidMax] = useState('');
-  // Payment/FollowUp filters
+  // Payment filters
   const [paymentModeFilter, setPaymentModeFilter] = useState('all');
+  const [paymentDateFrom, setPaymentDateFrom] = useState('');
+  const [paymentDateTo, setPaymentDateTo] = useState('');
+  const [paymentAmountMin, setPaymentAmountMin] = useState('');
+  const [paymentAmountMax, setPaymentAmountMax] = useState('');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [showPaymentFilters, setShowPaymentFilters] = useState(false);
+  // FollowUp filters
   const [followUpTypeFilter, setFollowUpTypeFilter] = useState('all');
   const [followUpOutcomeFilter, setFollowUpOutcomeFilter] = useState('all');
 
@@ -330,10 +337,15 @@ export default function DebtorProfile({ debtorId, onBack }) {
     return true;
   }), [invoices, invoiceStatusFilter, invoiceSearch, invoiceDateFrom, invoiceDateTo, dueDateFrom, dueDateTo, amountMin, amountMax, paidMin, paidMax]);
 
-  const filteredPayments = useMemo(() =>
-    paymentModeFilter === 'all' ? payments : payments.filter(p => p.payment_mode === paymentModeFilter),
-    [payments, paymentModeFilter]
-  );
+  const filteredPayments = useMemo(() => payments.filter(p => {
+    if (paymentModeFilter !== 'all' && p.payment_mode !== paymentModeFilter) return false;
+    if (paymentDateFrom && (p.payment_date || '') < paymentDateFrom) return false;
+    if (paymentDateTo && (p.payment_date || '') > paymentDateTo) return false;
+    if (paymentAmountMin !== '' && (p.amount || 0) < Number(paymentAmountMin)) return false;
+    if (paymentAmountMax !== '' && (p.amount || 0) > Number(paymentAmountMax)) return false;
+    if (paymentSearch && !(p.invoice_number || '').toLowerCase().includes(paymentSearch.toLowerCase()) && !(p.reference_number || '').toLowerCase().includes(paymentSearch.toLowerCase())) return false;
+    return true;
+  }), [payments, paymentModeFilter, paymentDateFrom, paymentDateTo, paymentAmountMin, paymentAmountMax, paymentSearch]);
 
   const filteredFollowUps = useMemo(() => followUps.filter(f => {
     const typeMatch = followUpTypeFilter === 'all' || f.type === followUpTypeFilter;
@@ -564,25 +576,42 @@ export default function DebtorProfile({ debtorId, onBack }) {
         {/* Payments */}
         <TabsContent value="payments" className="mt-4">
           {payments.length > 0 && (
-            <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={paymentModeFilter} onValueChange={setPaymentModeFilter}>
-                <SelectTrigger className="w-40 h-8 text-xs">
-                  <SelectValue placeholder="Payment Mode" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Modes</SelectItem>
-                  <SelectItem value="cash">Cash</SelectItem>
-                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                  <SelectItem value="upi">UPI</SelectItem>
-                  <SelectItem value="cheque">Cheque</SelectItem>
-                  <SelectItem value="neft">NEFT</SelectItem>
-                  <SelectItem value="rtgs">RTGS</SelectItem>
-                  <SelectItem value="imps">IMPS</SelectItem>
-                </SelectContent>
-              </Select>
-              {paymentModeFilter !== 'all' && (
-                <span className="text-xs text-muted-foreground">{filteredPayments.length} of {payments.length}</span>
+            <div className="mb-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input value={paymentSearch} onChange={e => setPaymentSearch(e.target.value)} placeholder="Search invoice # or ref..." className="h-8 text-xs w-44" />
+                <Select value={paymentModeFilter} onValueChange={setPaymentModeFilter}>
+                  <SelectTrigger className="h-8 text-xs w-36"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Modes</SelectItem>
+                    <SelectItem value="cash">Cash</SelectItem>
+                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                    <SelectItem value="upi">UPI</SelectItem>
+                    <SelectItem value="cheque">Cheque</SelectItem>
+                    <SelectItem value="neft">NEFT</SelectItem>
+                    <SelectItem value="rtgs">RTGS</SelectItem>
+                    <SelectItem value="imps">IMPS</SelectItem>
+                  </SelectContent>
+                </Select>
+                <button
+                  onClick={() => setShowPaymentFilters(v => !v)}
+                  className={`flex items-center gap-1 text-xs px-2 py-1 rounded border transition-colors ${showPaymentFilters ? 'bg-primary text-primary-foreground border-primary' : 'border-input text-muted-foreground hover:text-foreground'}`}
+                >
+                  <Filter className="w-3 h-3" /> More filters
+                </button>
+                {filteredPayments.length !== payments.length && (
+                  <span className="text-xs text-primary font-semibold ml-auto">{filteredPayments.length} of {payments.length}</span>
+                )}
+                {(paymentSearch || paymentModeFilter !== 'all' || paymentDateFrom || paymentDateTo || paymentAmountMin || paymentAmountMax) && (
+                  <button onClick={() => { setPaymentSearch(''); setPaymentModeFilter('all'); setPaymentDateFrom(''); setPaymentDateTo(''); setPaymentAmountMin(''); setPaymentAmountMax(''); }} className="text-xs text-destructive hover:underline">Clear</button>
+                )}
+              </div>
+              {showPaymentFilters && (
+                <div className="mt-2 p-3 border rounded-lg bg-muted/20 grid grid-cols-2 md:grid-cols-4 gap-2">
+                  <div><div className="text-xs text-muted-foreground mb-1">Date From</div><Input type="date" value={paymentDateFrom} onChange={e => setPaymentDateFrom(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><div className="text-xs text-muted-foreground mb-1">Date To</div><Input type="date" value={paymentDateTo} onChange={e => setPaymentDateTo(e.target.value)} className="h-7 text-xs" /></div>
+                  <div><div className="text-xs text-muted-foreground mb-1">Amount Min (₹)</div><Input type="number" value={paymentAmountMin} onChange={e => setPaymentAmountMin(e.target.value)} placeholder="Min" className="h-7 text-xs" /></div>
+                  <div><div className="text-xs text-muted-foreground mb-1">Amount Max (₹)</div><Input type="number" value={paymentAmountMax} onChange={e => setPaymentAmountMax(e.target.value)} placeholder="Max" className="h-7 text-xs" /></div>
+                </div>
               )}
             </div>
           )}
