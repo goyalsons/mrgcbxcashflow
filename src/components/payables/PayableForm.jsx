@@ -19,23 +19,24 @@ const CATEGORIES = [
 ];
 
 const EMPTY = {
-  bill_number: '', vendor_id: '', vendor_name: '', vendor_email: '', vendor_phone: '',
-  amount: '', amount_paid: 0, due_date: '', bill_date: '', status: 'pending',
-  category: '', notes: '', bank_account_id: '',
-};
+   bill_number: '', vendor_id: '', vendor_name: '', vendor_email: '', vendor_phone: '',
+   amount: '', amount_paid: 0, due_date: '', bill_date: '', status: 'pending',
+   category: '', notes: '', bank_account_id: '', document_url: '',
+ };
 
 export default function PayableForm({ open, onClose, onSave, editData }) {
-  const [form, setForm] = useState(EMPTY);
-  const [saving, setSaving] = useState(false);
+   const [form, setForm] = useState(EMPTY);
+   const [saving, setSaving] = useState(false);
+   const [uploading, setUploading] = useState(false);
 
-  const { data: vendors = [] } = useQuery({
-    queryKey: ['vendors'],
-    queryFn: () => base44.entities.Vendor.list(),
-  });
-  const { data: bankAccounts = [] } = useQuery({
-    queryKey: ['bankAccounts'],
-    queryFn: () => base44.entities.BankAccount.list(),
-  });
+   const { data: vendors = [] } = useQuery({
+     queryKey: ['vendors'],
+     queryFn: () => base44.entities.Vendor.list(),
+   });
+   const { data: bankAccounts = [] } = useQuery({
+     queryKey: ['bankAccounts'],
+     queryFn: () => base44.entities.BankAccount.list(),
+   });
 
   useEffect(() => {
     if (editData) {
@@ -54,6 +55,21 @@ export default function PayableForm({ open, onClose, onSave, editData }) {
       vendor_email: vendor?.email || '',
       vendor_phone: vendor?.phone || '',
     }));
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const response = await base44.integrations.Core.UploadFile({ file });
+      setForm(f => ({ ...f, document_url: response.file_url }));
+    } catch (err) {
+      console.error('Upload failed:', err);
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -141,6 +157,24 @@ export default function PayableForm({ open, onClose, onSave, editData }) {
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} rows={2} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Attachment (P.O., Invoice, etc.)</Label>
+            <div className="flex items-center gap-2">
+              <Input 
+                type="file" 
+                onChange={handleFileUpload} 
+                disabled={uploading}
+                accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+                className="flex-1"
+              />
+              {uploading && <span className="text-xs text-muted-foreground">Uploading...</span>}
+            </div>
+            {form.document_url && (
+              <div className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">
+                ✓ Document uploaded
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
