@@ -22,7 +22,7 @@ function ReminderModal({ receivables, onClose }) {
     return `Dear Customer,\n\nThis is a gentle reminder that the following invoice(s) are pending:\n\n${lines}\n\nKindly arrange payment at the earliest.\n\nThank you.`;
   });
 
-  const emails = [...new Set(receivables.map(r => r.customer_email).filter(Boolean))];
+  const emails = [...new Set(receivables.map(r => r.customer_email || r.customer?.email).filter(Boolean))];
 
   const handleSend = async () => {
     if (!emails.length) {

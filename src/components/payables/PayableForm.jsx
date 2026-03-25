@@ -19,8 +19,8 @@ const CATEGORIES = [
 ];
 
 const EMPTY = {
-  bill_number: '', vendor_id: '', vendor_name: '', amount: '',
-  amount_paid: 0, due_date: '', bill_date: '', status: 'pending',
+  bill_number: '', vendor_id: '', vendor_name: '', vendor_email: '', vendor_phone: '',
+  amount: '', amount_paid: 0, due_date: '', bill_date: '', status: 'pending',
   category: '', notes: '', bank_account_id: '',
 };
 
@@ -47,7 +47,13 @@ export default function PayableForm({ open, onClose, onSave, editData }) {
 
   const handleVendorChange = (vendorId) => {
     const vendor = vendors.find(v => v.id === vendorId);
-    setForm(f => ({ ...f, vendor_id: vendorId, vendor_name: vendor?.name || '' }));
+    setForm(f => ({
+      ...f,
+      vendor_id: vendorId,
+      vendor_name: vendor?.name || '',
+      vendor_email: vendor?.email || '',
+      vendor_phone: vendor?.phone || '',
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -83,6 +89,12 @@ export default function PayableForm({ open, onClose, onSave, editData }) {
               )}
             </div>
           </div>
+          {(form.vendor_email || form.vendor_phone) && (
+            <div className="flex gap-4 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+              {form.vendor_email && <span>📧 {form.vendor_email}</span>}
+              {form.vendor_phone && <span>📞 {form.vendor_phone}</span>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>

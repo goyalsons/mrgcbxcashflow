@@ -9,8 +9,8 @@ import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 
 const EMPTY = {
-  invoice_number: '', customer_id: '', customer_name: '', amount: '',
-  amount_received: 0, due_date: '', invoice_date: '', status: 'pending',
+  invoice_number: '', customer_id: '', customer_name: '', customer_email: '', customer_phone: '',
+  amount: '', amount_received: 0, due_date: '', invoice_date: '', status: 'pending',
   notes: '', bank_account_id: '',
 };
 
@@ -37,7 +37,13 @@ export default function ReceivableForm({ open, onClose, onSave, editData }) {
 
   const handleCustomerChange = (customerId) => {
     const customer = customers.find(c => c.id === customerId);
-    setForm(f => ({ ...f, customer_id: customerId, customer_name: customer?.name || '' }));
+    setForm(f => ({
+      ...f,
+      customer_id: customerId,
+      customer_name: customer?.name || '',
+      customer_email: customer?.email || '',
+      customer_phone: customer?.phone || '',
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -73,6 +79,12 @@ export default function ReceivableForm({ open, onClose, onSave, editData }) {
               )}
             </div>
           </div>
+          {(form.customer_email || form.customer_phone) && (
+            <div className="flex gap-4 text-xs text-muted-foreground bg-muted/40 rounded-lg px-3 py-2">
+              {form.customer_email && <span>📧 {form.customer_email}</span>}
+              {form.customer_phone && <span>📞 {form.customer_phone}</span>}
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <Label>Amount (₹) *</Label>
