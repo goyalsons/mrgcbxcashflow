@@ -14,6 +14,7 @@ import {
   TrendingUp, AlertCircle, CheckCircle, Clock, Award, Filter
 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import InvoiceForm from '@/components/debtors/InvoiceForm';
@@ -186,8 +187,18 @@ export default function DebtorProfile({ debtorId, onBack }) {
   const [showEditDebtor, setShowEditDebtor] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
 
-  // Filters
+  // Invoice filters
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
+  const [invoiceSearch, setInvoiceSearch] = useState('');
+  const [invoiceDateFrom, setInvoiceDateFrom] = useState('');
+  const [invoiceDateTo, setInvoiceDateTo] = useState('');
+  const [dueDateFrom, setDueDateFrom] = useState('');
+  const [dueDateTo, setDueDateTo] = useState('');
+  const [amountMin, setAmountMin] = useState('');
+  const [amountMax, setAmountMax] = useState('');
+  const [paidMin, setPaidMin] = useState('');
+  const [paidMax, setPaidMax] = useState('');
+  // Payment/FollowUp filters
   const [paymentModeFilter, setPaymentModeFilter] = useState('all');
   const [followUpTypeFilter, setFollowUpTypeFilter] = useState('all');
   const [followUpOutcomeFilter, setFollowUpOutcomeFilter] = useState('all');
@@ -304,10 +315,19 @@ export default function DebtorProfile({ debtorId, onBack }) {
     onSuccess: () => { invalidate(); setShowEditDebtor(false); toast({ title: 'Debtor updated' }); },
   });
 
-  const filteredInvoices = useMemo(() =>
-    invoiceStatusFilter === 'all' ? invoices : invoices.filter(i => i.status === invoiceStatusFilter),
-    [invoices, invoiceStatusFilter]
-  );
+  const filteredInvoices = useMemo(() => invoices.filter(i => {
+    if (invoiceStatusFilter !== 'all' && i.status !== invoiceStatusFilter) return false;
+    if (invoiceSearch && !(i.invoice_number || '').toLowerCase().includes(invoiceSearch.toLowerCase())) return false;
+    if (invoiceDateFrom && (i.invoice_date || '') < invoiceDateFrom) return false;
+    if (invoiceDateTo && (i.invoice_date || '') > invoiceDateTo) return false;
+    if (dueDateFrom && (i.due_date || '') < dueDateFrom) return false;
+    if (dueDateTo && (i.due_date || '') > dueDateTo) return false;
+    if (amountMin !== '' && (i.amount || 0) < Number(amountMin)) return false;
+    if (amountMax !== '' && (i.amount || 0) > Number(amountMax)) return false;
+    if (paidMin !== '' && (i.amount_paid || 0) < Number(paidMin)) return false;
+    if (paidMax !== '' && (i.amount_paid || 0) > Number(paidMax)) return false;
+    return true;
+  }), [invoices, invoiceStatusFilter, invoiceSearch, invoiceDateFrom, invoiceDateTo, dueDateFrom, dueDateTo, amountMin, amountMax, paidMin, paidMax]);
 
   const filteredPayments = useMemo(() =>
     paymentModeFilter === 'all' ? payments : payments.filter(p => p.payment_mode === paymentModeFilter),
@@ -431,23 +451,75 @@ export default function DebtorProfile({ debtorId, onBack }) {
         {/* Invoices */}
         <TabsContent value="invoices" className="mt-4">
           {invoices.length > 0 && (
-            <div className="flex items-center gap-2 mb-3">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
-                <SelectTrigger className="w-36 h-8 text-xs">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="partial">Partial</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                  <SelectItem value="overdue">Overdue</SelectItem>
-                  <SelectItem value="written_off">Written Off</SelectItem>
-                </SelectContent>
-              </Select>
-              {invoiceStatusFilter !== 'all' && (
-                <span className="text-xs text-muted-foreground">{filteredInvoices.length} of {invoices.length}</span>
+            <div className="border rounded-lg p-3 bg-muted/30 mb-3 space-y-2">
+              <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground mb-1">
+                <Filter className="w-3.5 h-3.5" /> Filters
+                {filteredInvoices.length !== invoices.length && (
+                  <span className="ml-auto text-primary font-semibold">{filteredInvoices.length} of {invoices.length} shown</span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {/* Invoice # search */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Invoice #</div>
+                  <Input value={invoiceSearch} onChange={e => setInvoiceSearch(e.target.value)} placeholder="Search..." className="h-7 text-xs" />
+                </div>
+                {/* Status */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Status</div>
+                  <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                    <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="partial">Partial</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                      <SelectItem value="written_off">Written Off</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {/* Invoice Date */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Invoice Date From</div>
+                  <Input type="date" value={invoiceDateFrom} onChange={e => setInvoiceDateFrom(e.target.value)} className="h-7 text-xs" />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Invoice Date To</div>
+                  <Input type="date" value={invoiceDateTo} onChange={e => setInvoiceDateTo(e.target.value)} className="h-7 text-xs" />
+                </div>
+                {/* Due Date */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Due Date From</div>
+                  <Input type="date" value={dueDateFrom} onChange={e => setDueDateFrom(e.target.value)} className="h-7 text-xs" />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Due Date To</div>
+                  <Input type="date" value={dueDateTo} onChange={e => setDueDateTo(e.target.value)} className="h-7 text-xs" />
+                </div>
+                {/* Amount */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Amount (Min)</div>
+                  <Input type="number" value={amountMin} onChange={e => setAmountMin(e.target.value)} placeholder="₹ Min" className="h-7 text-xs" />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Amount (Max)</div>
+                  <Input type="number" value={amountMax} onChange={e => setAmountMax(e.target.value)} placeholder="₹ Max" className="h-7 text-xs" />
+                </div>
+                {/* Paid */}
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Paid (Min)</div>
+                  <Input type="number" value={paidMin} onChange={e => setPaidMin(e.target.value)} placeholder="₹ Min" className="h-7 text-xs" />
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Paid (Max)</div>
+                  <Input type="number" value={paidMax} onChange={e => setPaidMax(e.target.value)} placeholder="₹ Max" className="h-7 text-xs" />
+                </div>
+              </div>
+              {(invoiceSearch || invoiceStatusFilter !== 'all' || invoiceDateFrom || invoiceDateTo || dueDateFrom || dueDateTo || amountMin || amountMax || paidMin || paidMax) && (
+                <button onClick={() => { setInvoiceSearch(''); setInvoiceStatusFilter('all'); setInvoiceDateFrom(''); setInvoiceDateTo(''); setDueDateFrom(''); setDueDateTo(''); setAmountMin(''); setAmountMax(''); setPaidMin(''); setPaidMax(''); }} className="text-xs text-primary hover:underline">
+                  Clear all filters
+                </button>
               )}
             </div>
           )}
