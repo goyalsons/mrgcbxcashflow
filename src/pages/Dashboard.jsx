@@ -11,7 +11,6 @@ import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRang
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { isWithinInterval } from 'date-fns';
-import { DASHBOARD_SCORECARDS } from '@/lib/utils/roles';
 
 const defaultRange = { preset: 'this_month', ...getPresetRange('this_month') };
 
@@ -45,14 +44,7 @@ export default function Dashboard() {
     queryFn: () => base44.entities.Debtor.list(),
   });
 
-  const { data: currentUser } = useQuery({
-    queryKey: ['me'],
-    queryFn: () => base44.auth.me(),
-  });
-
   const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors;
-  const visibleCards = DASHBOARD_SCORECARDS[currentUser?.role] || DASHBOARD_SCORECARDS['sales_team'];
-  const showCard = (key) => visibleCards.includes(key);
 
   // Filter all transactional data to the selected date range
   const { from, to } = dateRange;
@@ -113,16 +105,14 @@ export default function Dashboard() {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
-        {showCard('bank_balance') && <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />}
-        {showCard('debtor_outstanding') && (
-          <Link to="/debtors" className="contents">
-            <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
-          </Link>
-        )}
-        {showCard('receivables') && <StatCard title="Receivables" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />}
-        {showCard('payables') && <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />}
-        {showCard('expenses') && <StatCard title="Expenses" value={formatINR(totalExpenses)} icon={Receipt} variant="warning" />}
-        {showCard('net_position') && <StatCard title="Net Position" value={formatINR(netCashPosition)} icon={Wallet} variant={netCashPosition >= 0 ? 'success' : 'danger'} />}
+        <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
+        <Link to="/debtors" className="contents">
+          <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
+        </Link>
+        <StatCard title="Receivables" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
+        <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />
+        <StatCard title="Expenses" value={formatINR(totalExpenses)} icon={Receipt} variant="warning" />
+        <StatCard title="Net Position" value={formatINR(netCashPosition)} icon={Wallet} variant={netCashPosition >= 0 ? 'success' : 'danger'} />
       </div>
 
       {/* Charts + Alerts */}
