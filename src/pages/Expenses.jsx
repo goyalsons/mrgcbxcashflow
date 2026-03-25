@@ -13,6 +13,7 @@ import { MoreHorizontal, Pencil, Trash2, CheckCircle, Circle, Search } from 'luc
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
+import ReceiptCell from '@/components/expenses/ReceiptCell';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Expenses() {
@@ -122,6 +123,7 @@ export default function Expenses() {
                   <TableHead>Date</TableHead>
                   <TableHead>Payment Mode</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Receipt</TableHead>
                   <TableHead>Approved</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -136,6 +138,7 @@ export default function Expenses() {
                     <TableCell>{formatDateIN(e.expense_date)}</TableCell>
                     <TableCell className="capitalize text-sm text-muted-foreground">{e.payment_mode?.replace(/_/g, ' ') || '-'}</TableCell>
                     <TableCell className="text-right font-semibold">{formatINR(e.amount)}</TableCell>
+                    <TableCell><ReceiptCell url={e.receipt_url} /></TableCell>
                     <TableCell>
                       {e.approved ? (
                         <CheckCircle className="w-4 h-4 text-emerald-500" />

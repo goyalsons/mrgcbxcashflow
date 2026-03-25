@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import { base44 } from '@/api/base44Client';
+import { Paperclip, X, Loader2, FileText, Image } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'travel', label: 'Travel' },
@@ -31,17 +33,33 @@ const PAYMENT_MODES = [
 
 const EMPTY = {
   description: '', amount: '', expense_date: '', category: '',
-  payment_mode: '', notes: '', approved: false,
+  payment_mode: '', notes: '', approved: false, receipt_url: '',
 };
+
+function isImageUrl(url) {
+  return url && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
+}
 
 export default function ExpenseForm({ open, onClose, onSave, editData }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef();
 
   useEffect(() => {
     if (editData) setForm({ ...EMPTY, ...editData, amount: editData.amount || '' });
     else setForm(EMPTY);
   }, [editData, open]);
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    const { file_url } = await base44.integrations.Core.UploadFile({ file });
+    setForm(f => ({ ...f, receipt_url: file_url }));
+    setUploading(false);
+    e.target.value = '';
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -95,13 +113,58 @@ export default function ExpenseForm({ open, onClose, onSave, editData }) {
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => setForm(f => ({...f, notes: e.target.value}))} rows={2} />
           </div>
+
+          {/* Receipt Upload */}
+          <div className="space-y-1.5">
+            <Label>Receipt / Invoice</Label>
+            {form.receipt_url ? (
+              <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/40">
+                {isImageUrl(form.receipt_url) ? (
+                  <img src={form.receipt_url} alt="Receipt" className="w-12 h-12 object-cover rounded border" />
+                ) : (
+                  <div className="w-12 h-12 flex items-center justify-center bg-muted rounded border">
+                    <FileText className="w-5 h-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <a href={form.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate block">
+                    View attachment
+                  </a>
+                  <p className="text-xs text-muted-foreground mt-0.5">Click to preview or download</p>
+                </div>
+                <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setForm(f => ({ ...f, receipt_url: '' }))}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <div
+                className="border-2 border-dashed rounded-lg p-4 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors"
+                onClick={() => fileRef.current?.click()}
+              >
+                {uploading ? (
+                  <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Uploading...
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-1">
+                    <Paperclip className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Click to attach receipt or invoice</span>
+                    <span className="text-xs text-muted-foreground">PDF, PNG, JPG supported</span>
+                  </div>
+                )}
+              </div>
+            )}
+            <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
+          </div>
+
           <div className="flex items-center gap-3">
             <Switch checked={form.approved} onCheckedChange={v => setForm(f => ({...f, approved: v}))} />
             <Label>Approved</Label>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : (editData ? 'Update' : 'Create')}</Button>
+            <Button type="submit" disabled={saving || uploading}>{saving ? 'Saving...' : (editData ? 'Update' : 'Create')}</Button>
           </div>
         </form>
       </DialogContent>
