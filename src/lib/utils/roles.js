@@ -8,9 +8,9 @@
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
-  user: ['dashboard', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
-  account_manager: ['dashboard', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders', 'follow_up_schedule'],
+  admin: ['dashboard', 'notifications', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
+  user: ['dashboard', 'notifications', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
+  account_manager: ['dashboard', 'notifications', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders', 'follow_up_schedule'],
 };
 
 export function hasPermission(role, feature) {
