@@ -13,6 +13,7 @@ import EmptyState from '@/components/shared/EmptyState';
 import DebtorCard from '@/components/debtors/DebtorCard';
 import DebtorForm from '@/components/debtors/DebtorForm';
 import DebtorDetail from '@/components/debtors/DebtorDetail';
+import DebtorProfile from '@/pages/DebtorProfile';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Debtors() {
@@ -20,7 +21,8 @@ export default function Debtors() {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingDebtor, setEditingDebtor] = useState(null);
-  const [viewingDebtor, setViewingDebtor] = useState(null);
+  const [viewingDebtor, setViewingDebtor] = useState(null); // for old modal (kept for compat)
+  const [profileDebtorId, setProfileDebtorId] = useState(null); // full profile page
   const [showPaid, setShowPaid] = useState(false);
   const [search, setSearch] = useState('');
   const [filterManager, setFilterManager] = useState('all');
@@ -61,6 +63,11 @@ export default function Debtors() {
     setEditingDebtor(viewingDebtor);
     setShowForm(true);
   };
+
+  // Show profile page inline
+  if (profileDebtorId) {
+    return <DebtorProfile debtorId={profileDebtorId} onBack={() => setProfileDebtorId(null)} />;
+  }
 
   // Filter & group
   const managers = useMemo(() => {
@@ -169,7 +176,7 @@ export default function Debtors() {
                   <DebtorCard
                     key={d.id}
                     debtor={d}
-                    onClick={() => setViewingDebtor(d)}
+                    onClick={() => setProfileDebtorId(d.id)}
                   />
                 ))}
               </div>
@@ -199,7 +206,7 @@ export default function Debtors() {
                     <DebtorCard
                       key={d.id}
                       debtor={d}
-                      onClick={() => setViewingDebtor(d)}
+                      onClick={() => setProfileDebtorId(d.id)}
                     />
                   ))}
                 </div>

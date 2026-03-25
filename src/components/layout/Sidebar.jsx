@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
-  IndianRupee
+  IndianRupee, Briefcase, Target
 } from 'lucide-react';
 import { getNavigationItems, getRoleLabel } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
@@ -11,8 +11,7 @@ import { base44 } from '@/api/base44Client';
 
 const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
-  Landmark, Users, Building2,
-  // Debtors uses Users icon
+  Landmark, Users, Building2, Briefcase, Target,
 };
 
 export default function Sidebar({ user, collapsed, onToggle }) {

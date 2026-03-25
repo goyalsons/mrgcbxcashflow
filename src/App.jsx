@@ -9,6 +9,8 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AppLayout from '@/components/layout/AppLayout';
 import Dashboard from '@/pages/Dashboard';
 import Debtors from '@/pages/Debtors';
+import MyCollections from '@/pages/MyCollections';
+import CollectionTargets from '@/pages/CollectionTargets';
 import Receivables from '@/pages/Receivables';
 import Payables from '@/pages/Payables';
 import Expenses from '@/pages/Expenses';
@@ -44,6 +46,8 @@ const AuthenticatedApp = () => {
       <Route element={<AppLayout user={user} />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/debtors" element={<Debtors />} />
+        <Route path="/my-collections" element={<MyCollections />} />
+        <Route path="/collection-targets" element={<CollectionTargets />} />
         <Route path="/receivables" element={<Receivables />} />
         <Route path="/payables" element={<Payables />} />
         <Route path="/expenses" element={<Expenses />} />
