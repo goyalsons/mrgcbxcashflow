@@ -63,17 +63,20 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Your cash flow at a glance</p>
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex items-start justify-between pb-5 border-b border-border">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Your financial overview at a glance — {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+        </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
         <Link to="/debtors" className="contents">
-          <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active debtors`} />
+          <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
         </Link>
         <StatCard title="Receivables" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
         <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />
@@ -82,13 +85,11 @@ export default function Dashboard() {
       </div>
 
       {/* Charts + Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="lg:col-span-2">
           <CashFlowChart receivables={receivables} payables={payables} expenses={expenses} />
         </div>
-        <div>
-          <OverdueAlerts receivables={receivables} payables={payables} />
-        </div>
+        <OverdueAlerts receivables={receivables} payables={payables} />
       </div>
 
       {/* Recent Transactions */}

@@ -4,9 +4,9 @@ import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
   IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
-  Bell, FileText, Upload, Shield, ClipboardList, Settings
+  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3
 } from 'lucide-react';
-import { getNavigationItems, getRoleLabel } from '@/lib/utils/roles';
+import { getRoleLabel, hasPermission } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
 import { base44 } from '@/api/base44Client';
 
@@ -14,81 +14,149 @@ const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2, Briefcase, Target, Clock,
   TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
-  ClipboardList, Settings,
+  ClipboardList, Settings, BarChart3,
 };
+
+const NAV_GROUPS = [
+  {
+    label: 'Overview',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
+      { key: 'my_collections', label: 'My Collections', path: '/my-collections', icon: 'Briefcase' },
+    ],
+  },
+  {
+    label: 'Collections',
+    items: [
+      { key: 'debtors', label: 'Debtors', path: '/debtors', icon: 'Users' },
+      { key: 'collection_targets', label: 'Targets', path: '/collection-targets', icon: 'Target' },
+      { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
+      { key: 'payment_reminders', label: 'Reminders', path: '/payment-reminders', icon: 'Bell' },
+    ],
+  },
+  {
+    label: 'Finance',
+    items: [
+      { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
+      { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },
+      { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },
+      { key: 'bank_accounts', label: 'Bank Accounts', path: '/bank-accounts', icon: 'Landmark' },
+    ],
+  },
+  {
+    label: 'Contacts',
+    items: [
+      { key: 'customers', label: 'Customers', path: '/customers', icon: 'Users' },
+      { key: 'vendors', label: 'Vendors', path: '/vendors', icon: 'Building2' },
+    ],
+  },
+  {
+    label: 'Analytics',
+    items: [
+      { key: 'cash_flow_forecast', label: 'Cash Flow', path: '/cash-flow-forecast', icon: 'TrendingUp' },
+      { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
+      { key: 'reports', label: 'Reports', path: '/reports', icon: 'FileText' },
+    ],
+  },
+  {
+    label: 'System',
+    items: [
+      { key: 'csv_import', label: 'CSV Import', path: '/csv-import', icon: 'Upload' },
+      { key: 'admin_panel', label: 'Admin Panel', path: '/admin-panel', icon: 'Shield' },
+      { key: 'audit_logs', label: 'Audit Logs', path: '/audit-logs', icon: 'ClipboardList' },
+      { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
+    ],
+  },
+];
 
 export default function Sidebar({ user, collapsed, onToggle }) {
   const location = useLocation();
   const role = user?.role || 'user';
-  const navItems = getNavigationItems(role);
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? 'w-[72px]' : 'w-64'}`}>
+    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? 'w-[68px]' : 'w-60'}`}>
       {/* Logo */}
-      <div className="flex items-center gap-3 px-5 h-16 border-b border-sidebar-border">
-        <div className="w-8 h-8 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
-          <IndianRupee className="w-4 h-4 text-sidebar-primary-foreground" />
+      <div className={`flex items-center gap-3 h-14 border-b border-sidebar-border shrink-0 ${collapsed ? 'px-4 justify-center' : 'px-5'}`}>
+        <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
+          <IndianRupee className="w-3.5 h-3.5 text-sidebar-primary-foreground" />
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-base font-bold tracking-tight text-sidebar-foreground">CashFlow Pro</h1>
-            <p className="text-[10px] text-sidebar-foreground/50 uppercase tracking-widest">Finance Manager</p>
+            <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground leading-tight">CashFlow Pro</h1>
+            <p className="text-[9px] text-sidebar-foreground/40 uppercase tracking-widest">Finance Manager</p>
           </div>
         )}
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => {
-          const Icon = iconMap[item.icon];
-          const isActive = item.path === '/' 
-            ? location.pathname === '/' 
-            : location.pathname.startsWith(item.path);
+      <nav className="flex-1 py-3 overflow-y-auto scrollbar-thin">
+        {NAV_GROUPS.map((group) => {
+          const visibleItems = group.items.filter(item => hasPermission(role, item.key));
+          if (visibleItems.length === 0) return null;
 
           return (
-            <Link
-              key={item.key}
-              to={item.path}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                ${isActive 
-                  ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-lg shadow-sidebar-primary/25' 
-                  : 'text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                }
-              `}
-              title={collapsed ? item.label : undefined}
-            >
-              {Icon && <Icon className="w-[18px] h-[18px] flex-shrink-0" />}
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
+            <div key={group.label} className="mb-1">
+              {!collapsed && (
+                <div className="px-4 py-1.5">
+                  <span className="text-[9px] font-semibold uppercase tracking-widest text-sidebar-foreground/30">{group.label}</span>
+                </div>
+              )}
+              {collapsed && <div className="mx-3 my-1.5 border-t border-sidebar-border/40" />}
+              <div className="px-2 space-y-0.5">
+                {visibleItems.map((item) => {
+                  const Icon = iconMap[item.icon];
+                  const isActive = item.path === '/'
+                    ? location.pathname === '/'
+                    : location.pathname.startsWith(item.path);
+
+                  return (
+                    <Link
+                      key={item.key}
+                      to={item.path}
+                      title={collapsed ? item.label : undefined}
+                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150
+                        ${isActive
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                        } ${collapsed ? 'justify-center' : ''}
+                      `}
+                    >
+                      {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
+                      {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
           );
         })}
       </nav>
 
-      {/* User + Collapse */}
-      <div className="border-t border-sidebar-border p-3 space-y-2">
+      {/* Footer */}
+      <div className="border-t border-sidebar-border p-2 shrink-0">
         {!collapsed && (
-          <div className="px-3 py-2">
-            <p className="text-sm font-medium text-sidebar-foreground truncate">{user?.full_name || 'User'}</p>
-            <p className="text-xs text-sidebar-foreground/50">{getRoleLabel(role)}</p>
+          <div className="px-2.5 py-2 mb-1">
+            <p className="text-[13px] font-medium text-sidebar-foreground truncate">{user?.full_name || 'User'}</p>
+            <p className="text-[11px] text-sidebar-foreground/40">{getRoleLabel(role)}</p>
           </div>
         )}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="sm"
-            className="flex-1 text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent justify-start"
+            className={`text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 text-xs ${collapsed ? 'w-full justify-center px-0' : 'flex-1 justify-start px-2.5'}`}
             onClick={() => base44.auth.logout()}
           >
-            <LogOut className="w-4 h-4" />
-            {!collapsed && <span className="ml-2 text-xs">Logout</span>}
+            <LogOut className="w-3.5 h-3.5 flex-shrink-0" />
+            {!collapsed && <span className="ml-1.5">Logout</span>}
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8"
+            className="text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 shrink-0"
             onClick={onToggle}
           >
-            {collapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
+            {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
           </Button>
         </div>
       </div>

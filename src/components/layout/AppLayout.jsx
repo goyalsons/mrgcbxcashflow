@@ -1,18 +1,22 @@
 import React, { useState } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import TopBar from './TopBar';
 
 export default function AppLayout({ user }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
       <Sidebar user={user} collapsed={collapsed} onToggle={() => setCollapsed(!collapsed)} />
-      <main className={`transition-all duration-300 ${collapsed ? 'ml-[72px]' : 'ml-64'}`}>
-        <div className="p-6 md:p-8 max-w-[1400px] mx-auto">
-          <Outlet />
-        </div>
-      </main>
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${collapsed ? 'ml-[68px]' : 'ml-60'}`}>
+        <TopBar user={user} />
+        <main className="flex-1 p-5 md:p-7">
+          <div className="max-w-[1440px] mx-auto">
+            <Outlet />
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
