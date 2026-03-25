@@ -22,6 +22,7 @@ const NAV_GROUPS = [
     label: 'Overview',
     items: [
       { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
+      { key: 'notifications', label: 'Notifications', path: '/notifications', icon: 'Bell' },
       { key: 'my_collections', label: 'My Collections', path: '/my-collections', icon: 'Briefcase' },
     ],
   },
