@@ -64,12 +64,7 @@ export default function Debtors() {
     setShowForm(true);
   };
 
-  // Show profile page inline
-  if (profileDebtorId) {
-    return <DebtorProfile debtorId={profileDebtorId} onBack={() => setProfileDebtorId(null)} />;
-  }
-
-  // Filter & group
+  // Filter & group — all hooks must be before any conditional return
   const managers = useMemo(() => {
     const set = new Set(debtors.map(d => d.assigned_manager).filter(Boolean));
     return Array.from(set);
@@ -92,10 +87,14 @@ export default function Debtors() {
   const totalInvoiced = debtors.reduce((s, d) => s + (d.total_invoiced || 0), 0);
   const overdueCount = debtors.filter(d => d.status === 'active' && (d.total_outstanding || 0) > 0).length;
 
-  // Summary stats
   const unpaidCount = debtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) === 0).length;
   const partialCount = debtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) > 0).length;
   const paidCount = debtors.filter(d => (d.total_outstanding || 0) <= 0 && (d.total_invoiced || 0) > 0).length;
+
+  // Show profile page inline (after all hooks)
+  if (profileDebtorId) {
+    return <DebtorProfile debtorId={profileDebtorId} onBack={() => setProfileDebtorId(null)} />;
+  }
 
   return (
     <div className="space-y-6">
