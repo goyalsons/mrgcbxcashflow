@@ -45,10 +45,7 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
     setExtracting(true);
 
     try {
-      // Upload file first
       const { file_url } = await base44.integrations.Core.UploadFile({ file });
-
-      // Extract invoice data using AI
       const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url,
         json_schema: EXTRACT_SCHEMA,
@@ -71,7 +68,6 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
       console.error('Extraction failed', err);
     } finally {
       setExtracting(false);
-      // Reset input so same file can be re-selected
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -92,27 +88,27 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>{editData ? 'Edit Invoice' : 'New Invoice'} — {debtorName}</DialogTitle>
+      <DialogContent className="max-w-lg max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="text-base">{editData ? 'Edit Invoice' : 'New Invoice'} — {debtorName}</DialogTitle>
         </DialogHeader>
 
-        {/* AI Upload Zone */}
+        {/* AI Upload Zone — only for new invoices */}
         {!editData && (
-          <div className="mb-1">
+          <div className="shrink-0">
             {!uploadedFile ? (
               <label
                 htmlFor="invoice-file-upload"
-                className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-primary/30 rounded-lg p-4 cursor-pointer hover:border-primary/60 hover:bg-primary/5 transition-colors"
+                className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 cursor-pointer hover:bg-primary/10 hover:border-primary/60 transition-colors"
               >
-                <div className="flex items-center gap-2 text-primary">
-                  <Sparkles className="w-4 h-4" />
-                  <span className="text-sm font-medium">Auto-fill from Invoice PDF / Image</span>
+                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Sparkles className="w-4 h-4 text-primary" />
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Upload className="w-3.5 h-3.5" />
-                  Upload PDF, JPG, or PNG — AI will extract the data
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-primary">AI Auto-fill from Invoice</p>
+                  <p className="text-xs text-muted-foreground">Upload PDF, JPG or PNG — fields will be filled automatically</p>
                 </div>
+                <Upload className="w-4 h-4 text-muted-foreground shrink-0" />
                 <input
                   ref={fileInputRef}
                   id="invoice-file-upload"
@@ -123,7 +119,11 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
                 />
               </label>
             ) : (
-              <div className={`flex items-center gap-3 p-3 rounded-lg border ${extractSuccess ? 'bg-emerald-50 border-emerald-200' : extracting ? 'bg-blue-50 border-blue-200' : 'bg-muted border-border'}`}>
+              <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${
+                extracting ? 'bg-blue-50 border-blue-200' :
+                extractSuccess ? 'bg-emerald-50 border-emerald-200' :
+                'bg-muted border-border'
+              }`}>
                 {extracting ? (
                   <Loader2 className="w-4 h-4 text-blue-600 animate-spin shrink-0" />
                 ) : extractSuccess ? (
@@ -133,12 +133,12 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
                 )}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{uploadedFile.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {extracting ? 'Extracting data with AI...' : extractSuccess ? 'Data extracted successfully — review & save' : 'Uploaded'}
+                  <p className={`text-xs ${extracting ? 'text-blue-600' : extractSuccess ? 'text-emerald-600' : 'text-muted-foreground'}`}>
+                    {extracting ? 'Extracting data with AI...' : extractSuccess ? 'Data extracted — review fields below' : 'Uploaded'}
                   </p>
                 </div>
                 {!extracting && (
-                  <button onClick={handleRemoveFile} className="text-muted-foreground hover:text-destructive transition-colors">
+                  <button type="button" onClick={handleRemoveFile} className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
                     <X className="w-4 h-4" />
                   </button>
                 )}
@@ -147,51 +147,55 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label>Invoice # *</Label>
-              <Input value={form.invoice_number} onChange={e => set('invoice_number', e.target.value)} placeholder="INV-001" required />
+        {/* Form — scrollable */}
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Invoice # *</Label>
+                <Input value={form.invoice_number} onChange={e => set('invoice_number', e.target.value)} placeholder="INV-001" required className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Amount (₹) *</Label>
+                <Input type="number" value={form.amount} onChange={e => set('amount', e.target.value)} required min="0" className="h-9" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Invoice Date</Label>
+                <Input type="date" value={form.invoice_date} onChange={e => set('invoice_date', e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Due Date *</Label>
+                <Input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} required className="h-9" />
+              </div>
             </div>
             <div className="space-y-1.5">
-              <Label>Amount (₹) *</Label>
-              <Input type="number" value={form.amount} onChange={e => set('amount', e.target.value)} required min="0" />
+              <Label className="text-xs">Status</Label>
+              <Select value={form.status} onValueChange={v => set('status', v)}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="written_off">Written Off</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Invoice Date</Label>
-              <Input type="date" value={form.invoice_date} onChange={e => set('invoice_date', e.target.value)} />
+              <Label className="text-xs">Description</Label>
+              <Input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description of goods/services" className="h-9" />
             </div>
             <div className="space-y-1.5">
-              <Label>Due Date *</Label>
-              <Input type="date" value={form.due_date} onChange={e => set('due_date', e.target.value)} required />
+              <Label className="text-xs">Notes</Label>
+              <Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} className="resize-none" />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Status</Label>
-            <Select value={form.status} onValueChange={v => set('status', v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="pending">Pending</SelectItem>
-                <SelectItem value="partial">Partial</SelectItem>
-                <SelectItem value="paid">Paid</SelectItem>
-                <SelectItem value="overdue">Overdue</SelectItem>
-                <SelectItem value="written_off">Written Off</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Description</Label>
-            <Input value={form.description} onChange={e => set('description', e.target.value)} placeholder="Description of goods/services" />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Notes</Label>
-            <Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} />
-          </div>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving || extracting}>
+
+          <div className="flex justify-end gap-3 pt-3 border-t mt-3 shrink-0">
+            <Button type="button" variant="outline" onClick={onClose} size="sm">Cancel</Button>
+            <Button type="submit" disabled={saving || extracting} size="sm">
               {saving ? 'Saving...' : editData ? 'Update' : 'Add Invoice'}
             </Button>
           </div>
