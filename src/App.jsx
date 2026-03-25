@@ -27,6 +27,7 @@ import Expenses from '@/pages/Expenses';
 import BankAccounts from '@/pages/BankAccounts';
 import Customers from '@/pages/Customers';
 import Vendors from '@/pages/Vendors';
+import FollowUpSchedule from '@/pages/FollowUpSchedule';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
         <Route path="/bank-accounts" element={<ProtectedRoute user={user} featureKey="bank_accounts"><BankAccounts /></ProtectedRoute>} />
         <Route path="/customers" element={<ProtectedRoute user={user} featureKey="customers"><Customers /></ProtectedRoute>} />
         <Route path="/vendors" element={<ProtectedRoute user={user} featureKey="vendors"><Vendors /></ProtectedRoute>} />
+        <Route path="/follow-up-schedule" element={<FollowUpSchedule />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

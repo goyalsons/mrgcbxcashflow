@@ -14,7 +14,7 @@ const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2, Briefcase, Target, Clock,
   TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
-  ClipboardList, Settings, BarChart3,
+  ClipboardList, Settings, BarChart3, CalendarClock,
 };
 
 const NAV_GROUPS = [
@@ -32,6 +32,7 @@ const NAV_GROUPS = [
       { key: 'collection_targets', label: 'Targets', path: '/collection-targets', icon: 'Target' },
       { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
       { key: 'payment_reminders', label: 'Reminders', path: '/payment-reminders', icon: 'Bell' },
+      { key: 'follow_up_schedule', label: 'Follow-Up Schedule', path: '/follow-up-schedule', icon: 'CalendarClock' },
     ],
   },
   {
