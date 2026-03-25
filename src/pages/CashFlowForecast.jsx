@@ -7,8 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, Brain } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
+import AIProjectionPanel from '@/components/cashflow/AIProjectionPanel';
 
 function addDays(date, days) {
   const d = new Date(date);
@@ -130,6 +131,10 @@ export default function CashFlowForecast() {
         <TabsList>
           <TabsTrigger value="weekly">12-Week View</TabsTrigger>
           <TabsTrigger value="monthly">Monthly View</TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5">
+            <Brain className="w-3.5 h-3.5" />
+            AI Projection
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="weekly" className="mt-4 space-y-4">
@@ -228,6 +233,10 @@ export default function CashFlowForecast() {
               ))}
             </TableBody>
           </Table>
+        </TabsContent>
+
+        <TabsContent value="ai" className="mt-4">
+          <AIProjectionPanel />
         </TabsContent>
       </Tabs>
     </div>
