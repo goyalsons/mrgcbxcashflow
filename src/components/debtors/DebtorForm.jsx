@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +13,12 @@ const EMPTY = { name: '', contact_person: '', email: '', phone: '', gstin: '', a
 export default function DebtorForm({ open, onClose, onSave, editData }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => base44.entities.User.list(),
+  });
+  const accountManagers = users.filter(u => u.role === 'account_manager');
 
   useEffect(() => {
     setForm(editData ? { ...EMPTY, ...editData } : EMPTY);
@@ -62,8 +70,22 @@ export default function DebtorForm({ open, onClose, onSave, editData }) {
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Assigned Manager (email)</Label>
-              <Input value={form.assigned_manager} onChange={e => set('assigned_manager', e.target.value)} placeholder="manager@company.com" />
+              <Label>Assigned Manager</Label>
+              {accountManagers.length > 0 ? (
+                <Select value={form.assigned_manager} onValueChange={v => set('assigned_manager', v)}>
+                  <SelectTrigger><SelectValue placeholder="Select manager" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={null}>— None —</SelectItem>
+                    {accountManagers.map(m => (
+                      <SelectItem key={m.id} value={m.email}>
+                        {m.full_name || m.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={form.assigned_manager} onChange={e => set('assigned_manager', e.target.value)} placeholder="manager@company.com" />
+              )}
             </div>
             <div className="space-y-1.5">
               <Label>Status</Label>
