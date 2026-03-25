@@ -32,18 +32,20 @@ function ReminderModal({ receivables, onClose }) {
     queryFn: () => base44.entities.Customer.list(),
   });
 
-  // Group receivables by customer ID and fetch from Customer master
+  // Group receivables by company name and fetch email from Customer master
   const customerGroups = useMemo(() => {
     const groups = {};
     receivables.forEach(r => {
-      if (r.customer_id) {
-        const customer = allCustomers.find(c => c.id === r.customer_id);
+      // Match customer by name
+      const customerName = r.customer_name;
+      if (customerName) {
+        const customer = allCustomers.find(c => c.name && c.name.toLowerCase() === customerName.toLowerCase());
         if (customer && customer.email) {
-          const key = customer.id;
+          const key = customer.id || customerName;
           if (!groups[key]) {
             groups[key] = {
               email: customer.email,
-              customer: customer.name,
+              customer: customer.name || customerName,
               receivables: [],
             };
           }
