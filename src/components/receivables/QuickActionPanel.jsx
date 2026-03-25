@@ -18,10 +18,7 @@ function ReminderModal({ receivables, onClose }) {
   const [templateId, setTemplateId] = useState('');
   const [subject, setSubject] = useState('Payment Reminder');
   const [body, setBody] = useState(() => {
-    const lines = receivables.map(r =>
-      `• Invoice ${r.invoice_number || '-'} — ${formatINR((r.amount || 0) - (r.amount_received || 0))} due ${formatDateIN(r.due_date)}`
-    ).join('\n');
-    return `Dear Customer,\n\nThis is a gentle reminder that the following invoice(s) are pending:\n\n${lines}\n\nKindly arrange payment at the earliest.\n\nThank you.`;
+    return `Dear {customer_name},\n\nWe have {invoice_count} pending invoice(s) awaiting payment:\n\n{invoices}\n\nTotal Outstanding: {amount}\n\nKindly arrange payment at the earliest.\n\nThank you.`;
   });
 
   const { data: templates = [] } = useQuery({
@@ -77,15 +74,23 @@ function ReminderModal({ receivables, onClose }) {
       await Promise.all(customerGroups.map(({ email, customer, receivables: custReceivables }) => {
         // Replace placeholders with customer-specific data
         let customBody = body;
-        const invoiceDetails = custReceivables
-          .map(r => `• Invoice ${r.invoice_number || '-'} — ${formatINR((r.amount || 0) - (r.amount_received || 0))} due ${formatDateIN(r.due_date)}`)
-          .join('\n');
+        
+        // Build detailed invoice list
+        const invoiceList = custReceivables
+          .map((r, idx) => {
+            const outstanding = (r.amount || 0) - (r.amount_received || 0);
+            return `  ${idx + 1}. Invoice ${r.invoice_number || '-'}\n     Amount: ${formatINR(outstanding)}\n     Due: ${formatDateIN(r.due_date)}`;
+          })
+          .join('\n\n');
+        
+        const totalOutstanding = formatINR(custReceivables.reduce((s, r) => s + ((r.amount || 0) - (r.amount_received || 0)), 0));
         
         customBody = customBody
           .replace(/{customer_name}/g, customer)
-          .replace(/{invoices}/g, invoiceDetails)
-          .replace(/{amount}/g, formatINR(custReceivables.reduce((s, r) => s + ((r.amount || 0) - (r.amount_received || 0)), 0)))
-          .replace(/{due_date}/g, custReceivables[0]?.due_date || '');
+          .replace(/{invoices}/g, invoiceList)
+          .replace(/{amount}/g, totalOutstanding)
+          .replace(/{due_date}/g, custReceivables[0]?.due_date || '')
+          .replace(/{invoice_count}/g, custReceivables.length);
 
         return base44.integrations.Core.SendEmail({ to: email, subject, body: customBody });
       }));
@@ -138,8 +143,8 @@ function ReminderModal({ receivables, onClose }) {
             <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-9" />
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs">Message <span className="text-muted-foreground text-xs font-normal ml-1">(Use {'{customer_name}'}, {'{invoices}'}, {'{amount}'}, {'{due_date}'} as placeholders)</span></Label>
-            <Textarea value={body} onChange={e => setBody(e.target.value)} rows={6} className="text-sm resize-none" />
+            <Label className="text-xs">Message <span className="text-muted-foreground text-xs font-normal ml-1">(Use {'{customer_name}'}, {'{invoices}'}, {'{amount}'}, {'{invoice_count}'}, {'{due_date}'} as placeholders)</span></Label>
+            <Textarea value={body} onChange={e => setBody(e.target.value)} rows={7} className="text-sm resize-none" />
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
