@@ -164,11 +164,11 @@ function ReminderModal({ receivables, onClose }) {
             </div>
           </div>
 
-          {emailTemplates.length > 0 && sendEmail && (
+          {sendEmail && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Email Template</Label>
+              <Label className="text-xs">Email Template {emailTemplates.length > 0 ? `(${emailTemplates.length})` : ''}</Label>
               <Select value={templateId} onValueChange={handleTemplateChange}>
-                <SelectTrigger className="h-9"><SelectValue placeholder="Select a template..." /></SelectTrigger>
+                <SelectTrigger className="h-9"><SelectValue placeholder={emailTemplates.length > 0 ? "Select a template..." : "No templates created"} /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={null}>— Custom Message —</SelectItem>
                   {emailTemplates.map(t => (
@@ -176,6 +176,9 @@ function ReminderModal({ receivables, onClose }) {
                   ))}
                 </SelectContent>
               </Select>
+              {emailTemplates.length === 0 && (
+                <p className="text-xs text-muted-foreground">Create templates in Settings → Message Templates</p>
+              )}
             </div>
           )}
           {sendEmail && (
