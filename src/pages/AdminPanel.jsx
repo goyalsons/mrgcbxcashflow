@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, Shield, UserCheck, UserX, MoreHorizontal, Mail, Search, UserPlus } from 'lucide-react';
+import { Users, Shield, UserCheck, UserX, MoreHorizontal, Mail, Search, UserPlus, Check, X } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
@@ -187,6 +187,51 @@ export default function AdminPanel() {
           </TableBody>
         </Table>
       )}
+
+      {/* Permissions Matrix */}
+      <Card>
+        <CardHeader className="pb-2 pt-4 px-4">
+          <CardTitle className="text-sm font-semibold">Role Permissions Matrix</CardTitle>
+        </CardHeader>
+        <div className="overflow-x-auto px-4 pb-4">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-48">Permission</TableHead>
+                <TableHead className="text-center">Admin</TableHead>
+                <TableHead className="text-center">Accounts Team</TableHead>
+                <TableHead className="text-center">Sales Team</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[
+                { label: 'View Dashboard Financials', admin: true, accounts: true, sales: false },
+                { label: 'Add / Create Entries', admin: true, accounts: true, sales: false },
+                { label: 'Edit Entries', admin: true, accounts: true, sales: false },
+                { label: 'Delete Entries', admin: true, accounts: false, sales: false },
+                { label: 'Invoices & Payments', admin: true, accounts: true, sales: false },
+                { label: 'Receivables & Payables', admin: true, accounts: true, sales: false },
+                { label: 'Expenses & Bank Accounts', admin: true, accounts: true, sales: false },
+                { label: 'My Collections & Follow-ups', admin: true, accounts: false, sales: true },
+                { label: 'Payment Reminders', admin: true, accounts: false, sales: true },
+                { label: 'Reports & Analytics', admin: true, accounts: true, sales: false },
+                { label: 'Admin Panel & Settings', admin: true, accounts: false, sales: false },
+              ].map((row, i) => (
+                <TableRow key={i}>
+                  <TableCell className="text-sm font-medium">{row.label}</TableCell>
+                  {[row.admin, row.accounts, row.sales].map((allowed, j) => (
+                    <TableCell key={j} className="text-center">
+                      {allowed
+                        ? <Check className="w-4 h-4 text-emerald-600 mx-auto" />
+                        : <X className="w-4 h-4 text-red-400 mx-auto" />}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
 
       <InviteModal open={showInvite} onClose={() => setShowInvite(false)} />
     </div>

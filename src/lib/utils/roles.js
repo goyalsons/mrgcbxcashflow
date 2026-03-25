@@ -1,21 +1,57 @@
 /**
  * Role-based access control utilities
- * 
+ *
  * Roles:
- * - admin: Full access to everything
- * - user: Financial access (receivables, payables, expenses, bank accounts, dashboard)
- * - account_manager: Collections-only access (receivables, customers, dashboard limited)
+ * - admin:         Full access — all modules, settings, user management
+ * - accounts_team: Finance work — invoices, payments, receivables, payables, expenses, bank accounts
+ * - sales_team:    Collections follow-up — debtors, reminders, follow-ups, my collections (read-only)
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
-  user: ['dashboard', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
-  account_manager: ['dashboard', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders'],
+  admin: [
+    'dashboard', 'debtors', 'my_collections', 'collection_targets', 'aging_analysis',
+    'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'receivables', 'payables',
+    'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import',
+    'admin_panel', 'audit_logs', 'settings',
+  ],
+  accounts_team: [
+    'dashboard', 'debtors', 'receivables', 'payables', 'expenses',
+    'bank_accounts', 'customers', 'vendors', 'reports',
+  ],
+  sales_team: [
+    'dashboard', 'my_collections', 'debtors', 'payment_reminders', 'customers',
+  ],
+};
+
+// Data action permissions — what each role can do
+const ROLE_ACTIONS = {
+  admin:         { create: true,  edit: true,  delete: true  },
+  accounts_team: { create: true,  edit: true,  delete: false },
+  sales_team:    { create: false, edit: false, delete: false },
+};
+
+// Dashboard scorecard visibility per role
+export const DASHBOARD_SCORECARDS = {
+  admin:         ['bank_balance', 'debtor_outstanding', 'receivables', 'payables', 'expenses', 'net_position'],
+  accounts_team: ['bank_balance', 'debtor_outstanding', 'receivables', 'payables', 'expenses', 'net_position'],
+  sales_team:    ['debtor_outstanding'],
 };
 
 export function hasPermission(role, feature) {
-  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['user'];
+  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['sales_team'];
   return permissions.includes(feature);
+}
+
+export function canCreate(role) {
+  return ROLE_ACTIONS[role]?.create ?? false;
+}
+
+export function canEdit(role) {
+  return ROLE_ACTIONS[role]?.edit ?? false;
+}
+
+export function canDelete(role) {
+  return ROLE_ACTIONS[role]?.delete ?? false;
 }
 
 export function getNavigationItems(role) {
@@ -41,15 +77,15 @@ export function getNavigationItems(role) {
     { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
   ];
 
-  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['user'];
+  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS['sales_team'];
   return allItems.filter(item => permissions.includes(item.key));
 }
 
 export function getRoleLabel(role) {
   const labels = {
     admin: 'Admin',
-    user: 'User',
-    account_manager: 'Account Manager',
+    accounts_team: 'Accounts Team',
+    sales_team: 'Sales Team',
   };
-  return labels[role] || 'User';
+  return labels[role] || role;
 }
