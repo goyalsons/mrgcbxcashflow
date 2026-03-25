@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -24,6 +25,7 @@ const VIEW_MODES = [
 ];
 
 export default function Debtors() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -148,7 +150,9 @@ export default function Debtors() {
   const renderCardView = (list) => (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
       {list.map(d => (
-        <DebtorCard key={d.id} debtor={d} onClick={() => setProfileDebtorId(d.id)} />
+        <div key={d.id} className="cursor-pointer" onClick={() => setProfileDebtorId(d.id)}>
+          <DebtorCard debtor={d} />
+        </div>
       ))}
     </div>
   );

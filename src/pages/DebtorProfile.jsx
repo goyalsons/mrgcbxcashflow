@@ -252,25 +252,61 @@ export default function DebtorProfile({ debtorId, onBack }) {
   };
 
   const createInvoiceMut = useMutation({
-    mutationFn: (data) => base44.entities.Invoice.create(data),
+    mutationFn: async (data) => {
+      const inv = await base44.entities.Invoice.create(data);
+      // Also create/sync to Receivable
+      await base44.entities.Receivable.create({
+        invoice_number: inv.invoice_number,
+        customer_name: inv.debtor_name,
+        customer_email: debtor?.email,
+        customer_phone: debtor?.phone,
+        customer_id: debtorId,
+        amount: inv.amount,
+        amount_received: inv.amount_paid || 0,
+        invoice_date: inv.invoice_date,
+        due_date: inv.due_date,
+        status: inv.status || 'pending',
+        notes: inv.notes,
+        bank_account_id: inv.bank_account_id,
+      });
+      return inv;
+    },
     onSuccess: async (newInv) => {
       await recalcDebtor([...invoices, newInv], payments);
+      queryClient.invalidateQueries({ queryKey: ['receivables'] });
       invalidate();
       setShowInvoiceForm(false);
       setEditingInvoice(null);
-      toast({ title: 'Invoice added' });
+      toast({ title: 'Invoice added & synced to receivables' });
     },
   });
 
   const updateInvoiceMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Invoice.update(id, data),
+    mutationFn: async ({ id, data }) => {
+      const updated = await base44.entities.Invoice.update(id, data);
+      // Sync updates to corresponding Receivable
+      const receivables = await base44.entities.Receivable.filter({ invoice_number: data.invoice_number });
+      if (receivables.length > 0) {
+        await base44.entities.Receivable.update(receivables[0].id, {
+          customer_name: updated.debtor_name,
+          customer_email: debtor?.email,
+          customer_phone: debtor?.phone,
+          amount: updated.amount,
+          amount_received: updated.amount_paid || 0,
+          due_date: updated.due_date,
+          status: updated.status || 'pending',
+        });
+      }
+      return updated;
+    },
     onSuccess: async (updated) => {
       const allInvoices = invoices.map(i => i.id === updated.id ? updated : i);
       await recalcDebtor(allInvoices, payments);
+      queryClient.invalidateQueries({ queryKey: ['receivables'] });
       invalidate();
       setShowInvoiceForm(false);
       setEditingInvoice(null);
-      toast({ title: 'Invoice updated' });
+      toast({ title: 'Invoice updated & synced' });
     },
   });
 
