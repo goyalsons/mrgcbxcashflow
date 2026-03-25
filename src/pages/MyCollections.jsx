@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 import { Search, Phone, Mail, CreditCard, MessageSquare, FileText, ChevronDown, ChevronRight, Upload } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -326,43 +327,115 @@ export default function MyCollections() {
           <p className="text-sm mt-1">Ask your admin to assign debtors to your account</p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {activeDebtors.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3">
-                Active — {activeDebtors.length}
-              </h2>
-              <div className="space-y-2">
-                {activeDebtors.map(d => (
-                  <DebtorRow
-                    key={d.id}
-                    debtor={d}
-                    onRecordPayment={setPaymentTarget}
-                    onLogFollowUp={setFollowUpTarget}
-                    onAddInvoice={setInvoiceTarget}
-                  />
-                ))}
-              </div>
+        <div className="space-y-6">
+          {/* Collection Table */}
+          <Card>
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Collection Summary</CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Debtor</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead className="text-right">Invoiced</TableHead>
+                    <TableHead className="text-right">Collected</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="w-32">Progress</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="w-28">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map(d => {
+                    const outstanding = d.total_outstanding || 0;
+                    const invoiced = d.total_invoiced || 0;
+                    const received = d.total_received || 0;
+                    const pct = invoiced > 0 ? Math.round((received / invoiced) * 100) : 0;
+                    const statusColor = outstanding > 0 && received === 0 ? 'bg-red-50 text-red-700 border-red-200' :
+                      outstanding > 0 ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                      'bg-emerald-50 text-emerald-700 border-emerald-200';
+                    const statusLabel = outstanding > 0 && received === 0 ? 'Unpaid' : outstanding > 0 ? 'Partial' : 'Paid';
+                    return (
+                      <TableRow key={d.id}>
+                        <TableCell>
+                          <div className="font-medium text-sm">{d.name}</div>
+                          {d.contact_person && <div className="text-xs text-muted-foreground">{d.contact_person}</div>}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {d.phone && <div className="flex items-center gap-1"><Phone className="w-3 h-3" />{d.phone}</div>}
+                          {d.email && <div className="flex items-center gap-1"><Mail className="w-3 h-3" />{d.email}</div>}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{formatINR(invoiced)}</TableCell>
+                        <TableCell className="text-right text-sm font-medium text-emerald-600">{formatINR(received)}</TableCell>
+                        <TableCell className="text-right text-sm font-bold text-red-600">{formatINR(outstanding)}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={pct} className="h-1.5 flex-1" />
+                            <span className="text-xs text-muted-foreground w-8">{pct}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-xs ${statusColor}`}>{statusLabel}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => setPaymentTarget(d)} className="text-xs h-7 px-2">
+                              <CreditCard className="w-3 h-3 mr-1" />Pay
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => setFollowUpTarget(d)} className="text-xs h-7 px-2">
+                              <MessageSquare className="w-3 h-3 mr-1" />Log
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
-          )}
-          {collectedDebtors.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3">
-                Collected — {collectedDebtors.length}
-              </h2>
-              <div className="space-y-2">
-                {collectedDebtors.map(d => (
-                  <DebtorRow
-                    key={d.id}
-                    debtor={d}
-                    onRecordPayment={setPaymentTarget}
-                    onLogFollowUp={setFollowUpTarget}
-                    onAddInvoice={setInvoiceTarget}
-                  />
-                ))}
+          </Card>
+
+          {/* Expandable detail rows */}
+          <div className="space-y-4">
+            {activeDebtors.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3">
+                  Active — {activeDebtors.length}
+                </h2>
+                <div className="space-y-2">
+                  {activeDebtors.map(d => (
+                    <DebtorRow
+                      key={d.id}
+                      debtor={d}
+                      onRecordPayment={setPaymentTarget}
+                      onLogFollowUp={setFollowUpTarget}
+                      onAddInvoice={setInvoiceTarget}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+            {collectedDebtors.length > 0 && (
+              <div>
+                <h2 className="text-sm font-semibold uppercase text-muted-foreground tracking-wide mb-3">
+                  Collected — {collectedDebtors.length}
+                </h2>
+                <div className="space-y-2">
+                  {collectedDebtors.map(d => (
+                    <DebtorRow
+                      key={d.id}
+                      debtor={d}
+                      onRecordPayment={setPaymentTarget}
+                      onLogFollowUp={setFollowUpTarget}
+                      onAddInvoice={setInvoiceTarget}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
