@@ -8,9 +8,9 @@
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'settings'],
-  user: ['dashboard', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors'],
-  account_manager: ['dashboard', 'receivables', 'customers'],
+  admin: ['dashboard', 'debtors', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'settings'],
+  user: ['dashboard', 'debtors', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors'],
+  account_manager: ['dashboard', 'debtors', 'receivables', 'customers'],
 };
 
 export function hasPermission(role, feature) {
@@ -21,6 +21,7 @@ export function hasPermission(role, feature) {
 export function getNavigationItems(role) {
   const allItems = [
     { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
+    { key: 'debtors', label: 'Debtors', path: '/debtors', icon: 'Users' },
     { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
     { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },
     { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },

@@ -12,6 +12,7 @@ import { base44 } from '@/api/base44Client';
 const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2,
+  // Debtors uses Users icon
 };
 
 export default function Sidebar({ user, collapsed, onToggle }) {

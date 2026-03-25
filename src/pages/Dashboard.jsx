@@ -2,12 +2,13 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
-import { Landmark, ArrowDownLeft, ArrowUpRight, Receipt, Wallet } from 'lucide-react';
+import { Landmark, ArrowDownLeft, ArrowUpRight, Receipt, Wallet, Users } from 'lucide-react';
 import StatCard from '@/components/shared/StatCard';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import OverdueAlerts from '@/components/dashboard/OverdueAlerts';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Link } from 'react-router-dom';
 
 export default function Dashboard() {
   const { data: bankAccounts = [], isLoading: loadingBanks } = useQuery({
@@ -26,8 +27,12 @@ export default function Dashboard() {
     queryKey: ['expenses'],
     queryFn: () => base44.entities.Expense.list(),
   });
+  const { data: debtors = [], isLoading: loadingDebtors } = useQuery({
+    queryKey: ['debtors'],
+    queryFn: () => base44.entities.Debtor.list(),
+  });
 
-  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp;
+  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors;
 
   const totalBankBalance = bankAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
   const totalReceivable = receivables
@@ -38,6 +43,10 @@ export default function Dashboard() {
     .reduce((sum, p) => sum + ((p.amount || 0) - (p.amount_paid || 0)), 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
   const netCashPosition = totalBankBalance + totalReceivable - totalPayable;
+
+  // Debtor stats
+  const totalDebtorOutstanding = debtors.reduce((sum, d) => sum + (d.total_outstanding || 0), 0);
+  const activeDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0).length;
 
   if (isLoading) {
     return (
@@ -61,8 +70,11 @@ export default function Dashboard() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
+        <Link to="/debtors" className="contents">
+          <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active debtors`} />
+        </Link>
         <StatCard title="Receivables" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
         <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />
         <StatCard title="Expenses" value={formatINR(totalExpenses)} icon={Receipt} variant="warning" />

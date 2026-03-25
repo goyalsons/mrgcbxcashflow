@@ -2,7 +2,7 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 
-export default function StatCard({ title, value, icon: Icon, trend, trendLabel, variant = 'default' }) {
+export default function StatCard({ title, value, icon: Icon, trend, trendLabel, variant = 'default', subtitle }) {
   const variantStyles = {
     default: 'border-l-primary',
     success: 'border-l-emerald-500',
@@ -17,6 +17,7 @@ export default function StatCard({ title, value, icon: Icon, trend, trendLabel, 
         <div className="space-y-1">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">{title}</p>
           <p className="text-2xl font-bold text-foreground">{value}</p>
+          {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
           {trend !== undefined && (
             <div className="flex items-center gap-1.5 mt-2">
               {trend >= 0 ? (
