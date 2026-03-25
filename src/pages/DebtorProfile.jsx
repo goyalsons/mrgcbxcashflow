@@ -11,8 +11,9 @@ import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Phone, Mail, MapPin, Building2, FileText, CreditCard,
   MessageSquare, Upload, Plus, Pencil, Trash2, MoreHorizontal,
-  TrendingUp, AlertCircle, CheckCircle, Clock, Award
+  TrendingUp, AlertCircle, CheckCircle, Clock, Award, Filter
 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import InvoiceForm from '@/components/debtors/InvoiceForm';
@@ -185,6 +186,12 @@ export default function DebtorProfile({ debtorId, onBack }) {
   const [showEditDebtor, setShowEditDebtor] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
 
+  // Filters
+  const [invoiceStatusFilter, setInvoiceStatusFilter] = useState('all');
+  const [paymentModeFilter, setPaymentModeFilter] = useState('all');
+  const [followUpTypeFilter, setFollowUpTypeFilter] = useState('all');
+  const [followUpOutcomeFilter, setFollowUpOutcomeFilter] = useState('all');
+
   const { data: debtor, isLoading: loadingDebtor } = useQuery({
     queryKey: ['debtor', debtorId],
     queryFn: () => base44.entities.Debtor.filter({ id: debtorId }).then(r => r[0]),
@@ -297,6 +304,22 @@ export default function DebtorProfile({ debtorId, onBack }) {
     onSuccess: () => { invalidate(); setShowEditDebtor(false); toast({ title: 'Debtor updated' }); },
   });
 
+  const filteredInvoices = useMemo(() =>
+    invoiceStatusFilter === 'all' ? invoices : invoices.filter(i => i.status === invoiceStatusFilter),
+    [invoices, invoiceStatusFilter]
+  );
+
+  const filteredPayments = useMemo(() =>
+    paymentModeFilter === 'all' ? payments : payments.filter(p => p.payment_mode === paymentModeFilter),
+    [payments, paymentModeFilter]
+  );
+
+  const filteredFollowUps = useMemo(() => followUps.filter(f => {
+    const typeMatch = followUpTypeFilter === 'all' || f.type === followUpTypeFilter;
+    const outcomeMatch = followUpOutcomeFilter === 'all' || f.outcome === followUpOutcomeFilter;
+    return typeMatch && outcomeMatch;
+  }), [followUps, followUpTypeFilter, followUpOutcomeFilter]);
+
   if (loadingDebtor) return (
     <div className="space-y-4">
       <div className="h-8 w-48 bg-muted animate-pulse rounded" />
@@ -407,8 +430,31 @@ export default function DebtorProfile({ debtorId, onBack }) {
 
         {/* Invoices */}
         <TabsContent value="invoices" className="mt-4">
+          {invoices.length > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={invoiceStatusFilter} onValueChange={setInvoiceStatusFilter}>
+                <SelectTrigger className="w-36 h-8 text-xs">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="partial">Partial</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                  <SelectItem value="written_off">Written Off</SelectItem>
+                </SelectContent>
+              </Select>
+              {invoiceStatusFilter !== 'all' && (
+                <span className="text-xs text-muted-foreground">{filteredInvoices.length} of {invoices.length}</span>
+              )}
+            </div>
+          )}
           {invoices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No invoices yet</div>
+          ) : filteredInvoices.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">No invoices match this filter</div>
           ) : (
             <Table>
               <TableHeader>
@@ -424,7 +470,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {invoices.map(inv => {
+                {filteredInvoices.map(inv => {
                   const bal = (inv.amount || 0) - (inv.amount_paid || 0);
                   const days = daysUntilDue(inv.due_date);
                   return (
@@ -473,8 +519,33 @@ export default function DebtorProfile({ debtorId, onBack }) {
 
         {/* Payments */}
         <TabsContent value="payments" className="mt-4">
+          {payments.length > 0 && (
+            <div className="flex items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={paymentModeFilter} onValueChange={setPaymentModeFilter}>
+                <SelectTrigger className="w-40 h-8 text-xs">
+                  <SelectValue placeholder="Payment Mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Modes</SelectItem>
+                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                  <SelectItem value="upi">UPI</SelectItem>
+                  <SelectItem value="cheque">Cheque</SelectItem>
+                  <SelectItem value="neft">NEFT</SelectItem>
+                  <SelectItem value="rtgs">RTGS</SelectItem>
+                  <SelectItem value="imps">IMPS</SelectItem>
+                </SelectContent>
+              </Select>
+              {paymentModeFilter !== 'all' && (
+                <span className="text-xs text-muted-foreground">{filteredPayments.length} of {payments.length}</span>
+              )}
+            </div>
+          )}
           {payments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No payments recorded</div>
+          ) : filteredPayments.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">No payments match this filter</div>
           ) : (
             <Table>
               <TableHeader>
@@ -488,7 +559,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map(p => (
+                {filteredPayments.map(p => (
                   <TableRow key={p.id}>
                     <TableCell>{formatDateIN(p.payment_date)}</TableCell>
                     <TableCell>{p.invoice_number || <span className="text-muted-foreground text-xs">Unallocated</span>}</TableCell>
@@ -505,11 +576,49 @@ export default function DebtorProfile({ debtorId, onBack }) {
 
         {/* Follow-Ups */}
         <TabsContent value="followups" className="mt-4">
+          {followUps.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={followUpTypeFilter} onValueChange={setFollowUpTypeFilter}>
+                <SelectTrigger className="w-32 h-8 text-xs">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="call">Call</SelectItem>
+                  <SelectItem value="email">Email</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="visit">Visit</SelectItem>
+                  <SelectItem value="sms">SMS</SelectItem>
+                  <SelectItem value="note">Note</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select value={followUpOutcomeFilter} onValueChange={setFollowUpOutcomeFilter}>
+                <SelectTrigger className="w-40 h-8 text-xs">
+                  <SelectValue placeholder="Outcome" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Outcomes</SelectItem>
+                  <SelectItem value="promised_payment">Promised Payment</SelectItem>
+                  <SelectItem value="disputed">Disputed</SelectItem>
+                  <SelectItem value="no_response">No Response</SelectItem>
+                  <SelectItem value="partial_commitment">Partial Commitment</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+              {(followUpTypeFilter !== 'all' || followUpOutcomeFilter !== 'all') && (
+                <span className="text-xs text-muted-foreground">{filteredFollowUps.length} of {followUps.length}</span>
+              )}
+            </div>
+          )}
           {followUps.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No follow-ups logged</div>
+          ) : filteredFollowUps.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-sm">No follow-ups match this filter</div>
           ) : (
             <div className="space-y-3">
-              {followUps.map(f => (
+              {filteredFollowUps.map(f => (
                 <div key={f.id} className="flex gap-3 p-3 rounded-lg border bg-muted/30">
                   <div className="text-xl mt-0.5">{FOLLOWUP_ICONS[f.type] || '📝'}</div>
                   <div className="flex-1 min-w-0">
