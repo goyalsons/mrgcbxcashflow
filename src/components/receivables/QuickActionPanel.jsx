@@ -29,11 +29,23 @@ function ReminderModal({ receivables, onClose }) {
     queryFn: () => base44.entities.MessageTemplate.filter({ type: 'email' }),
   });
 
-  // Group receivables by customer email
+  // Fetch all customers to map emails
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
+  // Group receivables by customer email (fetch from Customer if not on Receivable)
   const customerGroups = useMemo(() => {
     const groups = {};
     receivables.forEach(r => {
-      const email = r.customer_email;
+      // Use email from receivable or fetch from Customer master
+      let email = r.customer_email;
+      if (!email && r.customer_id) {
+        const customer = allCustomers.find(c => c.id === r.customer_id);
+        email = customer?.email;
+      }
+      
       if (email) {
         if (!groups[email]) groups[email] = [];
         groups[email].push(r);
@@ -44,7 +56,7 @@ function ReminderModal({ receivables, onClose }) {
       customer: items[0].customer_name,
       receivables: items,
     }));
-  }, [receivables]);
+  }, [receivables, allCustomers]);
 
   const handleTemplateChange = (id) => {
     setTemplateId(id);
