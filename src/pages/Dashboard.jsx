@@ -5,6 +5,8 @@ import { formatINR } from '@/lib/utils/currency';
 import { Landmark, ArrowDownLeft, ArrowUpRight, Receipt, Wallet, Users } from 'lucide-react';
 import StatCard from '@/components/shared/StatCard';
 import CashFlowChart from '@/components/dashboard/CashFlowChart';
+import CollectionTrendsChart from '@/components/dashboard/CollectionTrendsChart';
+import OutstandingReceivablesChart from '@/components/dashboard/OutstandingReceivablesChart';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import OverdueAlerts from '@/components/dashboard/OverdueAlerts';
 import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRangePicker';
@@ -43,8 +45,12 @@ export default function Dashboard() {
     queryKey: ['debtors'],
     queryFn: () => base44.entities.Debtor.list(),
   });
+  const { data: payments = [], isLoading: loadingPayments } = useQuery({
+    queryKey: ['payments'],
+    queryFn: () => base44.entities.Payment.list(),
+  });
 
-  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors;
+  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors || loadingPayments;
 
   // Filter all transactional data to the selected date range
   const { from, to } = dateRange;
@@ -60,6 +66,10 @@ export default function Dashboard() {
   const filteredExpenses = useMemo(() =>
     from && to ? expenses.filter(e => inRange(e.expense_date, from, to)) : expenses,
     [expenses, from, to]
+  );
+  const filteredPayments = useMemo(() =>
+    from && to ? payments.filter(p => inRange(p.payment_date, from, to)) : payments,
+    [payments, from, to]
   );
 
   // Stat calculations on filtered data
@@ -121,6 +131,12 @@ export default function Dashboard() {
           <CashFlowChart receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} dateRange={dateRange} />
         </div>
         <OverdueAlerts receivables={receivables} payables={payables} />
+      </div>
+
+      {/* Collection Trends + Outstanding Receivables */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <CollectionTrendsChart payments={filteredPayments} debtors={debtors} dateRange={dateRange} />
+        <OutstandingReceivablesChart receivables={receivables} />
       </div>
 
       {/* Recent Transactions */}
