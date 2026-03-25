@@ -4,7 +4,7 @@ import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
   IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
-  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3
+  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock
 } from 'lucide-react';
 import { getRoleLabel, hasPermission } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
