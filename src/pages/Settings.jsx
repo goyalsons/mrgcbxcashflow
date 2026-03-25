@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -87,6 +87,14 @@ export default function Settings() {
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
   const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_number_id: '', from_number: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
+  const [reminderSchedule, setReminderSchedule] = useState({
+    enabled: false,
+    frequency: 'daily',
+    time: '09:00',
+    daysOfWeek: [1],
+    templateId: '',
+    channel: 'email'
+  });
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -117,10 +125,11 @@ export default function Settings() {
     if (s.smtp) setSmtp(s.smtp);
     if (s.whatsapp) setWhatsapp(s.whatsapp);
     if (s.cloudinary) setCloudinary(s.cloudinary);
+    if (s.reminderSchedule) setReminderSchedule(s.reminderSchedule);
   }, []);
 
   const handleSave = () => {
-    saveSettings({ company, smtp, whatsapp, cloudinary });
+    saveSettings({ company, smtp, whatsapp, cloudinary, reminderSchedule });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -130,18 +139,27 @@ export default function Settings() {
   const setS = (k, v) => setSmtp(f => ({ ...f, [k]: v }));
   const setW = (k, v) => setWhatsapp(f => ({ ...f, [k]: v }));
   const setCl = (k, v) => setCloudinary(f => ({ ...f, [k]: v }));
+  const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
+
+  const toggleDay = (dayNum) => {
+    setReminder('daysOfWeek', reminderSchedule.daysOfWeek.includes(dayNum) 
+      ? reminderSchedule.daysOfWeek.filter(d => d !== dayNum)
+      : [...reminderSchedule.daysOfWeek, dayNum].sort()
+    );
+  };
 
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" subtitle="Configure company profile, integrations, and system settings" />
 
       <Tabs defaultValue="company">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
-          <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email / SMTP</TabsTrigger>
+          <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
-          <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Cloudinary</TabsTrigger>
-          <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates ({templates.length})</TabsTrigger>
+          <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Storage</TabsTrigger>
+          <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates</TabsTrigger>
+          <TabsTrigger value="reminders"><Clock className="w-4 h-4 mr-1.5" />Reminders</TabsTrigger>
         </TabsList>
 
         {/* Company */}
@@ -278,6 +296,99 @@ export default function Settings() {
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
                 <strong>Setup:</strong> Sign up at <a href="https://cloudinary.com" target="_blank" rel="noreferrer" className="underline">Cloudinary</a>, then go to Settings &gt; API Keys to find your Cloud Name, API Key, and API Secret.
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Reminders Tab */}
+        <TabsContent value="reminders" className="mt-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Recurring Reminders</CardTitle></CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+                <div>
+                  <p className="font-medium">Enable Automatic Reminders</p>
+                  <p className="text-xs text-muted-foreground">Send payment reminders on a schedule</p>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={reminderSchedule.enabled}
+                  onChange={(e) => setReminder('enabled', e.target.checked)}
+                  className="w-5 h-5"
+                />
+              </div>
+
+              {reminderSchedule.enabled && (
+                <div className="space-y-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Frequency</Label>
+                      <Select value={reminderSchedule.frequency} onValueChange={(v) => setReminder('frequency', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                          <SelectItem value="monthly">Monthly (1st of month)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Time to Send</Label>
+                      <Input 
+                        type="time" 
+                        value={reminderSchedule.time}
+                        onChange={(e) => setReminder('time', e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {reminderSchedule.frequency === 'weekly' && (
+                    <div className="space-y-2">
+                      <Label>Days of Week</Label>
+                      <div className="grid grid-cols-7 gap-2">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
+                          <button
+                            key={i}
+                            onClick={() => toggleDay(i)}
+                            className={`p-2 rounded-lg font-medium text-sm transition-colors ${
+                              reminderSchedule.daysOfWeek.includes(i)
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
+                            }`}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Channel</Label>
+                      <Select value={reminderSchedule.channel} onValueChange={(v) => setReminder('channel', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="email">📧 Email</SelectItem>
+                          <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                          <SelectItem value="sms">📱 SMS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Template</Label>
+                      <Select value={reminderSchedule.templateId} onValueChange={(v) => setReminder('templateId', v)}>
+                        <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
+                        <SelectContent>
+                          {templates.filter(t => t.type === reminderSchedule.channel).map(t => (
+                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
