@@ -20,11 +20,16 @@ function ReminderModal({ receivables, onClose }) {
   const [body, setBody] = useState(() => {
     return `Dear {customer_name},\n\nWe have {invoice_count} pending invoice(s) awaiting payment:\n\n{invoices}\n\nTotal Outstanding: {amount}\n\nKindly arrange payment at the earliest.\n\nThank you.`;
   });
+  const [sendEmail, setSendEmail] = useState(true);
+  const [sendWhatsapp, setSendWhatsapp] = useState(false);
 
   const { data: templates = [] } = useQuery({
-    queryKey: ['messageTemplates', 'email'],
-    queryFn: () => base44.entities.MessageTemplate.filter({ type: 'email' }),
+    queryKey: ['messageTemplates'],
+    queryFn: () => base44.entities.MessageTemplate.list(),
   });
+  
+  const emailTemplates = templates.filter(t => t.type === 'email');
+  const whatsappTemplates = templates.filter(t => t.type === 'whatsapp');
 
   // Fetch all customers to map emails
   const { data: allCustomers = [] } = useQuery({
@@ -67,16 +72,16 @@ function ReminderModal({ receivables, onClose }) {
 
   const handleSend = async () => {
     if (!customerGroups.length) {
-      toast({ title: 'No customer emails found', variant: 'destructive' });
+      toast({ title: 'No customers found', variant: 'destructive' });
+      return;
+    }
+    if (!sendEmail && !sendWhatsapp) {
+      toast({ title: 'Select at least one channel (Email or WhatsApp)', variant: 'destructive' });
       return;
     }
     setSending(true);
     try {
-      await Promise.all(customerGroups.map(({ email, customer, receivables: custReceivables }) => {
-        // Replace placeholders with customer-specific data
-        let customBody = body;
-        
-        // Build detailed invoice list
+      const promises = customerGroups.flatMap(({ email, phone, customer, receivables: custReceivables }) => {
         const invoiceList = custReceivables
           .map((r, idx) => {
             const outstanding = (r.amount || 0) - (r.amount_received || 0);
@@ -86,19 +91,41 @@ function ReminderModal({ receivables, onClose }) {
         
         const totalOutstanding = formatINR(custReceivables.reduce((s, r) => s + ((r.amount || 0) - (r.amount_received || 0)), 0));
         
-        customBody = customBody
+        const customBody = body
           .replace(/{customer_name}/g, customer)
           .replace(/{invoices}/g, invoiceList)
           .replace(/{amount}/g, totalOutstanding)
           .replace(/{due_date}/g, custReceivables[0]?.due_date || '')
           .replace(/{invoice_count}/g, custReceivables.length);
 
-        return base44.integrations.Core.SendEmail({ to: email, subject, body: customBody });
-      }));
-      toast({ title: `Email sent to ${customerGroups.length} customer${customerGroups.length > 1 ? 's' : ''}` });
+        const actions = [];
+        if (sendEmail && email) {
+          actions.push(base44.integrations.Core.SendEmail({ to: email, subject, body: customBody }));
+        }
+        if (sendWhatsapp && phone) {
+          const whatsappMsg = `Hi ${customer}, you have ${custReceivables.length} pending invoice(s) totaling ${totalOutstanding}. Please arrange payment.`;
+          actions.push(
+            fetch('https://graph.instagram.com/v17.0/your-phone-id/messages', {
+              method: 'POST',
+              headers: { 'Authorization': `Bearer ${Deno.env.get('WHATSAPP_TOKEN')}` },
+              body: JSON.stringify({
+                messaging_product: 'whatsapp',
+                to: phone.replace(/\D/g, ''),
+                type: 'text',
+                text: { body: whatsappMsg },
+              }),
+            }).catch(() => null)
+          );
+        }
+        return actions;
+      });
+
+      await Promise.all(promises);
+      const channels = [sendEmail && 'Email', sendWhatsapp && 'WhatsApp'].filter(Boolean).join(' & ');
+      toast({ title: `${channels} sent to ${customerGroups.length} customer${customerGroups.length > 1 ? 's' : ''}` });
       onClose();
-    } catch {
-      toast({ title: 'Failed to send emails', variant: 'destructive' });
+    } catch (err) {
+      toast({ title: `Failed to send: ${err.message}`, variant: 'destructive' });
     } finally {
       setSending(false);
     }
@@ -121,32 +148,48 @@ function ReminderModal({ receivables, onClose }) {
             ))}
           </div>
           {customerGroups.length > 0 ? (
-            <div className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">✓ Each customer will receive a personalized email</div>
+            <div className="text-xs text-emerald-600 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">✓ Reminders will be sent to {customerGroups.length} customer{customerGroups.length > 1 ? 's' : ''}</div>
           ) : (
-            <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">No customer email on file. Add email to the receivable records first.</div>
+            <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-3 py-2">No customers found. Ensure customer email/phone is on file.</div>
           )}
-          {templates.length > 0 && (
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-primary/5" onClick={() => setSendEmail(!sendEmail)}>
+              <input type="checkbox" checked={sendEmail} readOnly className="cursor-pointer" />
+              <label className="text-xs font-medium cursor-pointer flex-1">Email</label>
+            </div>
+            <div className="flex items-center gap-2 p-2 rounded border cursor-pointer hover:bg-primary/5" onClick={() => setSendWhatsapp(!sendWhatsapp)}>
+              <input type="checkbox" checked={sendWhatsapp} readOnly className="cursor-pointer" />
+              <label className="text-xs font-medium cursor-pointer flex-1">WhatsApp</label>
+            </div>
+          </div>
+
+          {emailTemplates.length > 0 && sendEmail && (
             <div className="space-y-1.5">
-              <Label className="text-xs">Use Template</Label>
+              <Label className="text-xs">Email Template</Label>
               <Select value={templateId} onValueChange={handleTemplateChange}>
                 <SelectTrigger className="h-9"><SelectValue placeholder="Select a template..." /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value={null}>— Custom Message —</SelectItem>
-                  {templates.map(t => (
+                  {emailTemplates.map(t => (
                     <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
           )}
-          <div className="space-y-1.5">
-            <Label className="text-xs">Subject</Label>
-            <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-9" />
-          </div>
-          <div className="space-y-1.5">
-            <Label className="text-xs">Message <span className="text-muted-foreground text-xs font-normal ml-1">(Use {'{customer_name}'}, {'{invoices}'}, {'{amount}'}, {'{invoice_count}'}, {'{due_date}'} as placeholders)</span></Label>
-            <Textarea value={body} onChange={e => setBody(e.target.value)} rows={7} className="text-sm resize-none" />
-          </div>
+          {sendEmail && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email Subject</Label>
+                <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-9" />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Email Message <span className="text-muted-foreground text-xs font-normal ml-1">(Use {'{customer_name}'}, {'{invoices}'}, {'{amount}'}, {'{invoice_count}'}, {'{due_date}'} as placeholders)</span></Label>
+                <Textarea value={body} onChange={e => setBody(e.target.value)} rows={5} className="text-sm resize-none" />
+              </div>
+            </>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
             <Button size="sm" onClick={handleSend} disabled={sending || !customerGroups.length}>
