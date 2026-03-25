@@ -6,11 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import { base44 } from '@/api/base44Client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const SETTINGS_KEY = 'cashflow_pro_settings';
 
@@ -21,14 +25,91 @@ function saveSettings(data) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
 }
 
+function TemplateEditor({ template, onClose, onSave }) {
+  const [form, setForm] = useState(template || { name: '', type: 'whatsapp', subject: '', body: '', is_active: true });
+  const [saving, setSaving] = useState(false);
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const handleSubmit = async (e) => {
+    e.preventDefault(); setSaving(true);
+    await onSave(form); setSaving(false);
+  };
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>{template?.id ? 'Edit Template' : 'New Template'}</DialogTitle></DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Name *</Label>
+              <Input value={form.name} onChange={e => set('name', e.target.value)} required />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Channel *</Label>
+              <Select value={form.type} onValueChange={v => set('type', v)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                  <SelectItem value="email">📧 Email</SelectItem>
+                  <SelectItem value="sms">📱 SMS</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          {form.type === 'email' && (
+            <div className="space-y-1.5">
+              <Label>Subject</Label>
+              <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Payment Reminder" />
+            </div>
+          )}
+          <div className="space-y-1.5">
+            <Label>Message Body *</Label>
+            <Textarea value={form.body} onChange={e => set('body', e.target.value)} rows={6} required />
+            <p className="text-xs text-muted-foreground">Placeholders: {'{{name}}'}, {'{{amount}}'}, {'{{due_date}}'}</p>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save Template'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Settings() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [saved, setSaved] = useState(false);
+  const [showTemplateEditor, setShowTemplateEditor] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
 
   const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '' });
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
   const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_number_id: '', from_number: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: ['messageTemplates'],
+    queryFn: () => base44.entities.MessageTemplate.list(),
+  });
+
+  const createTemplateMut = useMutation({
+    mutationFn: (data) => base44.entities.MessageTemplate.create(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['messageTemplates'] }); setShowTemplateEditor(false); setEditingTemplate(null); toast({ title: 'Template saved' }); },
+  });
+  const updateTemplateMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.MessageTemplate.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['messageTemplates'] }); setShowTemplateEditor(false); setEditingTemplate(null); toast({ title: 'Template updated' }); },
+  });
+  const deleteTemplateMut = useMutation({
+    mutationFn: (id) => base44.entities.MessageTemplate.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['messageTemplates'] }); toast({ title: 'Template deleted' }); },
+  });
+
+  const handleTemplateSave = (data) => {
+    if (editingTemplate?.id) updateTemplateMut.mutate({ id: editingTemplate.id, data });
+    else createTemplateMut.mutate(data);
+  };
 
   useEffect(() => {
     const s = loadSettings();
@@ -55,11 +136,12 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Configure company profile, integrations, and system settings" />
 
       <Tabs defaultValue="company">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
           <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email / SMTP</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
           <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Cloudinary</TabsTrigger>
+          <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates ({templates.length})</TabsTrigger>
         </TabsList>
 
         {/* Company */}
@@ -199,6 +281,50 @@ export default function Settings() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Templates Tab */}
+        <TabsContent value="templates" className="mt-4">
+          <div className="space-y-4">
+            <div className="flex justify-end">
+              <Button onClick={() => { setEditingTemplate(null); setShowTemplateEditor(true); }} className="gap-2">
+                <Plus className="w-4 h-4" />New Template
+              </Button>
+            </div>
+            {templates.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <MessageSquare className="w-10 h-10 mx-auto mb-3" />
+                <p>No templates yet. Create your first message template.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {templates.map(t => (
+                  <Card key={t.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{t.type === 'whatsapp' ? '💬' : t.type === 'email' ? '📧' : '📱'}</span>
+                          <span className="font-semibold text-sm">{t.name}</span>
+                          <Badge variant="outline" className="text-xs capitalize">{t.type}</Badge>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setEditingTemplate(t); setShowTemplateEditor(true); }}><Pencil className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete template?')) deleteTemplateMut.mutate(t.id); }}><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {t.subject && <p className="text-xs font-medium text-muted-foreground mb-1">Subject: {t.subject}</p>}
+                      <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{t.body}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
       </Tabs>
 
       <div className="flex justify-end">
@@ -207,6 +333,14 @@ export default function Settings() {
           {saved ? 'Saved!' : 'Save Settings'}
         </Button>
       </div>
+
+      {showTemplateEditor && (
+        <TemplateEditor
+          template={editingTemplate}
+          onClose={() => { setShowTemplateEditor(false); setEditingTemplate(null); }}
+          onSave={handleTemplateSave}
+        />
+      )}
     </div>
   );
 }
