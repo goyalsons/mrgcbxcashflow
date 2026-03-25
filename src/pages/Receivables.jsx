@@ -58,22 +58,55 @@ export default function Receivables() {
   const handleEdit = (item) => { setEditing(item); setShowForm(true); };
   const handleDelete = (id) => { if (confirm('Delete this receivable?')) deleteMut.mutate(id); };
 
-  const totalOutstanding = receivables
-    .filter(r => r.status !== 'paid' && r.status !== 'written_off')
+  // Filter to unpaid invoices only
+  const unpaidReceivables = useMemo(() =>
+    receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off'),
+    [receivables]
+  );
+
+  const totalOutstanding = unpaidReceivables
     .reduce((sum, r) => sum + ((r.amount || 0) - (r.amount_received || 0)), 0);
 
+  // Group by customer
+  const customerGroups = useMemo(() => {
+    const groups = {};
+    unpaidReceivables.forEach(r => {
+      const key = r.customer_name || 'Unknown';
+      if (!groups[key]) {
+        groups[key] = {
+          customer_name: key,
+          customer_email: r.customer_email,
+          customer_phone: r.customer_phone,
+          customer_id: r.customer_id,
+          invoices: [],
+          total_amount: 0,
+          total_received: 0,
+        };
+      }
+      groups[key].invoices.push(r);
+      groups[key].total_amount += r.amount || 0;
+      groups[key].total_received += r.amount_received || 0;
+    });
+    return Object.values(groups);
+  }, [unpaidReceivables]);
+
+  // Filter customer groups
   const filtered = useMemo(() => {
-    return receivables.filter(r => {
+    return customerGroups.filter(group => {
       const matchSearch = !search ||
-        (r.invoice_number || '').toLowerCase().includes(search.toLowerCase()) ||
-        (r.customer_name || '').toLowerCase().includes(search.toLowerCase());
-      const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+        group.customer_name.toLowerCase().includes(search.toLowerCase()) ||
+        group.invoices.some(inv => 
+          (inv.invoice_number || '').toLowerCase().includes(search.toLowerCase())
+        );
+      const matchStatus = filterStatus === 'all' || 
+        group.invoices.some(inv => inv.status === filterStatus);
       return matchSearch && matchStatus;
     });
-  }, [receivables, search, filterStatus]);
+  }, [customerGroups, search, filterStatus]);
 
-  // Selection helpers
-  const allFilteredIds = filtered.map(r => r.id);
+  // Selection helpers - select all invoices in filtered groups
+  const allFilteredInvoices = filtered.flatMap(g => g.invoices);
+  const allFilteredIds = allFilteredInvoices.map(r => r.id);
   const allSelected = allFilteredIds.length > 0 && allFilteredIds.every(id => selected.has(id));
   const someSelected = allFilteredIds.some(id => selected.has(id));
 
@@ -88,7 +121,7 @@ export default function Receivables() {
     setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
   };
 
-  const selectedReceivables = filtered.filter(r => selected.has(r.id));
+  const selectedReceivables = allFilteredInvoices.filter(r => selected.has(r.id));
 
   return (
     <div className="space-y-6">
@@ -123,7 +156,7 @@ export default function Receivables() {
       {selected.size > 0 && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
           <span className="font-medium text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
-          <span className="text-muted-foreground">— use the action bar at the bottom to send reminders, log follow-ups, or log a call</span>
+          <span className="text-muted-foreground">— send reminders, log follow-ups, or record calls</span>
           <button onClick={() => setSelected(new Set())} className="ml-auto text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
         </div>
       )}
@@ -131,10 +164,10 @@ export default function Receivables() {
       <Card>
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
-        ) : receivables.length === 0 ? (
+        ) : unpaidReceivables.length === 0 ? (
           <EmptyState
-            title="No receivables yet"
-            description="Start tracking money owed to your business"
+            title="No unpaid receivables"
+            description="All invoices are paid or written off"
             actionLabel="Add Receivable"
             onAction={() => setShowForm(true)}
           />
@@ -153,84 +186,106 @@ export default function Receivables() {
                       className="translate-y-0.5"
                     />
                   </TableHead>
-                  <TableHead>Invoice #</TableHead>
                   <TableHead>Customer</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead className="text-right">Received</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Outstanding</TableHead>
+                  <TableHead>Invoices</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((r) => {
-                  const balance = (r.amount || 0) - (r.amount_received || 0);
-                  const days = daysUntilDue(r.due_date);
-                  const isSelected = selected.has(r.id);
-                  const isExpanded = expandedId === r.id;
-                  const linkedInvoices = invoices.filter(inv => inv.invoice_number === r.invoice_number);
+                {filtered.map((group) => {
+                  const balance = group.total_amount - group.total_received;
+                  const isExpanded = expandedId === group.customer_name;
                   return (
-                    <React.Fragment key={r.id}>
-                      <TableRow className={`group cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => setExpandedId(isExpanded ? null : r.id)}>
+                    <React.Fragment key={group.customer_name}>
+                      <TableRow 
+                        className="cursor-pointer group hover:bg-muted/50"
+                        onClick={() => setExpandedId(isExpanded ? null : group.customer_name)}
+                      >
                         <TableCell onClick={e => e.stopPropagation()}>
                           <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => toggleOne(r.id)}
-                            aria-label="Select row"
+                            checked={group.invoices.every(inv => selected.has(inv.id))}
+                            onCheckedChange={() => {
+                              const allInvoiceIds = group.invoices.map(inv => inv.id);
+                              const allChecked = allInvoiceIds.every(id => selected.has(id));
+                              setSelected(prev => {
+                                const next = new Set(prev);
+                                if (allChecked) {
+                                  allInvoiceIds.forEach(id => next.delete(id));
+                                } else {
+                                  allInvoiceIds.forEach(id => next.add(id));
+                                }
+                                return next;
+                              });
+                            }}
+                            aria-label="Select customer"
                             className="translate-y-0.5"
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{r.invoice_number || '-'}</TableCell>
-                        <TableCell>{r.customer_name}</TableCell>
-                        <TableCell className="text-right font-medium">{formatINR(r.amount)}</TableCell>
-                        <TableCell className="text-right text-emerald-600">{formatINR(r.amount_received)}</TableCell>
+                        <TableCell className="font-medium">{group.customer_name}</TableCell>
+                        <TableCell className="text-right font-medium">{formatINR(group.total_amount)}</TableCell>
+                        <TableCell className="text-right text-emerald-600">{formatINR(group.total_received)}</TableCell>
                         <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
-                        <TableCell>
-                          <div>
-                            <span className="text-sm">{formatDateIN(r.due_date)}</span>
-                            {days !== null && days < 0 && r.status !== 'paid' && (
-                              <span className="block text-xs text-red-500">{Math.abs(days)} days overdue</span>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell><StatusBadge status={r.status} /></TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{group.invoices.length} invoice{group.invoices.length !== 1 ? 's' : ''}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => handleEdit(r)}>
-                                <Pencil className="w-4 h-4 mr-2" /> Edit
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleDelete(r.id)} className="text-destructive">
-                                <Trash2 className="w-4 h-4 mr-2" /> Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => setExpandedId(isExpanded ? null : group.customer_name)}
+                          >
+                            {isExpanded ? '−' : '+'}
+                          </Button>
                         </TableCell>
                       </TableRow>
-                      {isExpanded && linkedInvoices.length > 0 && (
-                        <TableRow className="bg-muted/50">
-                          <TableCell colSpan="9" className="p-4">
+                      {isExpanded && (
+                        <TableRow className="bg-muted/30">
+                          <TableCell colSpan="7" className="p-4">
                             <div className="space-y-2">
-                              <p className="text-xs font-semibold text-muted-foreground uppercase">Linked Invoices:</p>
-                              {linkedInvoices.map(inv => (
-                                <div key={inv.id} className="flex items-center justify-between text-sm bg-background rounded p-3 border">
-                                  <div>
-                                    <p className="font-medium">{inv.invoice_number}</p>
-                                    <p className="text-xs text-muted-foreground">{inv.description}</p>
-                                    <p className="text-xs text-muted-foreground">Invoice Date: {formatDateIN(inv.invoice_date)}</p>
+                              {group.invoices.map(inv => {
+                                const balance = (inv.amount || 0) - (inv.amount_received || 0);
+                                const days = daysUntilDue(inv.due_date);
+                                const isSelected = selected.has(inv.id);
+                                return (
+                                  <div key={inv.id} className={`flex items-center justify-between text-sm bg-background rounded p-3 border ${isSelected ? 'bg-primary/5 border-primary/30' : ''}`}>
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <Checkbox
+                                        checked={isSelected}
+                                        onCheckedChange={() => toggleOne(inv.id)}
+                                        className="translate-y-0"
+                                      />
+                                      <div>
+                                        <p className="font-medium">{inv.invoice_number}</p>
+                                        <p className="text-xs text-muted-foreground">Due: {formatDateIN(inv.due_date)}</p>
+                                        {days !== null && days < 0 && (
+                                          <p className="text-xs text-red-500">{Math.abs(days)} days overdue</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="font-semibold">{formatINR(balance)}</p>
+                                      <StatusBadge status={inv.status} />
+                                    </div>
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7">
+                                          <MoreHorizontal className="w-3.5 h-3.5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => handleEdit(inv)}>
+                                          <Pencil className="w-4 h-4 mr-2" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => handleDelete(inv.id)} className="text-destructive">
+                                          <Trash2 className="w-4 h-4 mr-2" /> Delete
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
-                                  <div className="text-right">
-                                    <p className="font-semibold">{formatINR(inv.amount)}</p>
-                                    <p className="text-xs text-emerald-600">Paid: {formatINR(inv.amount_paid)}</p>
-                                  </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           </TableCell>
                         </TableRow>
