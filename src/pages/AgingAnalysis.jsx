@@ -71,40 +71,34 @@ function AgingTable({ items, type, onStatusChange }) {
 
   return (
     <div className="space-y-4">
-      {/* Bucket Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {totalByBucket.map(b => (
-          <Card key={b.key} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter(filter === b.key ? 'all' : b.key)}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className={`w-3 h-3 rounded-full ${b.color}`} />
-                <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
-              </div>
-              <div className="text-lg font-bold">{formatINR(b.total)}</div>
-              <div className="text-xs text-muted-foreground mt-0.5">{b.count} item{b.count !== 1 ? 's' : ''}</div>
-            </CardContent>
-          </Card>
-        ))}
+      {/* Bucket Summary with DSO Badge */}
+      <div className="relative">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {totalByBucket.map(b => (
+            <Card key={b.key} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setFilter(filter === b.key ? 'all' : b.key)}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`w-3 h-3 rounded-full ${b.color}`} />
+                  <span className="text-xs font-medium text-muted-foreground">{b.label}</span>
+                </div>
+                <div className="text-lg font-bold">{formatINR(b.total)}</div>
+                <div className="text-xs text-muted-foreground mt-0.5">{b.count} item{b.count !== 1 ? 's' : ''}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+        {type === 'receivable' && (
+          <div className="absolute -top-10 right-0 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-right">
+            <div className="text-xs text-blue-600 font-medium">Days Avg Overdue</div>
+            <div className="text-lg font-bold text-blue-700">
+              {grandTotal > 0 ? `~${Math.round(items.filter(i => i.status !== 'paid').length > 0 ? (items.filter(i=>i.status!=='paid').reduce((s,i)=>s+getDaysOverdue(i.due_date),0)/Math.max(items.filter(i=>i.status!=='paid').length,1)) : 0)} days` : 'N/A'}
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* DSO */}
-      {type === 'receivable' && (
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-4 flex items-center gap-4">
-            <Clock className="w-8 h-8 text-blue-600" />
-            <div>
-              <div className="text-sm text-blue-600 font-medium">Days Sales Outstanding (DSO)</div>
-              <div className="text-2xl font-bold text-blue-700">
-                {grandTotal > 0 ? `~${Math.round(items.filter(i => i.status !== 'paid').length > 0 ? (items.filter(i=>i.status!=='paid').reduce((s,i)=>s+getDaysOverdue(i.due_date),0)/Math.max(items.filter(i=>i.status!=='paid').length,1)) : 0)} days avg overdue` : 'N/A'}
-              </div>
-              <div className="text-xs text-blue-500 mt-0.5">Based on {items.filter(i => i.status !== 'paid').length} outstanding invoices</div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Filter */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 pt-4">
         <span className="text-sm text-muted-foreground">Filter:</span>
         <Select value={filter} onValueChange={setFilter}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
