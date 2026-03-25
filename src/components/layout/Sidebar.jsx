@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { 
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
@@ -73,6 +74,14 @@ const NAV_GROUPS = [
 export default function Sidebar({ user, collapsed, onToggle }) {
   const location = useLocation();
   const role = user?.role || 'user';
+  
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => base44.entities.Notification.list(),
+    refetchInterval: 30000,
+  });
+  
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
     <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? 'w-[68px]' : 'w-60'}`}>
@@ -105,28 +114,35 @@ export default function Sidebar({ user, collapsed, onToggle }) {
               {collapsed && <div className="mx-3 my-1.5 border-t border-sidebar-border/40" />}
               <div className="px-2 space-y-0.5">
                 {visibleItems.map((item) => {
-                  const Icon = iconMap[item.icon];
-                  const isActive = item.path === '/'
-                    ? location.pathname === '/'
-                    : location.pathname.startsWith(item.path);
+                   const Icon = iconMap[item.icon];
+                   const isActive = item.path === '/'
+                     ? location.pathname === '/'
+                     : location.pathname.startsWith(item.path);
 
-                  return (
-                    <Link
-                      key={item.key}
-                      to={item.path}
-                      title={collapsed ? item.label : undefined}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150
-                        ${isActive
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                        } ${collapsed ? 'justify-center' : ''}
-                      `}
-                    >
-                      {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
-                      {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
-                    </Link>
-                  );
-                })}
+                   const showBadge = item.key === 'notifications' && unreadCount > 0;
+
+                   return (
+                     <Link
+                       key={item.key}
+                       to={item.path}
+                       title={collapsed ? item.label : undefined}
+                       className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
+                         ${isActive
+                           ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                           : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                         } ${collapsed ? 'justify-center' : ''}
+                       `}
+                     >
+                       {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
+                       {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
+                       {showBadge && (
+                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                           {unreadCount > 99 ? '99+' : unreadCount}
+                         </span>
+                       )}
+                     </Link>
+                   );
+                 })}
               </div>
             </div>
           );
