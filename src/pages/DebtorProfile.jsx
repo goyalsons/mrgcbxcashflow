@@ -563,11 +563,19 @@ export default function DebtorProfile({ debtorId, onBack }) {
               </TableHeader>
               <TableBody>
                 {filteredInvoices.map(inv => {
-                  const bal = (inv.amount || 0) - (inv.amount_paid || 0);
-                  const days = daysUntilDue(inv.due_date);
-                  return (
-                    <TableRow key={inv.id}>
-                      <TableCell className="font-medium">{inv.invoice_number || '-'}</TableCell>
+                   const bal = (inv.amount || 0) - (inv.amount_paid || 0);
+                   const days = daysUntilDue(inv.due_date);
+                   return (
+                     <TableRow key={inv.id}>
+                       <TableCell className="font-medium">
+                         {inv.document_url ? (
+                           <a href={inv.document_url} target="_blank" rel="noreferrer" className="text-primary hover:underline">
+                             {inv.invoice_number || '-'}
+                           </a>
+                         ) : (
+                           inv.invoice_number || '-'
+                         )}
+                       </TableCell>
                       <TableCell>{formatDateIN(inv.invoice_date)}</TableCell>
                       <TableCell>
                         <div>{formatDateIN(inv.due_date)}</div>
