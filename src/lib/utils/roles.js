@@ -8,8 +8,8 @@
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'notifications', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
-  user: ['dashboard', 'notifications', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
+  admin: ['dashboard', 'notifications', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'settings'],
+  user: ['dashboard', 'notifications', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
   account_manager: ['dashboard', 'notifications', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders', 'follow_up_schedule'],
 };
 
@@ -27,6 +27,7 @@ export function getNavigationItems(role) {
     { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
     { key: 'cash_flow_forecast', label: 'Cash Flow Forecast', path: '/cash-flow-forecast', icon: 'TrendingUp' },
     { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
+    { key: 'analysis', label: 'Analysis', path: '/analysis', icon: 'BarChart3' },
     { key: 'payment_reminders', label: 'Payment Reminders', path: '/payment-reminders', icon: 'Bell' },
     { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
     { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },

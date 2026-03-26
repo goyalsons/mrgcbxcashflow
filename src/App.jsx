@@ -28,6 +28,7 @@ import Customers from '@/pages/Customers';
 import Vendors from '@/pages/Vendors';
 import FollowUpSchedule from '@/pages/FollowUpSchedule';
 import Notifications from '@/pages/Notifications';
+import Analysis from '@/pages/Analysis';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -75,6 +76,7 @@ const AuthenticatedApp = () => {
         <Route path="/vendors" element={<ProtectedRoute user={user} featureKey="vendors"><Vendors /></ProtectedRoute>} />
         <Route path="/follow-up-schedule" element={<FollowUpSchedule />} />
         <Route path="/notifications" element={<Notifications />} />
+        <Route path="/analysis" element={<Analysis />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
