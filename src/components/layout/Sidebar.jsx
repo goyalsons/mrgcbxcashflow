@@ -57,6 +57,7 @@ const NAV_GROUPS = [
     items: [
       { key: 'cash_flow_forecast', label: 'Cash Flow', path: '/cash-flow-forecast', icon: 'TrendingUp' },
       { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
+      { key: 'analysis', label: 'Analysis', path: '/analysis', icon: 'BarChart3' },
       { key: 'reports', label: 'Reports', path: '/reports', icon: 'FileText' },
     ],
   },
