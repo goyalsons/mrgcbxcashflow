@@ -42,7 +42,7 @@ const NAV_GROUPS = [
       { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
       { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },
       { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },
-      { key: 'bank_accounts', label: 'Bank Accounts', path: '/bank-accounts', icon: 'Landmark' },
+      { key: 'bank_accounts', label: 'Balances', path: '/bank-accounts', icon: 'Landmark' },
     ],
   },
   {
