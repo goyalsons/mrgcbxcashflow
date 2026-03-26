@@ -79,8 +79,7 @@ export default function Dashboard() {
   const totalBankBalance = bankAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
 
   const totalReceivable = filteredReceivables
-    .filter(r => r.status !== 'paid' && r.status !== 'written_off')
-    .reduce((sum, r) => sum + ((r.amount || 0) - (r.amount_received || 0)), 0);
+    .reduce((sum, r) => sum + (r.amount_received || 0), 0);
 
   const totalPayable = filteredPayables
     .filter(p => p.status !== 'paid')
@@ -120,9 +119,9 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
         <Link to="/debtors" className="contents">
-          <StatCard title="Debtor Outstanding" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
+          <StatCard title="Receivable" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
         </Link>
-        <StatCard title="Receivables" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
+        <StatCard title="Received Amount" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
         <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />
         <StatCard title="Expenses" value={formatINR(totalExpenses)} icon={Receipt} variant="warning" />
         <StatCard title="Net Position" value={formatINR(netCashPosition)} icon={Wallet} variant={netCashPosition >= 0 ? 'success' : 'danger'} />
