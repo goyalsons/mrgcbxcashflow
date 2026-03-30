@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
   IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
-  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock
+  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock, Link2
 } from 'lucide-react';
 import { getRoleLabel, hasPermission } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2, Briefcase, Target, Clock,
   TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
-  ClipboardList, Settings, BarChart3, CalendarClock,
+  ClipboardList, Settings, BarChart3, CalendarClock, Link2,
 };
 
 const NAV_GROUPS = [
@@ -67,6 +67,7 @@ const NAV_GROUPS = [
       { key: 'csv_import', label: 'CSV Import', path: '/csv-import', icon: 'Upload' },
       { key: 'admin_panel', label: 'Admin Panel', path: '/admin-panel', icon: 'Shield' },
       { key: 'audit_logs', label: 'Audit Logs', path: '/audit-logs', icon: 'ClipboardList' },
+      { key: 'tally_integration', label: 'Tally Integration', path: '/tally-integration', icon: 'Link2' },
       { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
     ],
   },

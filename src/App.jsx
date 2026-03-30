@@ -29,6 +29,7 @@ import Vendors from '@/pages/Vendors';
 import FollowUpSchedule from '@/pages/FollowUpSchedule';
 import Notifications from '@/pages/Notifications';
 import Analysis from '@/pages/Analysis';
+import TallyIntegration from '@/pages/TallyIntegration';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -77,6 +78,7 @@ const AuthenticatedApp = () => {
         <Route path="/follow-up-schedule" element={<FollowUpSchedule />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/analysis" element={<Analysis />} />
+        <Route path="/tally-integration" element={<TallyIntegration />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
