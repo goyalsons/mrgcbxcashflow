@@ -96,6 +96,15 @@ export default function Settings() {
     templateId: '',
     channel: 'email'
   });
+  const [digest, setDigest] = useState({
+    enabled: false,
+    time: '08:00',
+    send_email: true,
+    send_whatsapp: false,
+    recipient_email: '',
+    recipient_phone: '',
+  });
+  const [digestSending, setDigestSending] = useState(false);
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -128,10 +137,11 @@ export default function Settings() {
     if (s.cloudinary) setCloudinary(s.cloudinary);
     if (s.paymentGateway) setPaymentGateway(s.paymentGateway);
     if (s.reminderSchedule) setReminderSchedule(s.reminderSchedule);
+    if (s.digest) setDigest(s.digest);
   }, []);
 
   const handleSave = () => {
-    saveSettings({ company, smtp, whatsapp, cloudinary, paymentGateway, reminderSchedule });
+    saveSettings({ company, smtp, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -143,6 +153,18 @@ export default function Settings() {
   const setCl = (k, v) => setCloudinary(f => ({ ...f, [k]: v }));
   const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
   const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
+  const setD = (k, v) => setDigest(f => ({ ...f, [k]: v }));
+
+  const handleSendTestDigest = async () => {
+    setDigestSending(true);
+    try {
+      await base44.functions.invoke('sendDailyDigest', digest);
+      toast({ title: 'Test digest sent!', description: 'Check your email/WhatsApp.' });
+    } catch (e) {
+      toast({ title: 'Failed to send', description: e.message, variant: 'destructive' });
+    }
+    setDigestSending(false);
+  };
 
   const toggleDay = (dayNum) => {
     setReminder('daysOfWeek', reminderSchedule.daysOfWeek.includes(dayNum) 
@@ -374,6 +396,72 @@ export default function Settings() {
 
         {/* Reminders Tab */}
         <TabsContent value="reminders" className="mt-4">
+          {/* Daily Cash Digest */}
+          <Card className="mb-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">☀️ Daily Cash Digest</CardTitle>
+              <p className="text-sm text-muted-foreground">Send a morning summary of cash position, overdue amounts, due-today invoices, top debtors, and yesterday's payments.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
+                <div>
+                  <p className="font-medium">Enable Daily Digest</p>
+                  <p className="text-xs text-muted-foreground">Automatically delivered each morning</p>
+                </div>
+                <input type="checkbox" checked={digest.enabled} onChange={e => setD('enabled', e.target.checked)} className="w-5 h-5" />
+              </div>
+
+              {digest.enabled && (
+                <div className="space-y-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label>Send Time</Label>
+                      <Input type="time" value={digest.time} onChange={e => setD('time', e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Channels</Label>
+                      <div className="flex items-center gap-4 pt-2">
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={digest.send_email} onChange={e => setD('send_email', e.target.checked)} className="w-4 h-4" />
+                          📧 Email
+                        </label>
+                        <label className="flex items-center gap-2 text-sm cursor-pointer">
+                          <input type="checkbox" checked={digest.send_whatsapp} onChange={e => setD('send_whatsapp', e.target.checked)} className="w-4 h-4" />
+                          💬 WhatsApp
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {digest.send_email && (
+                    <div className="space-y-1.5">
+                      <Label>Recipient Email *</Label>
+                      <Input type="email" value={digest.recipient_email} onChange={e => setD('recipient_email', e.target.value)} placeholder="owner@company.com" />
+                    </div>
+                  )}
+
+                  {digest.send_whatsapp && (
+                    <div className="space-y-1.5">
+                      <Label>Recipient Phone (WhatsApp) *</Label>
+                      <Input value={digest.recipient_phone} onChange={e => setD('recipient_phone', e.target.value)} placeholder="+919876543210" />
+                      <p className="text-xs text-muted-foreground">Requires WhatsApp Business API configured in the WhatsApp tab.</p>
+                    </div>
+                  )}
+
+                  <div className="p-3 rounded-lg bg-white border border-amber-200 text-xs text-amber-700">
+                    <strong>Digest includes:</strong> Net cash position · Overdue receivables · Invoices due today · Top 3 debtors · Today's follow-ups · Yesterday's payments received
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button variant="outline" size="sm" onClick={handleSendTestDigest} disabled={digestSending} className="gap-2">
+                  {digestSending ? 'Sending...' : '📨 Send Test Digest Now'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle className="text-base">Recurring Reminders</CardTitle></CardHeader>
             <CardContent className="space-y-6">
