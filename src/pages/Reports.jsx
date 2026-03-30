@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { FileText, Download, Send, BarChart3, Users, Calendar } from 'lucide-react';
+import { FileText, Download, Send, Users } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
+import ManagerActivityReport from '@/components/reports/ManagerActivityReport';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Reports() {
   const { toast } = useToast();
@@ -101,6 +102,13 @@ export default function Reports() {
     <div className="space-y-6">
       <PageHeader title="Reports" subtitle="Generate and email financial reports" />
 
+      <Tabs defaultValue="financial">
+        <TabsList>
+          <TabsTrigger value="financial"><FileText className="w-4 h-4 mr-1.5" />Financial Reports</TabsTrigger>
+          <TabsTrigger value="manager_activity"><Users className="w-4 h-4 mr-1.5" />Manager Activity</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="financial" className="mt-4">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left: Report Config */}
         <div className="space-y-4">
@@ -163,6 +171,12 @@ export default function Reports() {
           </Card>
         </div>
       </div>
+        </TabsContent>
+
+        <TabsContent value="manager_activity" className="mt-4">
+          <ManagerActivityReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
