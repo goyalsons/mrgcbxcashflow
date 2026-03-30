@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -87,6 +87,7 @@ export default function Settings() {
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
   const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_number_id: '', from_number: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
+  const [paymentGateway, setPaymentGateway] = useState({ provider: 'razorpay', razorpay_key_id: '', razorpay_key_secret: '', razorpay_webhook_secret: '', upi_id: '', upi_name: '' });
   const [reminderSchedule, setReminderSchedule] = useState({
     enabled: false,
     frequency: 'daily',
@@ -125,11 +126,12 @@ export default function Settings() {
     if (s.smtp) setSmtp(s.smtp);
     if (s.whatsapp) setWhatsapp(s.whatsapp);
     if (s.cloudinary) setCloudinary(s.cloudinary);
+    if (s.paymentGateway) setPaymentGateway(s.paymentGateway);
     if (s.reminderSchedule) setReminderSchedule(s.reminderSchedule);
   }, []);
 
   const handleSave = () => {
-    saveSettings({ company, smtp, whatsapp, cloudinary, reminderSchedule });
+    saveSettings({ company, smtp, whatsapp, cloudinary, paymentGateway, reminderSchedule });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -139,6 +141,7 @@ export default function Settings() {
   const setS = (k, v) => setSmtp(f => ({ ...f, [k]: v }));
   const setW = (k, v) => setWhatsapp(f => ({ ...f, [k]: v }));
   const setCl = (k, v) => setCloudinary(f => ({ ...f, [k]: v }));
+  const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
   const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
 
   const toggleDay = (dayNum) => {
@@ -153,11 +156,12 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Configure company profile, integrations, and system settings" />
 
       <Tabs defaultValue="company">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
           <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
           <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Storage</TabsTrigger>
+          <TabsTrigger value="payment"><CreditCard className="w-4 h-4 mr-1.5" />Payments</TabsTrigger>
           <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates</TabsTrigger>
           <TabsTrigger value="reminders"><Clock className="w-4 h-4 mr-1.5" />Reminders</TabsTrigger>
         </TabsList>
@@ -298,6 +302,74 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Payment Gateway */}
+        <TabsContent value="payment" className="mt-4">
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Payment Gateway</CardTitle>
+                <p className="text-sm text-muted-foreground">Configure your payment gateway to generate payment links directly from invoices.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label>Provider</Label>
+                  <Select value={paymentGateway.provider} onValueChange={v => setPG('provider', v)}>
+                    <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="razorpay">Razorpay</SelectItem>
+                      <SelectItem value="upi">UPI (No Gateway)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {paymentGateway.provider === 'razorpay' && (
+                  <div className="space-y-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
+                    <p className="text-sm font-medium text-blue-800">Razorpay Credentials</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>Key ID *</Label>
+                        <Input value={paymentGateway.razorpay_key_id} onChange={e => setPG('razorpay_key_id', e.target.value)} placeholder="rzp_live_xxxxxxxxxxxx" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Key Secret *</Label>
+                        <Input type="password" value={paymentGateway.razorpay_key_secret} onChange={e => setPG('razorpay_key_secret', e.target.value)} placeholder="••••••••••••••••" />
+                      </div>
+                      <div className="space-y-1.5 md:col-span-2">
+                        <Label>Webhook Secret</Label>
+                        <Input type="password" value={paymentGateway.razorpay_webhook_secret} onChange={e => setPG('razorpay_webhook_secret', e.target.value)} placeholder="Webhook signing secret" />
+                        <p className="text-xs text-muted-foreground">Used to verify payment webhooks. Set this in your Razorpay Dashboard → Settings → Webhooks.</p>
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white border border-blue-200 text-xs text-blue-700 space-y-1">
+                      <p><strong>Setup:</strong> Go to <a href="https://dashboard.razorpay.com/app/keys" target="_blank" rel="noreferrer" className="underline">Razorpay Dashboard → Settings → API Keys</a> to get your Key ID and Secret.</p>
+                      <p>Use <code className="bg-blue-100 px-1 rounded">rzp_test_</code> keys for testing and <code className="bg-blue-100 px-1 rounded">rzp_live_</code> for production.</p>
+                    </div>
+                  </div>
+                )}
+
+                {paymentGateway.provider === 'upi' && (
+                  <div className="space-y-4 p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <p className="text-sm font-medium text-emerald-800">UPI Settings</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label>UPI ID *</Label>
+                        <Input value={paymentGateway.upi_id} onChange={e => setPG('upi_id', e.target.value)} placeholder="yourname@upi" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Payee Name</Label>
+                        <Input value={paymentGateway.upi_name} onChange={e => setPG('upi_name', e.target.value)} placeholder="ABC Enterprises" />
+                      </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-white border border-emerald-200 text-xs text-emerald-700">
+                      <p>Generates a <code className="bg-emerald-100 px-1 rounded">upi://pay?</code> deep-link. Works with any UPI app (GPay, PhonePe, Paytm). No API keys required — payment confirmation is manual.</p>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* Reminders Tab */}
