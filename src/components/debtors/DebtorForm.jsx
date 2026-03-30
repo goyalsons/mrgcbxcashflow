@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-const EMPTY = { name: '', contact_person: '', email: '', phone: '', gstin: '', address: '', assigned_manager: '', notes: '', status: 'active' };
+const EMPTY = { name: '', contact_person: '', email: '', phone: '', gstin: '', address: '', assigned_manager: '', notes: '', status: 'active', credit_limit: '' };
 
 export default function DebtorForm({ open, onClose, onSave, editData }) {
   const [form, setForm] = useState(EMPTY);
@@ -100,6 +100,17 @@ export default function DebtorForm({ open, onClose, onSave, editData }) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Credit Limit (₹)</Label>
+            <Input
+              type="number"
+              min="0"
+              value={form.credit_limit}
+              onChange={e => set('credit_limit', e.target.value)}
+              placeholder="0 = no limit"
+            />
+            <p className="text-xs text-muted-foreground">Set to 0 to disable credit limit tracking for this debtor.</p>
           </div>
           <div className="space-y-1.5">
             <Label>Notes</Label>

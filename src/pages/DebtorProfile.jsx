@@ -767,6 +767,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
         editData={editingInvoice}
         debtorId={debtorId}
         debtorName={debtor?.name}
+        debtor={debtor}
       />
       <PaymentReceiptModal
         open={showPaymentReceipt}

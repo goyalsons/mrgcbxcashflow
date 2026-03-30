@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
-import { Upload, Sparkles, Loader2, FileText, X, CheckCircle, Cloud } from 'lucide-react';
+import { Upload, Sparkles, Loader2, FileText, X, CheckCircle, Cloud, AlertTriangle } from 'lucide-react';
 import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/utils/cloudinary';
 
 const EMPTY = { invoice_number: '', amount: '', invoice_date: '', due_date: '', description: '', notes: '', status: 'pending' };
@@ -22,19 +22,30 @@ const EXTRACT_SCHEMA = {
   },
 };
 
-export default function InvoiceForm({ open, onClose, onSave, editData, debtorId, debtorName }) {
+export default function InvoiceForm({ open, onClose, onSave, editData, debtorId, debtorName, debtor }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [uploadedFile, setUploadedFile] = useState(null);
   const [extractSuccess, setExtractSuccess] = useState(false);
+  const [creditAcknowledged, setCreditAcknowledged] = useState(false);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
     setForm(editData ? { ...EMPTY, ...editData, amount: editData.amount ?? '' } : EMPTY);
     setUploadedFile(null);
     setExtractSuccess(false);
+    setCreditAcknowledged(false);
   }, [editData, open]);
+
+  // Credit limit check
+  const creditLimit = debtor?.credit_limit || 0;
+  const currentOutstanding = debtor?.total_outstanding || 0;
+  const newInvoiceAmount = parseFloat(form.amount) || 0;
+  const projectedOutstanding = currentOutstanding + newInvoiceAmount;
+  const isOverLimit = !editData && creditLimit > 0 && projectedOutstanding > creditLimit;
+  const shortfall = isOverLimit ? projectedOutstanding - creditLimit : 0;
+  const needsAcknowledgement = isOverLimit && !creditAcknowledged;
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
@@ -99,6 +110,7 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (needsAcknowledgement) return;
     setSaving(true);
     await onSave({ ...form, debtor_id: debtorId, debtor_name: debtorName, amount: parseFloat(form.amount) || 0 });
     setSaving(false);
@@ -218,9 +230,44 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
             </div>
           </div>
 
+          {isOverLimit && (
+            <div className="rounded-lg border border-red-300 bg-red-50 p-4 space-y-3 shrink-0">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                <div className="flex-1 text-sm">
+                  <p className="font-semibold text-red-700 mb-1">Credit Limit Exceeded</p>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-red-700 bg-red-100 rounded p-2 mb-2">
+                    <div>
+                      <div className="text-red-500 font-medium">Current Outstanding</div>
+                      <div className="font-bold">₹{currentOutstanding.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div>
+                      <div className="text-red-500 font-medium">Credit Limit</div>
+                      <div className="font-bold">₹{creditLimit.toLocaleString('en-IN')}</div>
+                    </div>
+                    <div>
+                      <div className="text-red-500 font-medium">Shortfall</div>
+                      <div className="font-bold text-red-800">₹{shortfall.toLocaleString('en-IN')}</div>
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={creditAcknowledged}
+                      onChange={e => setCreditAcknowledged(e.target.checked)}
+                      className="w-4 h-4 accent-red-600"
+                    />
+                    <span className="text-red-700 font-medium">I acknowledge this invoice will breach the credit limit and wish to proceed</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-3 border-t mt-3 shrink-0">
             <Button type="button" variant="outline" onClick={onClose} size="sm">Cancel</Button>
-            <Button type="submit" disabled={saving || extracting} size="sm">
+            <Button type="submit" disabled={saving || extracting || needsAcknowledgement} size="sm"
+              className={needsAcknowledgement ? 'opacity-50 cursor-not-allowed' : ''}>
               {saving ? 'Saving...' : editData ? 'Update' : 'Add Invoice'}
             </Button>
           </div>

@@ -9,9 +9,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, AlertTriangle, TrendingDown, Clock } from 'lucide-react';
+import { MoreHorizontal, AlertTriangle, TrendingDown, Clock, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
+import { getCreditStatus } from '@/components/shared/CreditStatusBadge';
 
 const BUCKETS = [
   { label: '0–30 days', key: 'b0', min: 0, max: 30, color: 'bg-emerald-500' },
@@ -189,6 +190,111 @@ function AgingTable({ items, type, onStatusChange }) {
   );
 }
 
+function CreditUtilisation({ debtors }) {
+  const debtorsWithLimit = debtors.filter(d => d.credit_limit > 0);
+  if (!debtorsWithLimit.length) return (
+    <div className="text-center py-12 text-muted-foreground text-sm">
+      <ShieldAlert className="w-10 h-10 mx-auto mb-3 opacity-30" />
+      <p>No credit limits set yet.</p>
+      <p className="text-xs mt-1">Set a Credit Limit on a debtor profile to track utilisation here.</p>
+    </div>
+  );
+
+  const overLimit = debtorsWithLimit.filter(d => (d.total_outstanding || 0) > d.credit_limit);
+  const nearLimit = debtorsWithLimit.filter(d => {
+    const pct = ((d.total_outstanding || 0) / d.credit_limit) * 100;
+    return pct >= 70 && pct <= 100;
+  });
+
+  return (
+    <div className="space-y-4">
+      {/* Summary */}
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="bg-red-50 border-red-100">
+          <CardContent className="p-4 text-center">
+            <div className="text-xs text-red-600 font-medium mb-0.5">Over Limit</div>
+            <div className="text-2xl font-bold text-red-700">{overLimit.length}</div>
+            <div className="text-xs text-red-500">debtors</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-amber-50 border-amber-100">
+          <CardContent className="p-4 text-center">
+            <div className="text-xs text-amber-600 font-medium mb-0.5">Near Limit (70–100%)</div>
+            <div className="text-2xl font-bold text-amber-700">{nearLimit.length}</div>
+            <div className="text-xs text-amber-500">debtors</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-emerald-50 border-emerald-100">
+          <CardContent className="p-4 text-center">
+            <div className="text-xs text-emerald-600 font-medium mb-0.5">Within Limit</div>
+            <div className="text-2xl font-bold text-emerald-700">{debtorsWithLimit.length - overLimit.length - nearLimit.length}</div>
+            <div className="text-xs text-emerald-500">debtors</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Debtor</TableHead>
+            <TableHead className="text-right">Credit Limit</TableHead>
+            <TableHead className="text-right">Outstanding</TableHead>
+            <TableHead className="text-right">Available</TableHead>
+            <TableHead>Utilisation</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {debtorsWithLimit
+            .sort((a, b) => {
+              const pctA = (a.total_outstanding || 0) / a.credit_limit;
+              const pctB = (b.total_outstanding || 0) / b.credit_limit;
+              return pctB - pctA;
+            })
+            .map(d => {
+              const outstanding = d.total_outstanding || 0;
+              const limit = d.credit_limit;
+              const pct = Math.min((outstanding / limit) * 100, 100);
+              const available = Math.max(limit - outstanding, 0);
+              const status = getCreditStatus(outstanding, limit);
+              const barColor = status?.variant === 'over' ? 'bg-red-500' : status?.variant === 'warning' ? 'bg-amber-500' : 'bg-emerald-500';
+              return (
+                <TableRow key={d.id}>
+                  <TableCell>
+                    <div className="font-medium">{d.name}</div>
+                    {d.contact_person && <div className="text-xs text-muted-foreground">{d.contact_person}</div>}
+                  </TableCell>
+                  <TableCell className="text-right">{formatINR(limit)}</TableCell>
+                  <TableCell className="text-right font-semibold">{formatINR(outstanding)}</TableCell>
+                  <TableCell className={`text-right font-semibold ${available === 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                    {available === 0 ? '— Exceeded' : formatINR(available)}
+                  </TableCell>
+                  <TableCell className="w-40">
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 h-2 bg-muted rounded-full">
+                        <div
+                          className={`h-2 rounded-full transition-all ${barColor}`}
+                          style={{ width: `${Math.min(pct, 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground w-10 text-right">{((outstanding / limit) * 100).toFixed(0)}%</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    {status && (
+                      <Badge variant="outline" className={`text-xs ${status.color}`}>{status.label}</Badge>
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 export default function AgingAnalysis() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -200,6 +306,10 @@ export default function AgingAnalysis() {
   const { data: payables = [] } = useQuery({
     queryKey: ['payables'],
     queryFn: () => base44.entities.Payable.list(),
+  });
+  const { data: debtors = [] } = useQuery({
+    queryKey: ['debtors'],
+    queryFn: () => base44.entities.Debtor.list(),
   });
 
   const unpaidReceivables = receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off');
@@ -222,12 +332,16 @@ export default function AgingAnalysis() {
         <TabsList>
           <TabsTrigger value="receivables">Receivables ({unpaidReceivables.length})</TabsTrigger>
           <TabsTrigger value="payables">Payables ({unpaidPayables.length})</TabsTrigger>
+          <TabsTrigger value="credit" className="gap-1"><ShieldAlert className="w-3.5 h-3.5" />Credit Limits</TabsTrigger>
         </TabsList>
         <TabsContent value="receivables" className="mt-4">
           <AgingTable items={unpaidReceivables} type="receivable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} />
         </TabsContent>
         <TabsContent value="payables" className="mt-4">
           <AgingTable items={unpaidPayables} type="payable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} />
+        </TabsContent>
+        <TabsContent value="credit" className="mt-4">
+          <CreditUtilisation debtors={debtors} />
         </TabsContent>
       </Tabs>
     </div>

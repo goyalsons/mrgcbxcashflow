@@ -354,6 +354,7 @@ export default function DebtorDetail({ debtor, open, onClose, onEditDebtor }) {
         editData={editingInvoice}
         debtorId={debtor?.id}
         debtorName={debtor?.name}
+        debtor={debtor}
       />
       <PaymentForm
         open={showPaymentForm}

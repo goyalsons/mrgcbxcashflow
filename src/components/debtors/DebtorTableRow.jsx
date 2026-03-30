@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatINR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Eye, Phone, Mail } from 'lucide-react';
+import CreditStatusBadge from '@/components/shared/CreditStatusBadge';
 
 const PAYMENT_STATUS = (outstanding, total) => {
   if (!total || total === 0) return null;
@@ -50,6 +51,9 @@ export default function DebtorTableRow({ debtor, onClick }) {
         {status && (
           <Badge variant="outline" className={`text-xs ${status.color}`}>{status.label}</Badge>
         )}
+      </TableCell>
+      <TableCell>
+        <CreditStatusBadge outstanding={outstanding} creditLimit={debtor.credit_limit} />
       </TableCell>
       <TableCell>
         {debtor.assigned_manager && (

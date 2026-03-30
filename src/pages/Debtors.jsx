@@ -169,6 +169,7 @@ export default function Debtors() {
             <TableHead className="text-right">Outstanding</TableHead>
             <TableHead>Progress</TableHead>
             <TableHead>Status</TableHead>
+            <TableHead>Credit</TableHead>
             <TableHead>Manager</TableHead>
             <TableHead className="w-20"></TableHead>
           </TableRow>
