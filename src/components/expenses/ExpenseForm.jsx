@@ -5,9 +5,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
-import { Paperclip, X, Loader2, FileText, Image } from 'lucide-react';
+import { Paperclip, X, Loader2, FileText, AlertTriangle } from 'lucide-react';
 
 const CATEGORIES = [
   { value: 'travel', label: 'Travel' },
@@ -33,14 +33,14 @@ const PAYMENT_MODES = [
 
 const EMPTY = {
   description: '', amount: '', expense_date: '', category: '',
-  payment_mode: '', notes: '', approved: false, receipt_url: '',
+  payment_mode: '', notes: '', receipt_url: '',
 };
 
 function isImageUrl(url) {
   return url && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 }
 
-export default function ExpenseForm({ open, onClose, onSave, editData }) {
+export default function ExpenseForm({ open, onClose, onSave, editData, approvalThreshold }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -50,6 +50,9 @@ export default function ExpenseForm({ open, onClose, onSave, editData }) {
     if (editData) setForm({ ...EMPTY, ...editData, amount: editData.amount || '' });
     else setForm(EMPTY);
   }, [editData, open]);
+
+  const amount = Number(form.amount) || 0;
+  const needsApproval = !editData && approvalThreshold > 0 && amount > approvalThreshold;
 
   const handleFileChange = async (e) => {
     const file = e.target.files?.[0];
@@ -130,7 +133,6 @@ export default function ExpenseForm({ open, onClose, onSave, editData }) {
                   <a href={form.receipt_url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline truncate block">
                     View attachment
                   </a>
-                  <p className="text-xs text-muted-foreground mt-0.5">Click to preview or download</p>
                 </div>
                 <Button type="button" variant="ghost" size="icon" className="shrink-0 text-muted-foreground hover:text-destructive" onClick={() => setForm(f => ({ ...f, receipt_url: '' }))}>
                   <X className="w-4 h-4" />
@@ -149,7 +151,7 @@ export default function ExpenseForm({ open, onClose, onSave, editData }) {
                 ) : (
                   <div className="flex flex-col items-center gap-1">
                     <Paperclip className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm text-muted-foreground">Click to attach receipt or invoice</span>
+                    <span className="text-sm text-muted-foreground">Click to attach receipt</span>
                     <span className="text-xs text-muted-foreground">PDF, PNG, JPG supported</span>
                   </div>
                 )}
@@ -158,13 +160,21 @@ export default function ExpenseForm({ open, onClose, onSave, editData }) {
             <input ref={fileRef} type="file" accept="image/*,.pdf" className="hidden" onChange={handleFileChange} />
           </div>
 
-          <div className="flex items-center gap-3">
-            <Switch checked={form.approved} onCheckedChange={v => setForm(f => ({...f, approved: v}))} />
-            <Label>Approved</Label>
-          </div>
+          {/* Approval warning banner */}
+          {needsApproval && (
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <p className="text-sm text-amber-700">
+                This expense exceeds the approval threshold of <strong>₹{approvalThreshold?.toLocaleString('en-IN')}</strong>. It will be sent for admin approval before being recorded.
+              </p>
+            </div>
+          )}
+
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving || uploading}>{saving ? 'Saving...' : (editData ? 'Update' : 'Create')}</Button>
+            <Button type="submit" disabled={saving || uploading}>
+              {saving ? 'Submitting...' : editData ? 'Update' : needsApproval ? 'Submit for Approval' : 'Create'}
+            </Button>
           </div>
         </form>
       </DialogContent>

@@ -1,0 +1,105 @@
+{
+  "name": "Expense",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string",
+      "description": "Expense description"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Expense amount in INR"
+    },
+    "expense_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of expense"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "travel",
+        "office_supplies",
+        "meals",
+        "utilities",
+        "rent",
+        "salary",
+        "marketing",
+        "software",
+        "maintenance",
+        "miscellaneous"
+      ],
+      "description": "Expense category"
+    },
+    "payment_mode": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "bank_transfer",
+        "upi",
+        "credit_card",
+        "debit_card",
+        "cheque"
+      ],
+      "description": "Mode of payment"
+    },
+    "bank_account_id": {
+      "type": "string",
+      "description": "Bank account used for payment"
+    },
+    "receipt_url": {
+      "type": "string",
+      "description": "URL to uploaded receipt"
+    },
+    "approved": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether expense is approved"
+    },
+    "approval_status": {
+      "type": "string",
+      "enum": [
+        "not_required",
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "not_required",
+      "description": "Approval workflow status"
+    },
+    "approved_by": {
+      "type": "string",
+      "description": "Email of admin who approved/rejected"
+    },
+    "approved_by_name": {
+      "type": "string",
+      "description": "Name of admin who approved/rejected"
+    },
+    "approved_at": {
+      "type": "string",
+      "description": "ISO datetime of approval/rejection"
+    },
+    "rejection_reason": {
+      "type": "string",
+      "description": "Reason provided when expense is rejected"
+    },
+    "submitted_by": {
+      "type": "string",
+      "description": "Email of user who submitted the expense"
+    },
+    "submitted_by_name": {
+      "type": "string",
+      "description": "Name of user who submitted the expense"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "description",
+    "amount",
+    "expense_date",
+    "category"
+  ]
+}

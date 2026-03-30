@@ -22,7 +22,7 @@ import AdminPanel from '@/pages/AdminPanel';
 import AuditLogs from '@/pages/AuditLogs';
 import Receivables from '@/pages/Receivables';
 import Payables from '@/pages/Payables';
-import Expenses from '@/pages/Expenses';
+import Expenses from '@/pages/Expenses.jsx';
 import BankAccounts from '@/pages/BankAccounts';
 import Customers from '@/pages/Customers';
 import Vendors from '@/pages/Vendors';
