@@ -1,0 +1,82 @@
+{
+  "name": "FollowUp",
+  "type": "object",
+  "properties": {
+    "debtor_id": {
+      "type": "string",
+      "description": "Reference to Debtor"
+    },
+    "debtor_name": {
+      "type": "string",
+      "description": "Debtor name for display"
+    },
+    "invoice_id": {
+      "type": "string",
+      "description": "Reference to specific invoice (optional)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "call",
+        "email",
+        "visit",
+        "whatsapp",
+        "sms",
+        "note"
+      ],
+      "default": "call",
+      "description": "Type of follow-up"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Follow-up notes/outcome"
+    },
+    "follow_up_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of follow-up"
+    },
+    "next_follow_up_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Next scheduled follow-up date"
+    },
+    "outcome": {
+      "type": "string",
+      "enum": [
+        "promised_payment",
+        "disputed",
+        "no_response",
+        "partial_commitment",
+        "resolved",
+        "other"
+      ],
+      "description": "Outcome of follow-up"
+    },
+    "promise_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date debtor promised to pay"
+    },
+    "promise_amount": {
+      "type": "number",
+      "description": "Amount debtor promised to pay"
+    },
+    "promise_status": {
+      "type": "string",
+      "enum": [
+        "open",
+        "kept",
+        "broken"
+      ],
+      "default": "open",
+      "description": "Whether the promise was kept, broken, or still open"
+    }
+  },
+  "required": [
+    "debtor_id",
+    "debtor_name",
+    "type",
+    "follow_up_date"
+  ]
+}

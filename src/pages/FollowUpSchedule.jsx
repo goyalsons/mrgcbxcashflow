@@ -10,10 +10,11 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Phone, Mail, Building2, MessageSquare, CalendarClock,
-  AlertTriangle, CheckCircle2, Clock, ChevronRight, Filter
+  AlertTriangle, CheckCircle2, Clock, ChevronRight, Filter, Banknote
 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import FollowUpForm from '@/components/debtors/FollowUpForm';
+import PromiseToPayTracker from '@/components/followup/PromiseToPayTracker';
 import { useNavigate } from 'react-router-dom';
 
 const TODAY = new Date().toISOString().split('T')[0];
@@ -179,6 +180,11 @@ export default function FollowUpSchedule() {
     queryFn: () => base44.entities.Invoice.list(),
   });
 
+  const { data: receivables = [] } = useQuery({
+    queryKey: ['receivables'],
+    queryFn: () => base44.entities.Receivable.list(),
+  });
+
   const createFollowUpMut = useMutation({
     mutationFn: (data) => base44.entities.FollowUp.create(data),
     onSuccess: () => {
@@ -332,7 +338,7 @@ export default function FollowUpSchedule() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList>
+        <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="all">All ({debtorItems.length})</TabsTrigger>
           <TabsTrigger value="overdue" className="gap-1">
             <AlertTriangle className="w-3.5 h-3.5 text-red-500" />
@@ -349,6 +355,10 @@ export default function FollowUpSchedule() {
           <TabsTrigger value="unscheduled" className="gap-1">
             <CheckCircle2 className="w-3.5 h-3.5 text-gray-400" />
             Not Scheduled ({counts.unscheduled})
+          </TabsTrigger>
+          <TabsTrigger value="promises" className="gap-1">
+            <Banknote className="w-3.5 h-3.5 text-emerald-500" />
+            Promises ({followUps.filter(f => f.outcome === 'promised_payment' && f.promise_date).length})
           </TabsTrigger>
         </TabsList>
 
@@ -379,6 +389,10 @@ export default function FollowUpSchedule() {
             )}
           </TabsContent>
         ))}
+
+        <TabsContent value="promises" className="mt-4">
+          <PromiseToPayTracker followUps={followUps} receivables={receivables} />
+        </TabsContent>
       </Tabs>
 
       {/* Follow-Up Form */}
