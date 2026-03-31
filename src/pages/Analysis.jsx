@@ -46,22 +46,30 @@ export default function Analysis() {
     const selected = Array.from(e.target.files);
     if (!selected.length) return;
 
+    // Show filenames immediately so user gets feedback
+    const newFileNames = selected.map(f => f.name);
+    setFiles(f => [...f, ...newFileNames]);
+    setFileUrls(u => [...u, ...newFileNames.map(() => null)]);
     setUploading(true);
-    const newFiles = [...files];
-    const newUrls = [...fileUrls];
 
+    const uploadedUrls = [];
     for (const file of selected) {
       try {
         const res = await base44.integrations.Core.UploadFile({ file });
-        newFiles.push(file.name);
-        newUrls.push(res.file_url);
+        uploadedUrls.push(res.file_url);
       } catch (err) {
         console.error('Upload error:', err);
+        uploadedUrls.push(null);
       }
     }
 
-    setFiles(newFiles);
-    setFileUrls(newUrls);
+    // Replace the placeholder nulls with real URLs
+    setFileUrls(u => {
+      const updated = [...u];
+      const startIdx = updated.length - selected.length;
+      uploadedUrls.forEach((url, i) => { updated[startIdx + i] = url; });
+      return updated;
+    });
     setUploading(false);
   };
 
