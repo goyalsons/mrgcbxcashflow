@@ -83,13 +83,48 @@ export default function Analysis() {
     setAnalyzing(true);
     setAnalysisResult(null);
 
-    const contextText = fileUrls.length > 0
-      ? `Files uploaded: ${files.join(', ')}. Analyse them based on the prompt.`
-      : '';
+    // Extract actual data from uploaded files
+    let extractedDataText = '';
+    const validUrls = fileUrls.filter(Boolean);
+    if (validUrls.length > 0) {
+      const extractionSchema = {
+        type: 'object',
+        properties: {
+          rows: {
+            type: 'array',
+            items: { type: 'object', additionalProperties: true }
+          },
+          headers: { type: 'array', items: { type: 'string' } },
+          summary: { type: 'string' }
+        }
+      };
+
+      const extractedParts = [];
+      for (let i = 0; i < validUrls.length; i++) {
+        try {
+          const extracted = await base44.integrations.Core.ExtractDataFromUploadedFile({
+            file_url: validUrls[i],
+            json_schema: extractionSchema
+          });
+          if (extracted.status === 'success' && extracted.output) {
+            const data = extracted.output;
+            const rows = data.rows || (Array.isArray(data) ? data : []);
+            const dataStr = JSON.stringify(rows.slice(0, 200)); // limit rows
+            extractedParts.push(`File: ${files[i]}\nData (${rows.length} rows):\n${dataStr}`);
+          }
+        } catch (err) {
+          console.error('Extraction error for', files[i], err);
+        }
+      }
+      extractedDataText = extractedParts.join('\n\n');
+    }
+
+    const contextText = extractedDataText
+      ? `The following data was extracted from the uploaded files:\n\n${extractedDataText}\n\nUse this actual data for the analysis.`
+      : (files.length > 0 ? `Files referenced: ${files.join(', ')}.` : '');
 
     const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
-      file_urls: fileUrls.length > 0 ? fileUrls : undefined,
+      prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
       response_json_schema: {
         type: 'object',
         properties: {
