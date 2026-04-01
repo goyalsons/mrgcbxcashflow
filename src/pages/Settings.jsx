@@ -106,6 +106,9 @@ export default function Settings() {
   });
   const [approvalThreshold, setApprovalThreshold] = useState(0);
   const [digestSending, setDigestSending] = useState(false);
+  const [testMsg, setTestMsg] = useState({ phone: '', templateName: '', variables: '' });
+  const [testSending, setTestSending] = useState(false);
+  const [testResult, setTestResult] = useState(null);
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -156,6 +159,26 @@ export default function Settings() {
   const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
   const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
   const setD = (k, v) => setDigest(f => ({ ...f, [k]: v }));
+
+  const handleTestWhatsApp = async () => {
+    if (!testMsg.phone || !testMsg.templateName) return;
+    setTestSending(true);
+    setTestResult(null);
+    try {
+      const vars = testMsg.variables ? testMsg.variables.split(',').map(v => v.trim()).filter(Boolean) : [];
+      const res = await base44.functions.invoke('sendWhatsAppMessage', {
+        action: 'sendMessage',
+        to: testMsg.phone,
+        templateName: testMsg.templateName,
+        language: whatsapp.language || 'en',
+        templateVariables: vars,
+      });
+      setTestResult({ success: res.data.success, message: res.data.success ? `✅ Message sent! ID: ${res.data.messageId || 'N/A'}` : `❌ ${res.data.error}` });
+    } catch (e) {
+      setTestResult({ success: false, message: `❌ ${e.message}` });
+    }
+    setTestSending(false);
+  };
 
   const handleSendTestDigest = async () => {
     setDigestSending(true);
@@ -316,6 +339,87 @@ export default function Settings() {
 
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
                 <strong>How it works:</strong> When sending a reminder, select a template name and the recipient's phone number. RedLava will deliver the approved WhatsApp template message instantly.
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* API Credentials Info */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">🔑 API Credentials</CardTitle>
+              <p className="text-sm text-muted-foreground">Your RedLava credentials are stored as secure server secrets. Manage them in the App Dashboard → Secrets.</p>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div>
+                    <p className="text-xs text-muted-foreground">API Key</p>
+                    <p className="font-mono text-sm font-medium">REDLAVA_API_KEY</p>
+                  </div>
+                  <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">✓ Set</Badge>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Phone ID</p>
+                    <p className="font-mono text-sm font-medium">REDLAVA_PHONE_ID</p>
+                  </div>
+                  <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">✓ Set</Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Template Test */}
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">🧪 Test Template Message</CardTitle>
+              <p className="text-sm text-muted-foreground">Send a live WhatsApp test message using one of your approved templates.</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label>Recipient Phone *</Label>
+                  <Input
+                    value={testMsg.phone}
+                    onChange={e => setTestMsg(f => ({ ...f, phone: e.target.value }))}
+                    placeholder="919876543210"
+                  />
+                  <p className="text-xs text-muted-foreground">Country code without +, e.g. 919876543210</p>
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Template Name *</Label>
+                  <Input
+                    value={testMsg.templateName}
+                    onChange={e => setTestMsg(f => ({ ...f, templateName: e.target.value }))}
+                    placeholder="payment_reminder"
+                  />
+                </div>
+                <div className="space-y-1.5 md:col-span-2">
+                  <Label>Template Variables (comma-separated)</Label>
+                  <Input
+                    value={testMsg.variables}
+                    onChange={e => setTestMsg(f => ({ ...f, variables: e.target.value }))}
+                    placeholder="John Doe, ₹5000, 31 March 2026"
+                  />
+                  <p className="text-xs text-muted-foreground">Enter values for {'{{1}}'}, {'{{2}}'}, {'{{3}}'}... in the same order as your template.</p>
+                </div>
+              </div>
+
+              {testResult && (
+                <div className={`p-3 rounded-lg border text-sm ${testResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                  {testResult.message}
+                </div>
+              )}
+
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleTestWhatsApp}
+                  disabled={testSending || !testMsg.phone || !testMsg.templateName}
+                  className="gap-2"
+                  variant="outline"
+                >
+                  {testSending ? '⏳ Sending...' : '📤 Send Test Message'}
+                </Button>
               </div>
             </CardContent>
           </Card>
