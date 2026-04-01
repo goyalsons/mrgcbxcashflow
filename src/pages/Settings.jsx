@@ -271,30 +271,51 @@ export default function Settings() {
         <TabsContent value="whatsapp" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">WhatsApp Business API</CardTitle>
-              <p className="text-sm text-muted-foreground">Connect WhatsApp Business API (Meta Cloud API) for automated payment reminders.</p>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-green-600" />
+                WhatsApp Business API — RedLava
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Powered by <strong>RedLava</strong>. Credentials are securely stored as server secrets — no need to re-enter them here.
+              </p>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>API Endpoint URL</Label>
-                  <Input value={whatsapp.api_url} onChange={e => setW('api_url', e.target.value)} placeholder="https://graph.facebook.com/v17.0" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Access Token</Label>
-                  <Input type="password" value={whatsapp.api_key} onChange={e => setW('api_key', e.target.value)} placeholder="EAAx..." />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Phone Number ID</Label>
-                  <Input value={whatsapp.phone_number_id} onChange={e => setW('phone_number_id', e.target.value)} placeholder="123456789012345" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>From Number</Label>
-                  <Input value={whatsapp.from_number} onChange={e => setW('from_number', e.target.value)} placeholder="+919876543210" />
-                </div>
+              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 space-y-2">
+                <p className="font-semibold flex items-center gap-2">✅ RedLava Integration Active</p>
+                <p>Your <code className="bg-emerald-100 px-1 rounded">REDLAVA_API_KEY</code> and <code className="bg-emerald-100 px-1 rounded">REDLAVA_PHONE_ID</code> are securely configured as server environment secrets.</p>
+                <p>Base URL: <code className="bg-emerald-100 px-1 rounded">https://wa.redlava.in/api/v1/whatsapp</code></p>
               </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">WhatsApp Template Names</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enter the exact template names as approved in your RedLava / WhatsApp Business account (one per line). These will be available when sending reminders.
+                </p>
+                <Textarea
+                  value={whatsapp.template_names || ''}
+                  onChange={e => setW('template_names', e.target.value)}
+                  rows={5}
+                  placeholder={"payment_reminder\noverdue_notice\nwelcome\nreceipt_confirmation"}
+                  className="font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Find your approved templates in your WhatsApp Business Manager → Message Templates.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label>Default Language Code</Label>
+                <Input
+                  value={whatsapp.language || 'en'}
+                  onChange={e => setW('language', e.target.value)}
+                  placeholder="en"
+                  className="w-32"
+                />
+                <p className="text-xs text-muted-foreground">e.g. en, hi, mr, ta, te</p>
+              </div>
+
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
-                <strong>Setup:</strong> Register at <a href="https://developers.facebook.com" target="_blank" rel="noreferrer" className="underline">Meta for Developers</a>, create a WhatsApp Business app, and get your credentials from the dashboard.
+                <strong>How it works:</strong> When sending a reminder, select a template name and the recipient's phone number. RedLava will deliver the approved WhatsApp template message instantly.
               </div>
             </CardContent>
           </Card>

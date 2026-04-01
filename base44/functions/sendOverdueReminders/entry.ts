@@ -93,36 +93,32 @@ CashFlow Pro Accounts Team`;
           }
         }
 
-        // Send WhatsApp reminder if configured
-        const whatsappUrl = Deno.env.get('WHATSAPP_API_URL');
-        const whatsappToken = Deno.env.get('WHATSAPP_TOKEN');
-        const whatsappPhoneId = Deno.env.get('WHATSAPP_PHONE_ID');
+        // Send WhatsApp reminder via RedLava
+        const redlavaApiKey = Deno.env.get('REDLAVA_API_KEY');
+        const redlavaPhoneId = Deno.env.get('REDLAVA_PHONE_ID');
 
-        if (contactPhone && whatsappUrl && whatsappToken && whatsappPhoneId) {
+        if (contactPhone && redlavaApiKey && redlavaPhoneId) {
           try {
-            const message = `Hi ${contactName}, you have ${invoices.length} overdue invoice(s) totaling ₹${outstanding.toLocaleString('en-IN')}. Please arrange payment. Contact us if you need assistance.`;
-            
-            const whatsappBody = {
-              messaging_product: 'whatsapp',
-              to: contactPhone.replace(/\D/g, ''),
-              type: 'text',
-              text: { body: message },
-            };
-
-            const response = await fetch(`${whatsappUrl}/${whatsappPhoneId}/messages`, {
+            const response = await fetch('https://wa.redlava.in/api/v1/whatsapp/sendMessage', {
               method: 'POST',
               headers: {
-                'Authorization': `Bearer ${whatsappToken}`,
+                'x-api-key': redlavaApiKey,
+                'x-phone-id': redlavaPhoneId,
                 'Content-Type': 'application/json',
               },
-              body: JSON.stringify(whatsappBody),
+              body: JSON.stringify({
+                templateName: 'payment_reminder',
+                language: 'en',
+                templateVariables: [contactName, `₹${outstanding.toLocaleString('en-IN')}`],
+                to: contactPhone.replace(/\D/g, ''),
+              }),
             });
 
-            if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'success') {
               whatsappSent++;
             } else {
-              const error = await response.json();
-              errors.push(`WhatsApp failed for ${contactName}: ${error.error?.message || 'Unknown error'}`);
+              errors.push(`WhatsApp failed for ${contactName}: ${data.message || 'Unknown error'}`);
             }
           } catch (err) {
             errors.push(`WhatsApp error for ${contactName}: ${err.message}`);
