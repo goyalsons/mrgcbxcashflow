@@ -7,14 +7,16 @@ Deno.serve(async (req) => {
   const user = await base44.auth.me();
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const apiKey = Deno.env.get('REDLAVA_API_KEY');
-  const phoneId = Deno.env.get('REDLAVA_PHONE_ID');
+  const body = await req.json();
+  // Accept credentials from frontend payload, fallback to env secrets
+  const apiKey = body.api_key || Deno.env.get('REDLAVA_API_KEY');
+  const phoneId = body.phone_id || Deno.env.get('REDLAVA_PHONE_ID');
 
   if (!apiKey || !phoneId) {
-    return Response.json({ error: 'RedLava credentials not configured' }, { status: 500 });
+    return Response.json({ error: 'RedLava credentials not configured. Please set API Key and Phone ID in Settings → WhatsApp.' }, { status: 500 });
   }
 
-  const { action, templateName, language = 'en', templateVariables = [], to, fileUrl } = await req.json();
+  const { action, templateName, language = 'en', templateVariables = [], to, fileUrl } = body;
 
   // Action: getTemplates — returns the list of template names stored in Settings
   if (action === 'getTemplates') {

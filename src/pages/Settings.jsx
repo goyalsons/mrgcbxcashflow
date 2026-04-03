@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, ShieldCheck, BrainCircuit } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, ShieldCheck, BrainCircuit, Eye, EyeOff } from 'lucide-react';
 import LLMSettings from '@/components/settings/LLMSettings';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
@@ -111,6 +111,7 @@ export default function Settings() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [showCredsInfo, setShowCredsInfo] = useState(false);
+  const [showRedlavaKey, setShowRedlavaKey] = useState(false);
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -174,6 +175,8 @@ export default function Settings() {
         templateName: testMsg.templateName,
         language: whatsapp.language || 'en',
         templateVariables: vars,
+        api_key: whatsapp.api_key || undefined,
+        phone_id: whatsapp.phone_id || undefined,
       });
       setTestResult({ success: res.data.success, message: res.data.success ? `✅ Message sent! ID: ${res.data.messageId || 'N/A'}` : `❌ ${res.data.error}` });
     } catch (e) {
@@ -295,22 +298,46 @@ export default function Settings() {
 
         {/* WhatsApp */}
         <TabsContent value="whatsapp" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-green-600" />
-                WhatsApp Business API — RedLava
-              </CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Powered by <strong>RedLava</strong>. Credentials are securely stored as server secrets — no need to re-enter them here.
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800 space-y-2">
-                <p className="font-semibold flex items-center gap-2">✅ RedLava Integration Active</p>
-                <p>Your <code className="bg-emerald-100 px-1 rounded">REDLAVA_API_KEY</code> and <code className="bg-emerald-100 px-1 rounded">REDLAVA_PHONE_ID</code> are securely configured as server environment secrets.</p>
-                <p>Base URL: <code className="bg-emerald-100 px-1 rounded">https://wa.redlava.in/api/v1/whatsapp</code></p>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              <MessageSquare className="w-4 h-4 text-green-600" />
+              WhatsApp Business API — RedLava
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Enter your RedLava API credentials below. These are stored locally in your browser and sent securely to the server for each request.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label>RedLava API Key *</Label>
+                <div className="relative flex items-center">
+                  <Input
+                    type={showRedlavaKey ? 'text' : 'password'}
+                    value={whatsapp.api_key || ''}
+                    onChange={e => setW('api_key', e.target.value)}
+                    placeholder="Enter your RedLava API key"
+                    className="pr-10 font-mono"
+                  />
+                  <button type="button" onClick={() => setShowRedlavaKey(v => !v)} className="absolute right-2 text-muted-foreground hover:text-foreground">
+                    {showRedlavaKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
+              <div className="space-y-1.5">
+                <Label>Phone ID *</Label>
+                <Input
+                  value={whatsapp.phone_id || ''}
+                  onChange={e => setW('phone_id', e.target.value)}
+                  placeholder="Enter your RedLava Phone ID"
+                  className="font-mono"
+                />
+              </div>
+            </div>
+            <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-700">
+              Get your API Key and Phone ID from your <a href="https://wa.redlava.in" target="_blank" rel="noreferrer" className="underline font-medium">RedLava dashboard</a> → API Credentials.
+            </div>
 
               <div className="space-y-3">
                 <Label className="text-sm font-medium">WhatsApp Template Names</Label>
