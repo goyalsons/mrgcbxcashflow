@@ -307,8 +307,10 @@ export default function CollectionTargets() {
             <TableHeader>
               <TableRow>
                 <TableHead>Manager</TableHead>
-                <TableHead>Period</TableHead>
                 <TableHead className="text-right">Target</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Week</TableHead>
+                <TableHead>Month</TableHead>
                 <TableHead className="text-right">Collected</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Notes</TableHead>
@@ -332,8 +334,10 @@ export default function CollectionTargets() {
                       <div className="font-medium">{t.manager_name || t.manager_email}</div>
                       <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                     </TableCell>
-                    <TableCell>{MONTHS[t.period_month - 1]} {t.period_year}</TableCell>
                     <TableCell className="text-right">{formatINR(t.target_amount)}</TableCell>
+                    <TableCell className="text-sm">{t.target_date || '-'}</TableCell>
+                    <TableCell className="text-sm">{t.target_date ? `W${Math.ceil(new Date(t.target_date).getDate() / 7)}` : '-'}</TableCell>
+                    <TableCell className="text-sm">{t.period_month ? MONTHS[t.period_month - 1] : '-'}</TableCell>
                     <TableCell className="text-right text-emerald-600 font-medium">{formatINR(collected)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2 min-w-24">

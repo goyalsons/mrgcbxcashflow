@@ -39,6 +39,7 @@ export default function SetTargetModal({ debtor, onClose }) {
       manager_email: debtor.assigned_manager,
       manager_name: debtor.assigned_manager,
       target_amount: parseFloat(form.target_amount),
+      target_date: form.target_date,
       period_month: date.getMonth() + 1,
       period_year: date.getFullYear(),
       notes: form.notes || `Target for ${debtor.name} by ${form.target_date}`,

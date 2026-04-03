@@ -1,0 +1,46 @@
+{
+  "name": "CollectionTarget",
+  "type": "object",
+  "properties": {
+    "manager_email": {
+      "type": "string",
+      "description": "Account manager email"
+    },
+    "manager_name": {
+      "type": "string",
+      "description": "Account manager name"
+    },
+    "target_amount": {
+      "type": "number",
+      "description": "Collection target in INR"
+    },
+    "collected_amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Amount collected so far"
+    },
+    "target_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Target date for collection"
+    },
+    "period_month": {
+      "type": "number",
+      "description": "Month (1-12)"
+    },
+    "period_year": {
+      "type": "number",
+      "description": "Year (e.g. 2025)"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Target notes"
+    }
+  },
+  "required": [
+    "manager_email",
+    "target_amount",
+    "period_month",
+    "period_year"
+  ]
+}
