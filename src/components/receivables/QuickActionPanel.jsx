@@ -107,7 +107,7 @@ function ReminderModal({ receivables, onClose }) {
           actions.push(
             fetch('https://graph.instagram.com/v17.0/your-phone-id/messages', {
               method: 'POST',
-              headers: { 'Authorization': `Bearer ${Deno.env.get('WHATSAPP_TOKEN')}` },
+              headers: { 'Authorization': 'Bearer ' },
               body: JSON.stringify({
                 messaging_product: 'whatsapp',
                 to: phone.replace(/\D/g, ''),

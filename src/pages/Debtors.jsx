@@ -264,7 +264,7 @@ export default function Debtors() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Amounts</SelectItem>
-              <SelectItem value="high">High (>₹1,00,000)</SelectItem>
+              <SelectItem value="high">{">"}₹1,00,000</SelectItem>
               <SelectItem value="medium">Medium (₹10,000 - ₹1,00,000)</SelectItem>
               <SelectItem value="low">Low (₹0 - ₹10,000)</SelectItem>
             </SelectContent>

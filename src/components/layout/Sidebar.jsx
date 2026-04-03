@@ -30,7 +30,6 @@ const NAV_GROUPS = [
   {
     label: 'Collections',
     items: [
-      { key: 'debtors', label: 'Debtors', path: '/debtors', icon: 'Users' },
       { key: 'collection_targets', label: 'Targets', path: '/collection-targets', icon: 'Target' },
       { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
       { key: 'follow_up_schedule', label: 'Follow-Up Schedule', path: '/follow-up-schedule', icon: 'CalendarClock' },
@@ -39,8 +38,8 @@ const NAV_GROUPS = [
   {
     label: 'Finance',
     items: [
-      { key: 'receivables', label: 'Receivables', path: '/receivables', icon: 'ArrowDownLeft' },
-      { key: 'payables', label: 'Payables', path: '/payables', icon: 'ArrowUpRight' },
+      { key: 'debtors', label: 'Receivables (Debtors)', path: '/debtors', icon: 'ArrowDownLeft' },
+      { key: 'payables', label: 'Payables (Suppliers)', path: '/payables', icon: 'ArrowUpRight' },
       { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },
       { key: 'bank_accounts', label: 'Balances', path: '/bank-accounts', icon: 'Landmark' },
     ],
