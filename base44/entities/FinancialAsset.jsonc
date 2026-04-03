@@ -1,0 +1,58 @@
+{
+  "name": "FinancialAsset",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Asset name/description"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "fixed_deposit",
+        "mutual_fund",
+        "investment",
+        "stocks",
+        "bonds",
+        "other"
+      ],
+      "description": "Type of financial asset"
+    },
+    "institution": {
+      "type": "string",
+      "description": "Bank or institution name"
+    },
+    "account_number": {
+      "type": "string",
+      "description": "Account/folio/reference number"
+    },
+    "amount": {
+      "type": "number",
+      "default": 0,
+      "description": "Current value in INR"
+    },
+    "maturity_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Maturity or review date (for FDs, bonds)"
+    },
+    "interest_rate": {
+      "type": "number",
+      "description": "Interest/return rate in %"
+    },
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of this valuation"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "amount"
+  ]
+}

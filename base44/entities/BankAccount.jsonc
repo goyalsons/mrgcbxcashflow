@@ -1,0 +1,46 @@
+{
+  "name": "BankAccount",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Label for this balance (e.g. Main Cash, Petty Cash)"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "bank",
+        "cash"
+      ],
+      "default": "bank",
+      "description": "Type of balance source"
+    },
+    "account_number": {
+      "type": "string",
+      "description": "Bank account number"
+    },
+    "balance": {
+      "type": "number",
+      "default": 0,
+      "description": "Balance at the time of snapshot"
+    },
+    "snapshot_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of this balance snapshot"
+    },
+    "snapshot_time": {
+      "type": "string",
+      "description": "Time of this balance snapshot (HH:MM)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this account is active"
+    }
+  },
+  "required": [
+    "name",
+    "balance"
+  ]
+}
