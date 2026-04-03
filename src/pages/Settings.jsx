@@ -394,11 +394,22 @@ export default function Settings() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Template Name *</Label>
-                  <Input
-                    value={testMsg.templateName}
-                    onChange={e => setTestMsg(f => ({ ...f, templateName: e.target.value }))}
-                    placeholder="payment_reminder"
-                  />
+                  {whatsapp.template_names ? (
+                    <Select value={testMsg.templateName} onValueChange={v => setTestMsg(f => ({ ...f, templateName: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Select a template..." /></SelectTrigger>
+                      <SelectContent>
+                        {whatsapp.template_names.split('\n').map(t => t.trim()).filter(Boolean).map(t => (
+                          <SelectItem key={t} value={t}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={testMsg.templateName}
+                      onChange={e => setTestMsg(f => ({ ...f, templateName: e.target.value }))}
+                      placeholder="Add template names in WhatsApp settings above"
+                    />
+                  )}
                 </div>
                 <div className="space-y-1.5 md:col-span-2">
                   <Label>Template Variables (comma-separated)</Label>
