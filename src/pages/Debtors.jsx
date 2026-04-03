@@ -1,6 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, BarChart2, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, X } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import DebtorCard from '@/components/debtors/DebtorCard';
@@ -17,6 +16,8 @@ import DebtorTableRow from '@/components/debtors/DebtorTableRow';
 import DebtorForm from '@/components/debtors/DebtorForm';
 import DebtorDetail from '@/components/debtors/DebtorDetail';
 import DebtorProfile from '@/pages/DebtorProfile';
+import OverdueAlertBanner from '@/components/debtors/OverdueAlertBanner';
+import DebtorAnalyticsCards from '@/components/debtors/DebtorAnalyticsCards';
 import { useToast } from '@/components/ui/use-toast';
 
 const VIEW_MODES = [
@@ -41,11 +42,17 @@ export default function Debtors() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterAmount, setFilterAmount] = useState('all');
   const [filterDebtorStatus, setFilterDebtorStatus] = useState('all');
+  const [filterDaysOverdue, setFilterDaysOverdue] = useState('all');
   const [viewMode, setViewMode] = useState('card');
 
   const { data: debtors = [], isLoading } = useQuery({
     queryKey: ['debtors'],
     queryFn: () => base44.entities.Debtor.list('-created_date'),
+  });
+
+  const { data: payments = [] } = useQuery({
+    queryKey: ['payments'],
+    queryFn: () => base44.entities.Payment.list('-payment_date', 200),
   });
 
   const createMut = useMutation({
@@ -109,8 +116,18 @@ export default function Debtors() {
         true;
       
       const matchDebtorStatus = filterDebtorStatus === 'all' || d.status === filterDebtorStatus;
+
+      let matchDaysOverdue = true;
+      if (filterDaysOverdue !== 'all') {
+        const today = new Date();
+        const created = new Date(d.created_date);
+        const daysOut = Math.floor((today - created) / (1000 * 60 * 60 * 24));
+        if (filterDaysOverdue === '0-30') matchDaysOverdue = daysOut >= 0 && daysOut <= 30;
+        else if (filterDaysOverdue === '30-60') matchDaysOverdue = daysOut > 30 && daysOut <= 60;
+        else if (filterDaysOverdue === '60+') matchDaysOverdue = daysOut > 60;
+      }
       
-      return matchSearch && matchManager && matchStatus && matchAmount && matchDebtorStatus;
+      return matchSearch && matchManager && matchStatus && matchAmount && matchDebtorStatus && matchDaysOverdue;
     });
   }, [debtors, search, filterManager, filterStatus, filterAmount, filterDebtorStatus]);
 
@@ -183,14 +200,20 @@ export default function Debtors() {
     </Card>
   );
 
+  const overdueDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0);
+
   return (
     <div className="space-y-5">
+      <OverdueAlertBanner overdueDebtors={overdueDebtors} />
       <PageHeader
         title="Debtors"
         subtitle={`${debtors.length} debtors · ${formatINR(totalOutstanding)} outstanding`}
         actionLabel="New Debtor"
         onAction={() => { setEditingDebtor(null); setShowForm(true); }}
       />
+
+      {/* Analytics Cards */}
+      <DebtorAnalyticsCards debtors={debtors} payments={payments} />
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -219,9 +242,8 @@ export default function Debtors() {
           <span className="text-sm text-muted-foreground hidden sm:block">
             Total invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
           </span>
-          {/* View mode toggle */}
           <div className="flex items-center border rounded-lg p-0.5 bg-muted gap-0.5">
-            {VIEW_MODES.map(({ key, icon: Icon, label }) => (
+            {[{ key: 'card', icon: LayoutGrid, label: 'Card' }, { key: 'table', icon: List, label: 'Table' }].map(({ key, icon: Icon, label }) => (
               <button
                 key={key}
                 onClick={() => setViewMode(key)}
@@ -281,14 +303,26 @@ export default function Debtors() {
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={filterDaysOverdue} onValueChange={setFilterDaysOverdue}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Days Overdue" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Days Overdue</SelectItem>
+              <SelectItem value="0-30">0–30 days overdue</SelectItem>
+              <SelectItem value="30-60">30–60 days overdue</SelectItem>
+              <SelectItem value="60+">60+ days overdue</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-        {(search || filterManager !== 'all' || filterAmount !== 'all' || filterDebtorStatus !== 'all') && (
+        {(search || filterManager !== 'all' || filterAmount !== 'all' || filterDebtorStatus !== 'all' || filterDaysOverdue !== 'all') && (
           <button
             onClick={() => {
               setSearch('');
               setFilterManager('all');
               setFilterAmount('all');
               setFilterDebtorStatus('all');
+              setFilterDaysOverdue('all');
             }}
             className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
