@@ -22,37 +22,55 @@ import PageHeader from '@/components/shared/PageHeader';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const EMPTY = {
+  debtor_id: '',
   manager_email: '',
   manager_name: '',
   target_amount: '',
-  period_month: new Date().getMonth() + 1,
-  period_year: new Date().getFullYear(),
+  target_date: new Date().toISOString().split('T')[0],
   notes: '',
 };
 
-function TargetForm({ open, onClose, onSave, editData, managers }) {
+function TargetForm({ open, onClose, onSave, editData, managers, debtors }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
-    setForm(editData ? {
-      ...editData,
-      target_amount: editData.target_amount?.toString() || '',
-    } : { ...EMPTY, period_month: new Date().getMonth() + 1, period_year: new Date().getFullYear() });
+    if (editData) {
+      setForm({
+        ...editData,
+        target_amount: editData.target_amount?.toString() || '',
+        target_date: editData.target_date || new Date().toISOString().split('T')[0],
+      });
+    } else {
+      setForm({ ...EMPTY, target_date: new Date().toISOString().split('T')[0] });
+    }
   }, [editData, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleManagerSelect = (email) => {
-    const mgr = managers.find(m => m.email === email);
-    set('manager_email', email);
-    set('manager_name', mgr?.full_name || email);
+  const handleDebtorSelect = (debtorId) => {
+    const debtor = debtors.find(d => d.id === debtorId);
+    if (!debtor) return;
+    const mgr = managers.find(m => m.email === debtor.assigned_manager);
+    setForm(f => ({
+      ...f,
+      debtor_id: debtorId,
+      manager_email: debtor.assigned_manager || '',
+      manager_name: mgr?.full_name || debtor.assigned_manager || '',
+      target_amount: debtor.total_outstanding > 0 ? String(debtor.total_outstanding) : f.target_amount,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave({ ...form, target_amount: parseFloat(form.target_amount) || 0, period_month: parseInt(form.period_month), period_year: parseInt(form.period_year) });
+    const date = new Date(form.target_date);
+    await onSave({
+      ...form,
+      target_amount: parseFloat(form.target_amount) || 0,
+      period_month: date.getMonth() + 1,
+      period_year: date.getFullYear(),
+    });
     setSaving(false);
   };
 
@@ -63,30 +81,23 @@ function TargetForm({ open, onClose, onSave, editData, managers }) {
           <DialogTitle>{editData ? 'Edit Target' : 'Assign Collection Target'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Account Manager *</Label>
-            <Select value={form.manager_email} onValueChange={handleManagerSelect} required>
-              <SelectTrigger><SelectValue placeholder="Select manager..." /></SelectTrigger>
-              <SelectContent>
-                {managers.map(m => (
-                  <SelectItem key={m.email} value={m.email}>{m.full_name || m.email}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+          {!editData && (
             <div className="space-y-1.5">
-              <Label>Month *</Label>
-              <Select value={String(form.period_month)} onValueChange={v => set('period_month', parseInt(v))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
+              <Label>Debtor</Label>
+              <Select value={form.debtor_id} onValueChange={handleDebtorSelect}>
+                <SelectTrigger><SelectValue placeholder="Select debtor..." /></SelectTrigger>
                 <SelectContent>
-                  {MONTHS.map((m, i) => <SelectItem key={i+1} value={String(i+1)}>{m}</SelectItem>)}
+                  {debtors.map(d => (
+                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1.5">
-              <Label>Year *</Label>
-              <Input type="number" value={form.period_year} onChange={e => set('period_year', e.target.value)} min="2020" max="2030" />
+          )}
+          <div className="space-y-1.5">
+            <Label>Account Manager *</Label>
+            <div className="flex h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-1 text-sm items-center">
+              {form.manager_name || form.manager_email || <span className="text-muted-foreground">Auto-filled from debtor</span>}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -94,12 +105,16 @@ function TargetForm({ open, onClose, onSave, editData, managers }) {
             <Input type="number" value={form.target_amount} onChange={e => set('target_amount', e.target.value)} required min="1" placeholder="e.g. 500000" />
           </div>
           <div className="space-y-1.5">
+            <Label>Target Date *</Label>
+            <Input type="date" value={form.target_date} onChange={e => set('target_date', e.target.value)} required />
+          </div>
+          <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} placeholder="Optional notes..." />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}</Button>
+            <Button type="submit" disabled={saving || !form.manager_email}>{saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}</Button>
           </div>
         </form>
       </DialogContent>
@@ -375,6 +390,7 @@ export default function CollectionTargets() {
         onSave={handleSave}
         editData={editingTarget}
         managers={managers}
+        debtors={debtors}
       />
     </div>
   );
