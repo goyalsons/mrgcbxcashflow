@@ -350,7 +350,7 @@ export default function CollectionTargets() {
                       <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                     </TableCell>
                     <TableCell className="text-right">{formatINR(t.target_amount)}</TableCell>
-                    <TableCell className="text-sm">{t.target_date || '-'}</TableCell>
+                    <TableCell className="text-sm">{t.target_date ? new Date(t.target_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }).replace('/', '-') : '-'}</TableCell>
                     <TableCell className="text-sm">{t.target_date ? `W${Math.ceil(new Date(t.target_date).getDate() / 7)}` : '-'}</TableCell>
                     <TableCell className="text-sm">{t.period_month ? MONTHS[t.period_month - 1] : '-'}</TableCell>
                     <TableCell className="text-right text-emerald-600 font-medium">{formatINR(collected)}</TableCell>
