@@ -3,10 +3,11 @@ import { TableRow, TableCell } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatINR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
-import { Eye, Phone, Mail, CheckCircle, AlertCircle, Circle } from 'lucide-react';
+import { Eye, Phone, Mail, CheckCircle, AlertCircle, Circle, Target } from 'lucide-react';
 import CreditStatusBadge from '@/components/shared/CreditStatusBadge';
 import QuickReminderModal from './QuickReminderModal';
 import QuickPaymentModal from './QuickPaymentModal';
+import SetTargetModal from './SetTargetModal';
 
 const PAYMENT_STATUS = (outstanding, total) => {
   if (!total || total === 0) return null;
@@ -19,6 +20,7 @@ const PAYMENT_STATUS = (outstanding, total) => {
 export default function DebtorTableRow({ debtor, onClick }) {
   const [showReminder, setShowReminder] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
+  const [showTarget, setShowTarget] = useState(false);
 
   const outstanding = debtor.total_outstanding || 0;
   const invoiced = debtor.total_invoiced || 0;
@@ -96,6 +98,14 @@ export default function DebtorTableRow({ debtor, onClick }) {
             >
               ➕ Payment
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-6 text-xs px-2 gap-1 border-purple-200 text-purple-700 hover:bg-purple-50"
+              onClick={(e) => handleActionClick(e, () => setShowTarget(true))}
+            >
+              <Target className="w-3 h-3" /> Target
+            </Button>
             <Button variant="ghost" size="sm" className="h-6 text-xs opacity-0 group-hover:opacity-100" onClick={onClick}>
               <Eye className="w-3 h-3 mr-1" /> View
             </Button>
@@ -105,6 +115,7 @@ export default function DebtorTableRow({ debtor, onClick }) {
 
       {showReminder && <QuickReminderModal debtor={debtor} onClose={() => setShowReminder(false)} />}
       {showPayment && <QuickPaymentModal debtor={debtor} onClose={() => setShowPayment(false)} />}
+      {showTarget && <SetTargetModal debtor={debtor} onClose={() => setShowTarget(false)} />}
     </>
   );
 }

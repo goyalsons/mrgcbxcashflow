@@ -44,7 +44,7 @@ export default function Debtors() {
   const [filterAmount, setFilterAmount] = useState('all');
   const [filterDebtorStatus, setFilterDebtorStatus] = useState('all');
   const [filterDaysOverdue, setFilterDaysOverdue] = useState('all');
-  const [viewMode, setViewMode] = useState('card');
+  const [viewMode, setViewMode] = useState('table');
 
   const { data: debtors = [], isLoading } = useQuery({
     queryKey: ['debtors'],
@@ -211,7 +211,11 @@ export default function Debtors() {
         subtitle={`${debtors.length} debtors · ${formatINR(totalOutstanding)} outstanding`}
         actionLabel="New Debtor"
         onAction={() => { setEditingDebtor(null); setShowForm(true); }}
-      />
+      >
+        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-sm" onClick={() => navigate('/csv-import')}>
+          📥 Bulk CSV Import
+        </Button>
+      </PageHeader>
 
       {/* Analytics Cards */}
       <DebtorAnalyticsCards debtors={debtors} payments={payments} />
