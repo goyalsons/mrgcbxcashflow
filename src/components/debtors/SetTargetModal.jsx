@@ -14,9 +14,8 @@ export default function SetTargetModal({ debtor, onClose }) {
   const today = new Date();
 
   const [form, setForm] = useState({
-    target_amount: '',
-    period_month: today.getMonth() + 1,
-    period_year: today.getFullYear(),
+    target_amount: debtor.total_outstanding || '',
+    target_date: today.toISOString().split('T')[0],
     notes: '',
   });
 
@@ -35,20 +34,16 @@ export default function SetTargetModal({ debtor, onClose }) {
       toast({ title: 'No manager assigned to this debtor', variant: 'destructive' });
       return;
     }
+    const date = new Date(form.target_date);
     createMut.mutate({
       manager_email: debtor.assigned_manager,
       manager_name: debtor.assigned_manager,
       target_amount: parseFloat(form.target_amount),
-      period_month: parseInt(form.period_month),
-      period_year: parseInt(form.period_year),
-      notes: form.notes || `Target for ${debtor.name}`,
+      period_month: date.getMonth() + 1,
+      period_year: date.getFullYear(),
+      notes: form.notes || `Target for ${debtor.name} by ${form.target_date}`,
     });
   };
-
-  const months = [
-    'January','February','March','April','May','June',
-    'July','August','September','October','November','December'
-  ];
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -84,30 +79,15 @@ export default function SetTargetModal({ debtor, onClose }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Month</Label>
-              <select
-                value={form.period_month}
-                onChange={e => setForm(f => ({ ...f, period_month: e.target.value }))}
-                className="mt-1 flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-              >
-                {months.map((m, i) => (
-                  <option key={i + 1} value={i + 1}>{m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Year</Label>
-              <Input
-                type="number"
-                min="2020"
-                max="2030"
-                value={form.period_year}
-                onChange={e => setForm(f => ({ ...f, period_year: e.target.value }))}
-                className="mt-1"
-              />
-            </div>
+          <div>
+            <Label>Target Date</Label>
+            <Input
+              type="date"
+              value={form.target_date}
+              onChange={e => setForm(f => ({ ...f, target_date: e.target.value }))}
+              required
+              className="mt-1"
+            />
           </div>
 
           <div>
