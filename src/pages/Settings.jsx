@@ -86,7 +86,7 @@ export default function Settings() {
 
   const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '' });
   const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
-  const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_number_id: '', from_number: '' });
+  const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_id: '', phone_number_id: '', from_number: '', language: 'en', template_names: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
   const [paymentGateway, setPaymentGateway] = useState({ provider: 'razorpay', razorpay_key_id: '', razorpay_key_secret: '', razorpay_webhook_secret: '', upi_id: '', upi_name: '' });
   const [reminderSchedule, setReminderSchedule] = useState({
@@ -373,51 +373,7 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* API Credentials Info */}
-          <Card className="mt-4">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">🔑 API Credentials</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">RedLava credentials stored as secure server secrets.</p>
-                </div>
-                <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setShowCredsInfo(v => !v)}>
-                  <Pencil className="w-3.5 h-3.5" />
-                  Change Credentials
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                  <div>
-                    <p className="text-xs text-muted-foreground">API Key</p>
-                    <p className="font-mono text-sm font-medium">REDLAVA_API_KEY</p>
-                  </div>
-                  <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">✓ Set</Badge>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50 border">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Phone ID</p>
-                    <p className="font-mono text-sm font-medium">REDLAVA_PHONE_ID</p>
-                  </div>
-                  <Badge variant="outline" className="text-emerald-600 border-emerald-300 bg-emerald-50">✓ Set</Badge>
-                </div>
-              </div>
-              {showCredsInfo && (
-                <div className="p-4 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-800 space-y-2">
-                  <p className="font-semibold">How to update credentials:</p>
-                  <ol className="list-decimal ml-4 space-y-1 text-sm">
-                    <li>Go to your <strong>Base44 App Dashboard</strong></li>
-                    <li>Navigate to <strong>Code → Secrets</strong></li>
-                    <li>Update the value for <code className="bg-amber-100 px-1 rounded font-mono">REDLAVA_API_KEY</code> and/or <code className="bg-amber-100 px-1 rounded font-mono">REDLAVA_PHONE_ID</code></li>
-                    <li>Save — changes take effect immediately on the next function call</li>
-                  </ol>
-                  <p className="text-xs text-amber-600 mt-1">Secrets are stored server-side and never exposed to the browser for security.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
 
           {/* Template Test */}
           <Card className="mt-4">
