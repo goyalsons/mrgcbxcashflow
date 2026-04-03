@@ -57,7 +57,7 @@ Deno.serve(async (req) => {
     if (res.ok && data.status === 'success') {
       return Response.json({ success: true, messageId: data.messageId, timestamp: data.timestamp });
     } else {
-      return Response.json({ success: false, error: data?.message || 'Failed to send message' }, { status: 400 });
+      return Response.json({ success: false, error: data?.message || data?.error || `RedLava error (${res.status})` });
     }
   }
 
