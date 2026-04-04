@@ -14,15 +14,52 @@ import { useNavigate } from 'react-router-dom';
 
 function parseIndianDate(str) {
   if (!str) return null;
+  // DD/MM/YYYY
   const match = str.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
   if (match) return `${match[3]}-${match[2].padStart(2,'0')}-${match[1].padStart(2,'0')}`;
-  if (str.match(/\d{4}-\d{2}-\d{2}/)) return str;
+  // YYYY-MM-DD (with optional time)
+  const isoMatch = str.match(/(\d{4}-\d{2}-\d{2})/);
+  if (isoMatch) return isoMatch[1];
+  // D-Mon-YY or D-Mon-YYYY (Tally format: 1-Apr-25)
+  const tallyMatch = str.match(/(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-?(\d{2,4})/i);
+  if (tallyMatch) {
+    const months = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
+    const year = tallyMatch[3].length === 2 ? '20' + tallyMatch[3] : tallyMatch[3];
+    return `${year}-${months[tallyMatch[2].toLowerCase()]}-${tallyMatch[1].padStart(2,'0')}`;
+  }
   return str;
 }
 
 function parseIndianAmount(str) {
   if (!str) return 0;
   return parseFloat(str.replace(/[₹,\s]/g, '')) || 0;
+}
+
+function parseTallyCSV(text) {
+  const lines = text.trim().split('\n');
+  // Find the line that contains 'Date' and 'Party' — that's the real header
+  let headerIdx = lines.findIndex(l => /date/i.test(l) && /party/i.test(l));
+  if (headerIdx < 0) headerIdx = 0;
+  const rawHeaders = lines[headerIdx].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  // The next line may have sub-headers (e.g. 'Amount', 'by days') — merge them
+  const subHeaders = lines[headerIdx + 1] ? lines[headerIdx + 1].split(',').map(h => h.trim().replace(/^"|"$/g, '')) : [];
+  const headers = rawHeaders.map((h, i) => {
+    const sub = subHeaders[i];
+    const combined = sub && !/^(date|ref|party|due|overdue|pending)/i.test(sub) ? `${h} ${sub}`.trim() : h;
+    return combined.toLowerCase().replace(/["'\s\.]+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/__+/g, '_');
+  });
+  const dataStart = subHeaders.some(s => s.trim()) ? headerIdx + 2 : headerIdx + 1;
+  const rows = lines.slice(dataStart).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const row = {};
+    headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+    return row;
+  }).filter(r => {
+    // Skip empty rows and totals (where Party name is empty or numeric)
+    const name = r['party_s_name'] || r['partys_name'] || r['party_name'] || r['party'] || '';
+    return name.trim() && !/^\d+(\.\d+)?$/.test(name.trim());
+  });
+  return { headers, rows };
 }
 
 function parseCSV(text) {
@@ -164,6 +201,35 @@ const ENTITY_CONFIGS = {
       return existing.length > 0;
     },
   },
+  tally_receivable: {
+    label: 'Tally Bills Receivable',
+    entity: 'Receivable',
+    fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
+    required: ["Party's Name", 'Pending Amount'],
+    sampleData: [
+      ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
+      ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
+      ['01/01/2025', 'TDS-001', 'Global Exports Inc', '12500.50', '31/03/2025', '50'],
+    ],
+    transform: (row) => {
+      // Handle both CSV-header-mapped keys and Tally's raw column names
+      const customerName = row["party's_name"] || row.partys_name || row["party_s_name"] || row.party_name || row.party || '';
+      const amount = parseIndianAmount(row['pending_amount'] || row.pending || row.amount || '0');
+      const dueDate = parseIndianDate(row['due_on'] || row.due_date || row.date || '');
+      const invoiceDate = parseIndianDate(row['date'] || '');
+      const invoiceNumber = row['ref__no_'] || row['ref_no'] || row['ref._no.'] || row.ref_no_ || row.invoice_number || '';
+      return {
+        customer_name: customerName,
+        invoice_number: invoiceNumber,
+        amount,
+        amount_received: 0,
+        due_date: dueDate,
+        invoice_date: invoiceDate,
+        status: 'pending',
+        notes: row['overdue_by_days'] ? `Overdue by ${row['overdue_by_days']} days` : '',
+      };
+    },
+  },
 };
 
 const PAGE_MAP = {
@@ -173,6 +239,7 @@ const PAGE_MAP = {
   bank_account: '/bank-accounts',
   customer: '/customers',
   vendor: '/vendors',
+  tally_receivable: '/receivables',
 };
 
 export default function CSVImport() {
@@ -183,6 +250,7 @@ export default function CSVImport() {
 
   const urlParams = new URLSearchParams(window.location.search);
   const defaultType = urlParams.get('type') || 'debtor';
+
 
   const [entityType, setEntityType] = useState(ENTITY_CONFIGS[defaultType] ? defaultType : 'debtor');
   const [file, setFile] = useState(null);
@@ -199,7 +267,8 @@ export default function CSVImport() {
     setResults(null);
     const reader = new FileReader();
     reader.onload = (ev) => {
-      const { rows } = parseCSV(ev.target.result);
+      const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
+      const { rows } = parser(ev.target.result);
       const transformed = rows.map(row => {
         const data = config.transform(row);
         const missing = config.required.filter(k => !data[k]);
@@ -290,7 +359,7 @@ export default function CSVImport() {
                 <p className="font-medium">Expected columns for {config.label}:</p>
                 <p className="text-muted-foreground">{config.fields.join(', ')}</p>
                 <p className="text-muted-foreground">Required: <span className="text-red-600">{config.required.join(', ')}</span></p>
-                <p className="text-muted-foreground">Dates: DD/MM/YYYY or YYYY-MM-DD</p>
+                <p className="text-muted-foreground">Dates: DD/MM/YYYY, YYYY-MM-DD, or Tally (1-Apr-25)</p>
                 <p className="text-muted-foreground">Amounts: ₹1,23,456 or 123456</p>
                 <Button onClick={downloadSampleCSV} variant="outline" size="sm" className="w-full gap-2 mt-2">
                   <Download className="w-3.5 h-3.5" /> Download Sample CSV
