@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, ChevronUp, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -23,6 +23,8 @@ export default function Payables() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
+  const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -63,6 +65,30 @@ export default function Payables() {
       return matchSearch && matchStatus && matchCategory;
     });
   }, [payables, search, filterStatus, filterCategory]);
+
+  const sortedFiltered = useMemo(() => {
+    if (!sortConfig.key) return filtered;
+    return [...filtered].sort((a, b) => {
+      const av = a[sortConfig.key], bv = b[sortConfig.key];
+      const c = typeof av === 'number' ? av - bv : String(av||'').localeCompare(String(bv||''));
+      return sortConfig.dir === 'asc' ? c : -c;
+    });
+  }, [filtered, sortConfig]);
+
+  function getISOWeek(dateStr) {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr);
+    d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const w1 = new Date(d.getFullYear(), 0, 4);
+    return `W${1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7)}`;
+  }
+  function getDueMonth(dateStr) {
+    if (!dateStr) return '—';
+    return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  }
+
+  const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   return (
     <div className="space-y-6">
@@ -112,6 +138,17 @@ export default function Payables() {
         </Select>
       </div>
 
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium text-primary">{selectedIds.size} payable{selectedIds.size > 1 ? 's' : ''} selected</span>
+          <Button size="sm" className="gap-1.5 h-7" onClick={async () => { for (const id of selectedIds) await updateMut.mutateAsync({ id, data: { status: 'paid', amount_paid: payables.find(p => p.id === id)?.amount || 0 } }); setSelectedIds(new Set()); toast({ title: 'Marked as paid' }); }}>Mark as Paid</Button>
+          <Button size="sm" variant="destructive" className="gap-1.5 h-7" onClick={async () => { if (!confirm(`Delete ${selectedIds.size} payables?`)) return; for (const id of selectedIds) await deleteMut.mutateAsync(id); setSelectedIds(new Set()); }}>
+            <Trash2 className="w-3.5 h-3.5" /> Delete
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+        </div>
+      )}
+
       <Card>
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
@@ -120,41 +157,45 @@ export default function Payables() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">No results match your filters</div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-auto">
             <Table>
-              <TableHeader>
+              <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
                 <TableRow>
-                  <TableHead>Bill #</TableHead>
-                  <TableHead>Vendor</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="text-right">Paid</TableHead>
-                  <TableHead className="text-right">Balance</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="w-12"></TableHead>
+                  <TableHead className="w-10 px-2">
+                    <input type="checkbox" checked={sortedFiltered.length > 0 && sortedFiltered.every(p => selectedIds.has(p.id))} onChange={() => { const allSel = sortedFiltered.every(p => selectedIds.has(p.id)); setSelectedIds(prev => { const n = new Set(prev); sortedFiltered.forEach(p => allSel ? n.delete(p.id) : n.add(p.id)); return n; }); }} className="rounded border-input w-4 h-4 cursor-pointer" />
+                  </TableHead>
+                  {[['bill_number','Bill #'],['vendor_name','Vendor'],['category','Category'],['amount','Amount'],['amount_paid','Paid'],['','Balance'],['due_date','Due Date'],['','Due Week'],['','Due Month'],['status','Status'],['','']].map(([col, label]) => col ? (
+                    <TableHead key={col+label} className="cursor-pointer select-none whitespace-nowrap" onClick={() => col && setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}>
+                      <span className="inline-flex items-center gap-1">{label}{sortConfig.key === col ? (sortConfig.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-20" />}</span>
+                    </TableHead>
+                  ) : <TableHead key={label}>{label}</TableHead>)}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((p) => {
+                {sortedFiltered.map((p) => {
                   const balance = (p.amount || 0) - (p.amount_paid || 0);
-                  const days = daysUntilDue(p.due_date);
+                  const days = (() => { if (!p.due_date) return null; return Math.floor((new Date(p.due_date) - new Date()) / 86400000); })();
                   return (
                     <TableRow key={p.id} className="group">
+                      <TableCell className="px-2" onClick={e => e.stopPropagation()}>
+                        <input type="checkbox" checked={selectedIds.has(p.id)} onChange={() => toggleSelect(p.id)} className="rounded border-input w-4 h-4 cursor-pointer" />
+                      </TableCell>
                       <TableCell className="font-medium">{p.bill_number || '-'}</TableCell>
                       <TableCell>{p.vendor_name}</TableCell>
                       <TableCell className="capitalize text-muted-foreground text-sm">{p.category?.replace(/_/g, ' ') || '-'}</TableCell>
-                      <TableCell className="text-right font-medium">{formatINR(p.amount)}</TableCell>
-                      <TableCell className="text-right text-emerald-600">{formatINR(p.amount_paid)}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
+                      <TableCell className="text-right font-medium">{(p.amount||0).toLocaleString('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0})}</TableCell>
+                      <TableCell className="text-right text-emerald-600">{(p.amount_paid||0).toLocaleString('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0})}</TableCell>
+                      <TableCell className="text-right font-semibold">{balance.toLocaleString('en-IN', {style:'currency',currency:'INR',maximumFractionDigits:0})}</TableCell>
                       <TableCell>
                         <div>
-                          <span className="text-sm">{formatDateIN(p.due_date)}</span>
+                          <span className="text-sm">{p.due_date ? new Date(p.due_date).toLocaleDateString('en-IN') : '—'}</span>
                           {days !== null && days < 0 && p.status !== 'paid' && (
-                            <span className="block text-xs text-red-500">{Math.abs(days)} days overdue</span>
+                            <span className="block text-xs text-red-500">{Math.abs(days)}d overdue</span>
                           )}
                         </div>
                       </TableCell>
+                      <TableCell><span className="text-xs text-muted-foreground">{getISOWeek(p.due_date)}</span></TableCell>
+                      <TableCell><span className="text-xs text-muted-foreground whitespace-nowrap">{getDueMonth(p.due_date)}</span></TableCell>
                       <TableCell><StatusBadge status={p.status} /></TableCell>
                       <TableCell>
                         <DropdownMenu>
