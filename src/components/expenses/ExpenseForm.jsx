@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { Paperclip, X, Loader2, FileText, AlertTriangle } from 'lucide-react';
 
@@ -66,7 +65,7 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
 
   useEffect(() => {
     if (editData) setForm({ ...EMPTY, ...editData, amount: editData.amount || '' });
-    else setForm(EMPTY);
+    else setForm({ ...EMPTY, recurrence_type: forceRecurring ? 'monthly' : 'none' });
   }, [editData, open]);
 
   const amount = Number(form.amount) || 0;
@@ -195,7 +194,6 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
               <Select
                 value={form.recurrence_type || 'none'}
                 onValueChange={v => setForm(f => ({ ...f, recurrence_type: v }))}
-                disabled={!!editData && !forceRecurring}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -238,9 +236,6 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
           </div>
         </form>
       </DialogContent>
-    </Dialog>
-  );
-}
     </Dialog>
   );
 }
