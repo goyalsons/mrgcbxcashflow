@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import BalanceForm from '@/components/bank/BalanceForm';
@@ -25,6 +26,7 @@ const ASSET_TYPE_LABELS = {
 };
 
 export default function BankAccounts() {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showAssetForm, setShowAssetForm] = useState(false);
@@ -113,7 +115,11 @@ export default function BankAccounts() {
         subtitle="Track balances across bank accounts, cash, and other financial assets"
         actionLabel="Add Balance Snapshot"
         onAction={() => { setEditing(null); setShowForm(true); }}
-      />
+      >
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=bank_account')}>
+          <Upload className="w-4 h-4" /> Bulk Import
+        </Button>
+      </PageHeader>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

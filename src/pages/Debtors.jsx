@@ -212,7 +212,7 @@ export default function Debtors() {
         actionLabel="New Debtor"
         onAction={() => { setEditingDebtor(null); setShowForm(true); }}
       >
-        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-sm" onClick={() => navigate('/csv-import')}>
+        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-sm" onClick={() => navigate('/csv-import?type=debtor')}>
           📥 Bulk CSV Import
         </Button>
       </PageHeader>

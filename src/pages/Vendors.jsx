@@ -6,13 +6,15 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import ContactForm from '@/components/contacts/ContactForm';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Vendors() {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
@@ -55,7 +57,11 @@ export default function Vendors() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Vendors" subtitle={`${vendors.length} vendors`} actionLabel="Add Vendor" onAction={() => { setEditing(null); setShowForm(true); }} />
+      <PageHeader title="Vendors" subtitle={`${vendors.length} vendors`} actionLabel="Add Vendor" onAction={() => { setEditing(null); setShowForm(true); }}>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=vendor')}>
+          <Upload className="w-4 h-4" /> Bulk Import
+        </Button>
+      </PageHeader>
 
       {/* Search */}
       <div className="relative max-w-sm">

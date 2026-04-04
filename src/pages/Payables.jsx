@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
@@ -16,6 +17,7 @@ import PayableForm from '@/components/payables/PayableForm';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function Payables() {
+  const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
@@ -69,7 +71,11 @@ export default function Payables() {
         subtitle={`Outstanding: ${formatINR(totalOutstanding)}`}
         actionLabel="New Payable"
         onAction={() => { setEditing(null); setShowForm(true); }}
-      />
+      >
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=payable')}>
+          <Upload className="w-4 h-4" /> Bulk Import
+        </Button>
+      </PageHeader>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-3">

@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, AlertTriangle, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, AlertTriangle, CheckCircle, Clock, XCircle, Upload } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
@@ -46,6 +47,7 @@ function ApprovalStatusBadge({ status }) {
 }
 
 export default function Expenses() {
+  const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
@@ -220,7 +222,11 @@ export default function Expenses() {
         subtitle="Track and manage business expenses"
         actionLabel="Add Expense"
         onAction={() => { setEditData(null); setShowForm(true); }}
-      />
+      >
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=expense')}>
+          <Upload className="w-4 h-4" /> Bulk Import
+        </Button>
+      </PageHeader>
 
       {isAdmin && pendingCount > 0 && (
         <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200">
