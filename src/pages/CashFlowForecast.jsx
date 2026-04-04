@@ -60,6 +60,8 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function CashFlowForecast() {
   const { data: receivables = [] } = useQuery({ queryKey: ['receivables'], queryFn: () => base44.entities.Receivable.list() });
+  const { data: invoices = [] } = useQuery({ queryKey: ['invoices'], queryFn: () => base44.entities.Invoice.list() });
+  const { data: collectionTargets = [] } = useQuery({ queryKey: ['collectionTargets'], queryFn: () => base44.entities.CollectionTarget.list() });
   const { data: payables = [] } = useQuery({ queryKey: ['payables'], queryFn: () => base44.entities.Payable.list() });
   const { data: expenses = [] } = useQuery({ queryKey: ['expenses'], queryFn: () => base44.entities.Expense.list() });
   const { data: bankAccounts = [] } = useQuery({ queryKey: ['bankAccounts'], queryFn: () => base44.entities.BankAccount.list() });
@@ -90,10 +92,32 @@ export default function CashFlowForecast() {
       return row;
     });
 
+    // Source 1: Receivables
     receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off').forEach(r => {
       const due = new Date(r.due_date);
       const w = weeks.find(w => due >= w.start && due <= w.end);
       if (w) w.inflow += (r.amount || 0) - (r.amount_received || 0);
+    });
+
+    // Source 2: Outstanding Invoices (debtor system)
+    invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'written_off').forEach(inv => {
+      const due = new Date(inv.due_date);
+      const w = weeks.find(w => due >= w.start && due <= w.end);
+      if (w) w.inflow += (inv.amount || 0) - (inv.amount_paid || 0);
+    });
+
+    // Source 3: Collection Targets — spread target (minus collected) evenly across weeks in that month
+    collectionTargets.forEach(ct => {
+      const remaining = (ct.target_amount || 0) - (ct.collected_amount || 0);
+      if (remaining <= 0) return;
+      // find weeks that fall in this target's month/year
+      const matchingWeeks = weeks.filter(w => {
+        return w.start.getMonth() + 1 === ct.period_month && w.start.getFullYear() === ct.period_year;
+      });
+      if (matchingWeeks.length > 0) {
+        const perWeek = remaining / matchingWeeks.length;
+        matchingWeeks.forEach(w => w.inflow += perWeek);
+      }
     });
 
     payables.filter(p => p.status !== 'paid').forEach(p => {
@@ -120,10 +144,27 @@ export default function CashFlowForecast() {
       const end = new Date(today.getFullYear(), today.getMonth() + i + 1, 0);
       return { start: d, end, label: monthLabel(d), inflow: 0, outflow: 0 };
     });
+
+    // Receivables
     receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off').forEach(r => {
       const due = new Date(r.due_date);
       const m = months.find(m => due >= m.start && due <= m.end);
       if (m) m.inflow += (r.amount || 0) - (r.amount_received || 0);
+    });
+
+    // Outstanding Invoices
+    invoices.filter(inv => inv.status !== 'paid' && inv.status !== 'written_off').forEach(inv => {
+      const due = new Date(inv.due_date);
+      const m = months.find(m => due >= m.start && due <= m.end);
+      if (m) m.inflow += (inv.amount || 0) - (inv.amount_paid || 0);
+    });
+
+    // Collection Targets
+    collectionTargets.forEach(ct => {
+      const remaining = (ct.target_amount || 0) - (ct.collected_amount || 0);
+      if (remaining <= 0) return;
+      const m = months.find(m => m.start.getMonth() + 1 === ct.period_month && m.start.getFullYear() === ct.period_year);
+      if (m) m.inflow += remaining;
     });
     payables.filter(p => p.status !== 'paid').forEach(p => {
       const due = new Date(p.due_date);
@@ -140,7 +181,7 @@ export default function CashFlowForecast() {
       running += net;
       return { ...m, inflow, outflow, net: fmt(net), closing: fmt(running) };
     });
-  }, [receivables, payables, expenses, openingBalance]);
+  }, [receivables, invoices, collectionTargets, payables, expenses, openingBalance]);
 
   const totalInflow12W = weeklyData.reduce((s, w) => s + w.inflow, 0);
   const totalOutflow12W = weeklyData.reduce((s, w) => s + w.outflow, 0);
