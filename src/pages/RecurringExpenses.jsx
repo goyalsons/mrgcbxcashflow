@@ -1,0 +1,308 @@
+import React, { useState, useMemo } from 'react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { base44 } from '@/api/base44Client';
+import { formatINR, formatDateIN } from '@/lib/utils/currency';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, Trash2, CheckCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
+import PageHeader from '@/components/shared/PageHeader';
+import ExpenseForm from '@/components/expenses/ExpenseForm';
+
+const RECURRENCE_LABELS = {
+  daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', custom: 'Custom',
+};
+
+const CATEGORY_LABELS = {
+  travel: 'Travel', office_supplies: 'Office Supplies', meals: 'Meals',
+  utilities: 'Utilities', rent: 'Rent', salary: 'Salary',
+  marketing: 'Marketing', software: 'Software', maintenance: 'Maintenance',
+  miscellaneous: 'Miscellaneous',
+};
+
+function loadApprovalThreshold() {
+  try {
+    const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+    return Number(s.approvalThreshold) || 0;
+  } catch { return 0; }
+}
+
+export default function RecurringExpenses() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [generating, setGenerating] = useState(false);
+  const approvalThreshold = loadApprovalThreshold();
+
+  const { data: currentUser } = useQuery({ queryKey: ['me'], queryFn: () => base44.auth.me() });
+
+  const { data: allExpenses = [], isLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: () => base44.entities.Expense.list('-expense_date'),
+  });
+
+  // Templates: recurring parent records
+  const templates = useMemo(() =>
+    allExpenses.filter(e => e.recurrence_type && e.recurrence_type !== 'none' && !e.parent_expense_id),
+    [allExpenses]
+  );
+
+  // Generated instances
+  const instances = useMemo(() =>
+    allExpenses.filter(e => !!e.parent_expense_id).sort((a, b) => a.expense_date.localeCompare(b.expense_date)),
+    [allExpenses]
+  );
+
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Expense.update(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id) => base44.entities.Expense.delete(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['expenses'] }),
+  });
+
+  const createMut = useMutation({
+    mutationFn: (data) => base44.entities.Expense.create(data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['expenses'] }); setShowForm(false); },
+  });
+
+  const handleSave = async (form) => {
+    if (editData) {
+      await updateMut.mutateAsync({ id: editData.id, data: form });
+      toast({ title: 'Template updated' });
+      setShowForm(false); setEditData(null);
+    } else {
+      const data = {
+        ...form,
+        approval_status: 'not_required',
+        submitted_by: currentUser?.email || '',
+        submitted_by_name: currentUser?.full_name || '',
+        recurrence_start_date: form.recurrence_start_date || form.expense_date,
+      };
+      await createMut.mutateAsync(data);
+      toast({ title: 'Recurring expense created' });
+    }
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    if (!confirm('Delete this template? All future generated instances will also be deleted.')) return;
+    // Delete all generated instances first
+    const children = instances.filter(i => i.parent_expense_id === id);
+    await Promise.all(children.map(c => deleteMut.mutateAsync(c.id)));
+    await deleteMut.mutateAsync(id);
+    toast({ title: 'Template deleted' });
+  };
+
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (list) => {
+    if (list.every(e => selectedIds.has(e.id))) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(list.map(e => e.id)));
+    }
+  };
+
+  const markSelectedPaid = async () => {
+    const ids = Array.from(selectedIds);
+    await Promise.all(ids.map(id => updateMut.mutateAsync({ id, data: { payment_mode: 'bank_transfer', approval_status: 'not_required' } })));
+    toast({ title: `${ids.length} expense(s) marked as paid` });
+    setSelectedIds(new Set());
+  };
+
+  const deleteSelected = async () => {
+    if (!confirm(`Delete ${selectedIds.size} selected expense(s)?`)) return;
+    const ids = Array.from(selectedIds);
+    await Promise.all(ids.map(id => deleteMut.mutateAsync(id)));
+    toast({ title: `${ids.length} expense(s) deleted` });
+    setSelectedIds(new Set());
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    const res = await base44.functions.invoke('generateRecurringExpenses', {});
+    queryClient.invalidateQueries({ queryKey: ['expenses'] });
+    toast({ title: `Generated ${res.data.instances_created} new expense(s)` });
+    setGenerating(false);
+  };
+
+  if (isLoading) return <div className="flex justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>;
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title="Recurring Expenses"
+        subtitle="Manage recurring expense templates and generated entries"
+        actionLabel="New Template"
+        onAction={() => { setEditData(null); setShowForm(true); }}
+      />
+
+      <div className="flex items-center gap-3">
+        <Button variant="outline" onClick={handleGenerate} disabled={generating} className="gap-2">
+          {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+          Generate Now
+        </Button>
+        <span className="text-xs text-muted-foreground">Generates up to 6 months of future entries</span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Active Templates</p>
+          <p className="text-xl font-bold mt-1">{templates.length}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Generated Entries</p>
+          <p className="text-xl font-bold mt-1">{instances.length}</p>
+        </Card>
+        <Card className="p-4">
+          <p className="text-xs text-muted-foreground">Total Forecast Value</p>
+          <p className="text-xl font-bold mt-1">{formatINR(instances.reduce((s, e) => s + (e.amount || 0), 0))}</p>
+        </Card>
+      </div>
+
+      <Tabs defaultValue="templates">
+        <TabsList>
+          <TabsTrigger value="templates">Templates ({templates.length})</TabsTrigger>
+          <TabsTrigger value="instances">Generated Entries ({instances.length})</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="templates" className="mt-4">
+          <Card>
+            <CardContent className="p-0">
+              {templates.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">No recurring templates. Create one to get started.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Frequency</TableHead>
+                      <TableHead>End Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {templates.map(t => (
+                      <TableRow key={t.id}>
+                        <TableCell className="font-medium">{t.description}</TableCell>
+                        <TableCell><Badge variant="outline" className="text-xs">{CATEGORY_LABELS[t.category] || t.category}</Badge></TableCell>
+                        <TableCell className="font-semibold">{formatINR(t.amount)}</TableCell>
+                        <TableCell>
+                          <Badge className="bg-blue-100 text-blue-800 text-xs">
+                            {RECURRENCE_LABELS[t.recurrence_type]}
+                            {t.recurrence_type === 'custom' && t.recurrence_interval ? ` (every ${t.recurrence_interval} ${t.recurrence_unit}s)` : ''}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{t.recurrence_end_date ? formatDateIN(t.recurrence_end_date) : 'No end'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => { setEditData(t); setShowForm(true); }}>Edit</Button>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={() => handleDeleteTemplate(t.id)}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="instances" className="mt-4">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <span className="text-sm text-blue-700 font-medium">{selectedIds.size} selected</span>
+              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={markSelectedPaid}>
+                <CheckCircle className="w-3.5 h-3.5" /> Mark Paid
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs border-red-300 text-destructive hover:bg-red-50" onClick={deleteSelected}>
+                <Trash2 className="w-3.5 h-3.5" /> Delete
+              </Button>
+              <Button size="sm" variant="ghost" className="h-7 text-xs ml-auto" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+            </div>
+          )}
+          <Card>
+            <CardContent className="p-0">
+              {instances.length === 0 ? (
+                <div className="text-center py-10 text-muted-foreground text-sm">No generated entries yet. Click "Generate Now" to create them.</div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={instances.length > 0 && instances.every(e => selectedIds.has(e.id))}
+                          onCheckedChange={() => toggleAll(instances)}
+                        />
+                      </TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {instances.map(e => {
+                      const isPast = e.expense_date <= new Date().toISOString().split('T')[0];
+                      return (
+                        <TableRow key={e.id} className={selectedIds.has(e.id) ? 'bg-blue-50' : ''}>
+                          <TableCell>
+                            <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
+                          </TableCell>
+                          <TableCell className="font-medium">{e.description}</TableCell>
+                          <TableCell><Badge variant="outline" className="text-xs">{CATEGORY_LABELS[e.category] || e.category}</Badge></TableCell>
+                          <TableCell className="font-semibold">{formatINR(e.amount)}</TableCell>
+                          <TableCell>
+                            <span className={`text-sm ${isPast ? 'text-amber-600 font-medium' : 'text-muted-foreground'}`}>
+                              {formatDateIN(e.expense_date)}
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={async () => {
+                              if (confirm('Delete this entry?')) { await deleteMut.mutateAsync(e.id); toast({ title: 'Deleted' }); }
+                            }}>
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <ExpenseForm
+        open={showForm}
+        onClose={() => { setShowForm(false); setEditData(null); }}
+        onSave={handleSave}
+        editData={editData}
+        approvalThreshold={approvalThreshold}
+        forceRecurring
+      />
+    </div>
+  );
+}

@@ -31,16 +31,34 @@ const PAYMENT_MODES = [
   { value: 'cheque', label: 'Cheque' },
 ];
 
+const RECURRENCE_TYPES = [
+  { value: 'none', label: 'No Recurrence' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'custom', label: 'Custom' },
+];
+
+const RECURRENCE_UNITS = [
+  { value: 'day', label: 'Day(s)' },
+  { value: 'week', label: 'Week(s)' },
+  { value: 'month', label: 'Month(s)' },
+  { value: 'year', label: 'Year(s)' },
+];
+
 const EMPTY = {
   description: '', amount: '', expense_date: '', category: '',
   payment_mode: '', notes: '', receipt_url: '',
+  recurrence_type: 'none', recurrence_interval: 1, recurrence_unit: 'month',
+  recurrence_start_date: '', recurrence_end_date: '',
 };
 
 function isImageUrl(url) {
   return url && /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 }
 
-export default function ExpenseForm({ open, onClose, onSave, editData, approvalThreshold }) {
+export default function ExpenseForm({ open, onClose, onSave, editData, approvalThreshold, forceRecurring }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -170,6 +188,48 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
             </div>
           )}
 
+          {/* Recurrence */}
+          <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+            <div className="space-y-1.5">
+              <Label>Recurrence</Label>
+              <Select
+                value={form.recurrence_type || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, recurrence_type: v }))}
+                disabled={!!editData && !forceRecurring}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(forceRecurring ? RECURRENCE_TYPES.filter(r => r.value !== 'none') : RECURRENCE_TYPES).map(r => (
+                    <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {form.recurrence_type && form.recurrence_type !== 'none' && (
+              <>
+                {form.recurrence_type === 'custom' && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label>Every</Label>
+                      <Input type="number" min="1" value={form.recurrence_interval} onChange={e => setForm(f => ({...f, recurrence_interval: Number(e.target.value)}))} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Unit</Label>
+                      <Select value={form.recurrence_unit} onValueChange={v => setForm(f => ({...f, recurrence_unit: v}))}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>{RECURRENCE_UNITS.map(u => <SelectItem key={u.value} value={u.value}>{u.label}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1.5">
+                  <Label>End Date (optional)</Label>
+                  <Input type="date" value={form.recurrence_end_date} onChange={e => setForm(f => ({...f, recurrence_end_date: e.target.value}))} />
+                </div>
+              </>
+            )}
+          </div>
+
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={saving || uploading}>
@@ -178,6 +238,9 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
           </div>
         </form>
       </DialogContent>
+    </Dialog>
+  );
+}
     </Dialog>
   );
 }

@@ -94,6 +94,53 @@
     "notes": {
       "type": "string",
       "description": "Additional notes"
+    },
+    "recurrence_type": {
+      "type": "string",
+      "enum": [
+        "none",
+        "daily",
+        "weekly",
+        "monthly",
+        "quarterly",
+        "custom"
+      ],
+      "default": "none",
+      "description": "Recurrence frequency type"
+    },
+    "recurrence_interval": {
+      "type": "number",
+      "default": 1,
+      "description": "Interval count for custom recurrence"
+    },
+    "recurrence_unit": {
+      "type": "string",
+      "enum": [
+        "day",
+        "week",
+        "month",
+        "year"
+      ],
+      "description": "Unit for custom recurrence interval"
+    },
+    "recurrence_start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When recurrence begins"
+    },
+    "recurrence_end_date": {
+      "type": "string",
+      "format": "date",
+      "description": "When recurrence ends (optional)"
+    },
+    "last_generated_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Last date up to which instances were generated"
+    },
+    "parent_expense_id": {
+      "type": "string",
+      "description": "ID of parent recurring expense template"
     }
   },
   "required": [

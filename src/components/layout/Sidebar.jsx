@@ -41,6 +41,7 @@ const NAV_GROUPS = [
       { key: 'debtors', label: 'Receivables (Debtors)', path: '/debtors', icon: 'ArrowDownLeft' },
       { key: 'payables', label: 'Payables (Suppliers)', path: '/payables', icon: 'ArrowUpRight' },
       { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },
+      { key: 'recurring_expenses', label: 'Recurring Expenses', path: '/recurring-expenses', icon: 'CalendarClock' },
       { key: 'bank_accounts', label: 'Balances', path: '/bank-accounts', icon: 'Landmark' },
     ],
   },
