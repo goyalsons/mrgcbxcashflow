@@ -213,14 +213,14 @@ export default function Debtors() {
     const allSel = sorted.length > 0 && sorted.every(d => selectedIds.has(d.id));
     const SortHead = ({ col, label, className = '' }) => (
       <TableHead
-        className={`cursor-pointer select-none whitespace-nowrap bg-card ${className}`}
+        className={`cursor-pointer select-none whitespace-nowrap sticky top-0 bg-card z-10 shadow-sm ${className}`}
         onClick={() => setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}
       >
         <span className="inline-flex items-center gap-1">
           {label}
-          {sortConfig.key === col
-            ? (sortConfig.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)
-            : <ChevronDown className="w-3 h-3 opacity-20" />}
+          <span className={`transition-opacity ${sortConfig.key === col ? 'opacity-100 text-primary' : 'opacity-30'}`}>
+            {sortConfig.key === col && sortConfig.dir === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+          </span>
         </span>
       </TableHead>
     );
@@ -229,8 +229,8 @@ export default function Debtors() {
         <div className="overflow-auto max-h-[60vh]">
           <Table>
             <TableHeader>
-              <TableRow className="sticky top-0 z-10 bg-card shadow-sm">
-                <TableHead className="w-10 px-2 bg-card">
+              <TableRow>
+                <TableHead className="w-10 px-2 sticky top-0 bg-card z-10 shadow-sm">
                   <input
                     type="checkbox"
                     checked={allSel}
@@ -243,18 +243,18 @@ export default function Debtors() {
                   />
                 </TableHead>
                 <SortHead col="name" label="Name" />
-                <TableHead className="bg-card">Contact</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Contact</TableHead>
                 <SortHead col="total_invoiced" label="Invoiced" className="text-right" />
                 <SortHead col="total_received" label="Received" className="text-right" />
                 <SortHead col="total_outstanding" label="Outstanding" className="text-right" />
-                <TableHead className="bg-card">Progress</TableHead>
-                <TableHead className="bg-card">Status</TableHead>
-                <TableHead className="bg-card">Credit</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Progress</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Status</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Credit</TableHead>
                 <SortHead col="assigned_manager" label="Manager" />
                 <SortHead col="nextDueDate" label="Due Date" />
-                <TableHead className="bg-card">Due Week</TableHead>
-                <TableHead className="bg-card">Due Month</TableHead>
-                <TableHead className="bg-card">Actions</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Due Week</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Due Month</TableHead>
+                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

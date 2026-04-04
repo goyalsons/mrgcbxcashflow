@@ -164,11 +164,11 @@ export default function Payables() {
                   <TableHead className="w-10 px-2">
                     <input type="checkbox" checked={sortedFiltered.length > 0 && sortedFiltered.every(p => selectedIds.has(p.id))} onChange={() => { const allSel = sortedFiltered.every(p => selectedIds.has(p.id)); setSelectedIds(prev => { const n = new Set(prev); sortedFiltered.forEach(p => allSel ? n.delete(p.id) : n.add(p.id)); return n; }); }} className="rounded border-input w-4 h-4 cursor-pointer" />
                   </TableHead>
-                  {[['bill_number','Bill #'],['vendor_name','Vendor'],['category','Category'],['amount','Amount'],['amount_paid','Paid'],['','Balance'],['due_date','Due Date'],['','Due Week'],['','Due Month'],['status','Status'],['','']].map(([col, label]) => col ? (
-                    <TableHead key={col+label} className="cursor-pointer select-none whitespace-nowrap" onClick={() => col && setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}>
-                      <span className="inline-flex items-center gap-1">{label}{sortConfig.key === col ? (sortConfig.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />) : <ChevronDown className="w-3 h-3 opacity-20" />}</span>
+                  {[['bill_number','Bill #'],['vendor_name','Vendor'],['category','Category'],['amount','Amount'],['amount_paid','Paid'],['','Balance'],['due_date','Due Date'],['','Due Week'],['','Due Month'],['status','Status'],['','Actions']].map(([col, label]) => col ? (
+                    <TableHead key={col+label} className="cursor-pointer select-none whitespace-nowrap sticky top-0 bg-card z-10 shadow-sm" onClick={() => col && setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}>
+                      <span className="inline-flex items-center gap-1">{label}<span className={sortConfig.key === col ? 'opacity-100 text-primary' : 'opacity-30'}>{sortConfig.key === col && sortConfig.dir === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}</span></span>
                     </TableHead>
-                  ) : <TableHead key={label}>{label}</TableHead>)}
+                  ) : <TableHead key={label} className="sticky top-0 bg-card z-10 shadow-sm">{label}</TableHead>)}
                 </TableRow>
               </TableHeader>
               <TableBody>
