@@ -35,31 +35,53 @@ function parseIndianAmount(str) {
   return parseFloat(str.replace(/[₹,\s]/g, '')) || 0;
 }
 
+function normKey(s) {
+  return s.toLowerCase().replace(/["'\s\.]+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
 function parseTallyCSV(text) {
-  const lines = text.trim().split('\n');
-  // Find the line that contains 'Date' and 'Party' — that's the real header
+  // Split into lines, handling both \r\n and \n
+  const lines = text.trim().split(/\r?\n/);
+
+  // Find the header line: must contain 'date' AND 'party' (case-insensitive)
   let headerIdx = lines.findIndex(l => /date/i.test(l) && /party/i.test(l));
   if (headerIdx < 0) headerIdx = 0;
-  const rawHeaders = lines[headerIdx].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  // The next line may have sub-headers (e.g. 'Amount', 'by days') — merge them
-  const subHeaders = lines[headerIdx + 1] ? lines[headerIdx + 1].split(',').map(h => h.trim().replace(/^"|"$/g, '')) : [];
-  const headers = rawHeaders.map((h, i) => {
-    const sub = subHeaders[i];
-    const combined = sub && !/^(date|ref|party|due|overdue|pending)/i.test(sub) ? `${h} ${sub}`.trim() : h;
-    return combined.toLowerCase().replace(/["'\s\.]+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/__+/g, '_');
+
+  // Parse raw headers and sub-headers
+  const splitLine = (l) => l.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+  const rawHeaders = splitLine(lines[headerIdx]);
+  const nextLine = lines[headerIdx + 1] ? splitLine(lines[headerIdx + 1]) : [];
+
+  // Build merged column names: if sub-header cell is non-empty and doesn't start a new column, append it
+  const MAIN_HEADER_WORDS = /^(date|ref|party|due|overdue|pending)/i;
+  const mergedHeaders = rawHeaders.map((h, i) => {
+    const sub = nextLine[i] || '';
+    // If sub cell has content and it's not a new main header, merge
+    if (sub && !MAIN_HEADER_WORDS.test(sub) && !MAIN_HEADER_WORDS.test(h.trim())) {
+      return normKey(`${h} ${sub}`);
+    }
+    if (sub && h.trim() && !MAIN_HEADER_WORDS.test(sub)) {
+      return normKey(`${h} ${sub}`);
+    }
+    return normKey(h);
   });
-  const dataStart = subHeaders.some(s => s.trim()) ? headerIdx + 2 : headerIdx + 1;
+
+  // Data starts after header + possible sub-header row
+  const hasSubHeader = nextLine.some(s => s.trim() && !MAIN_HEADER_WORDS.test(s));
+  const dataStart = hasSubHeader ? headerIdx + 2 : headerIdx + 1;
+
   const rows = lines.slice(dataStart).map(line => {
-    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+    const vals = splitLine(line);
     const row = {};
-    headers.forEach((h, i) => { row[h] = vals[i] || ''; });
+    mergedHeaders.forEach((h, i) => { row[h] = vals[i] || ''; });
     return row;
   }).filter(r => {
-    // Skip empty rows and totals (where Party name is empty or numeric)
-    const name = r['party_s_name'] || r['partys_name'] || r['party_name'] || r['party'] || '';
-    return name.trim() && !/^\d+(\.\d+)?$/.test(name.trim());
+    // Must have a non-empty, non-numeric party name
+    const name = r['partys_name'] || r['party_name'] || r['party'] || '';
+    return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
   });
-  return { headers, rows };
+
+  return { headers: mergedHeaders, rows };
 }
 
 function parseCSV(text) {
@@ -212,21 +234,23 @@ const ENTITY_CONFIGS = {
       ['01/01/2025', 'TDS-001', 'Global Exports Inc', '12500.50', '31/03/2025', '50'],
     ],
     transform: (row) => {
-      // Handle both CSV-header-mapped keys and Tally's raw column names
-      const customerName = row["party's_name"] || row.partys_name || row["party_s_name"] || row.party_name || row.party || '';
-      const amount = parseIndianAmount(row['pending_amount'] || row.pending || row.amount || '0');
-      const dueDate = parseIndianDate(row['due_on'] || row.due_date || row.date || '');
+      // Keys after normKey(): party's name -> partys_name, ref. no. -> ref_no,
+      // pending amount -> pending_amount, due on -> due_on, overdue by days -> overdue_by_days
+      const customerName = row['partys_name'] || row['party_name'] || row['party'] || '';
+      const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
+      const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
-      const invoiceNumber = row['ref__no_'] || row['ref_no'] || row['ref._no.'] || row.ref_no_ || row.invoice_number || '';
+      const invoiceNumber = row['ref_no'] || row['refno'] || row['invoice_number'] || '';
+      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || '';
       return {
         customer_name: customerName,
         invoice_number: invoiceNumber,
         amount,
         amount_received: 0,
-        due_date: dueDate,
+        due_date: dueDate || invoiceDate,
         invoice_date: invoiceDate,
         status: 'pending',
-        notes: row['overdue_by_days'] ? `Overdue by ${row['overdue_by_days']} days` : '',
+        notes: overdueDays ? `Overdue by ${overdueDays} days` : '',
       };
     },
   },
