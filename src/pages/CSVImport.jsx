@@ -1,6 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import * as XLSX from 'xlsx';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -289,10 +290,10 @@ export default function CSVImport() {
     if (!f) return;
     setFile(f);
     setResults(null);
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
-      const { rows } = parser(ev.target.result);
+
+    const isXLSX = f.name.match(/\.xlsx?$/i);
+
+    const processRows = (rows) => {
       const transformed = rows.map(row => {
         const data = config.transform(row);
         const missing = config.required.filter(k => !data[k]);
@@ -300,7 +301,28 @@ export default function CSVImport() {
       });
       setPreview({ rows: transformed });
     };
-    reader.readAsText(f);
+
+    const reader = new FileReader();
+
+    if (isXLSX) {
+      reader.onload = (ev) => {
+        const workbook = XLSX.read(ev.target.result, { type: 'array' });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        // Convert to CSV string then use existing parsers
+        const csv = XLSX.utils.sheet_to_csv(sheet);
+        const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
+        const { rows } = parser(csv);
+        processRows(rows);
+      };
+      reader.readAsArrayBuffer(f);
+    } else {
+      reader.onload = (ev) => {
+        const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
+        const { rows } = parser(ev.target.result);
+        processRows(rows);
+      };
+      reader.readAsText(f);
+    }
   };
 
   const handleImport = async () => {
@@ -376,7 +398,7 @@ export default function CSVImport() {
                 <Upload className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
                 <p className="text-sm font-medium">{file ? file.name : 'Click to upload CSV'}</p>
                 <p className="text-xs text-muted-foreground mt-1">CSV format, max 5MB</p>
-                <input ref={fileRef} type="file" accept=".csv" className="hidden" onChange={handleFile} />
+                <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
               </div>
 
               <div className="p-3 rounded-lg bg-muted/40 text-xs space-y-2">
