@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, X, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import DebtorCard from '@/components/debtors/DebtorCard';
@@ -45,6 +45,8 @@ export default function Debtors() {
   const [filterDebtorStatus, setFilterDebtorStatus] = useState('all');
   const [filterDaysOverdue, setFilterDaysOverdue] = useState('all');
   const [viewMode, setViewMode] = useState('table');
+  const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const { data: debtors = [], isLoading } = useQuery({
     queryKey: ['debtors'],
@@ -54,6 +56,11 @@ export default function Debtors() {
   const { data: payments = [] } = useQuery({
     queryKey: ['payments'],
     queryFn: () => base44.entities.Payment.list('-payment_date', 200),
+  });
+
+  const { data: invoices = [] } = useQuery({
+    queryKey: ['invoices'],
+    queryFn: () => base44.entities.Invoice.list('-due_date', 1000),
   });
 
   const createMut = useMutation({
@@ -75,6 +82,11 @@ export default function Debtors() {
       if (viewingDebtor?.id === updated.id) setViewingDebtor(updated);
       toast({ title: 'Debtor updated' });
     },
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id) => base44.entities.Debtor.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['debtors'] }); toast({ title: 'Deleted' }); },
   });
 
   const handleSave = (data) => {
@@ -154,6 +166,17 @@ export default function Debtors() {
     return { overdue, activeDebtors, paidDebtors };
   }, [filtered]);
 
+  const nextDueDateMap = useMemo(() => {
+    const map = {};
+    [...invoices]
+      .filter(inv => inv.status !== 'paid' && inv.due_date && inv.debtor_id)
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))
+      .forEach(inv => { if (!map[inv.debtor_id]) map[inv.debtor_id] = inv.due_date; });
+    return map;
+  }, [invoices]);
+
+  const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
   const totalOutstanding = debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
   const totalInvoiced = debtors.reduce((s, d) => s + (d.total_invoiced || 0), 0);
   const unpaidCount = debtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) === 0).length;
@@ -175,31 +198,82 @@ export default function Debtors() {
     </div>
   );
 
-  const renderTableView = (list) => (
-    <Card>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead className="text-right">Invoiced</TableHead>
-            <TableHead className="text-right">Received</TableHead>
-            <TableHead className="text-right">Outstanding</TableHead>
-            <TableHead>Progress</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Credit</TableHead>
-            <TableHead>Manager</TableHead>
-            <TableHead className="w-20"></TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {list.map(d => (
-            <DebtorTableRow key={d.id} debtor={d} onClick={() => setProfileDebtorId(d.id)} />
-          ))}
-        </TableBody>
-      </Table>
-    </Card>
-  );
+  const renderTableView = (list) => {
+    const getSortVal = (d) => {
+      if (sortConfig.key === 'nextDueDate') return nextDueDateMap[d.id] || 'zzzz';
+      return d[sortConfig.key];
+    };
+    const sorted = sortConfig.key
+      ? [...list].sort((a, b) => {
+          const av = getSortVal(a), bv = getSortVal(b);
+          const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+          return sortConfig.dir === 'asc' ? c : -c;
+        })
+      : list;
+    const allSel = sorted.length > 0 && sorted.every(d => selectedIds.has(d.id));
+    const SortHead = ({ col, label, className = '' }) => (
+      <TableHead
+        className={`cursor-pointer select-none whitespace-nowrap bg-card ${className}`}
+        onClick={() => setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}
+      >
+        <span className="inline-flex items-center gap-1">
+          {label}
+          {sortConfig.key === col
+            ? (sortConfig.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />)
+            : <ChevronDown className="w-3 h-3 opacity-20" />}
+        </span>
+      </TableHead>
+    );
+    return (
+      <Card className="overflow-hidden">
+        <div className="overflow-auto max-h-[60vh]">
+          <Table>
+            <TableHeader>
+              <TableRow className="sticky top-0 z-10 bg-card shadow-sm">
+                <TableHead className="w-10 px-2 bg-card">
+                  <input
+                    type="checkbox"
+                    checked={allSel}
+                    onChange={() => setSelectedIds(prev => {
+                      const n = new Set(prev);
+                      sorted.forEach(d => allSel ? n.delete(d.id) : n.add(d.id));
+                      return n;
+                    })}
+                    className="rounded border-input w-4 h-4 cursor-pointer"
+                  />
+                </TableHead>
+                <SortHead col="name" label="Name" />
+                <TableHead className="bg-card">Contact</TableHead>
+                <SortHead col="total_invoiced" label="Invoiced" className="text-right" />
+                <SortHead col="total_received" label="Received" className="text-right" />
+                <SortHead col="total_outstanding" label="Outstanding" className="text-right" />
+                <TableHead className="bg-card">Progress</TableHead>
+                <TableHead className="bg-card">Status</TableHead>
+                <TableHead className="bg-card">Credit</TableHead>
+                <SortHead col="assigned_manager" label="Manager" />
+                <SortHead col="nextDueDate" label="Due Date" />
+                <TableHead className="bg-card">Due Week</TableHead>
+                <TableHead className="bg-card">Due Month</TableHead>
+                <TableHead className="bg-card">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sorted.map(d => (
+                <DebtorTableRow
+                  key={d.id}
+                  debtor={d}
+                  onClick={() => setProfileDebtorId(d.id)}
+                  checked={selectedIds.has(d.id)}
+                  onCheck={() => toggleSelect(d.id)}
+                  nextDueDate={nextDueDateMap[d.id] || null}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+    );
+  };
 
   const overdueDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0);
 
@@ -336,6 +410,21 @@ export default function Debtors() {
           </button>
         )}
       </div>
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/20 rounded-lg">
+          <span className="text-sm font-medium text-primary">{selectedIds.size} debtor{selectedIds.size > 1 ? 's' : ''} selected</span>
+          <Button size="sm" variant="destructive" className="gap-1.5 h-7"
+            onClick={async () => {
+              if (!confirm(`Delete ${selectedIds.size} debtors?`)) return;
+              for (const id of selectedIds) await deleteMut.mutateAsync(id);
+              setSelectedIds(new Set());
+            }}>
+            <Trash2 className="w-3.5 h-3.5" /> Delete Selected
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
