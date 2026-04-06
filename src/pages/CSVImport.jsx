@@ -474,10 +474,13 @@ export default function CSVImport() {
                   <TableBody>
                     {preview.rows.slice(0, 50).map((row, i) => (
                       <TableRow key={i} className={row.valid ? '' : 'bg-red-50'}>
-                        <TableCell>
+                        <TableCell className="min-w-[140px]">
                           {row.valid
                             ? <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            : <AlertCircle className="w-4 h-4 text-red-500" title={`Missing: ${row.missing.join(', ')}`} />
+                            : <div className="flex items-start gap-1">
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                <span className="text-xs text-red-600">Missing: {row.missing.join(', ')}</span>
+                              </div>
                           }
                         </TableCell>
                         {config.fields.map(f => (
