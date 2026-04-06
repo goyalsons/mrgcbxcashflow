@@ -302,15 +302,13 @@ export default function CSVImport() {
       setPreview({ rows: transformed });
     };
 
-    const reader = new FileReader();
-
     if (isXLSX) {
+      const reader = new FileReader();
       reader.onload = (ev) => {
         const workbook = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
         if (entityType === 'tally_receivable') {
-          // Tally XLSX: scan for the real header row (contains 'date' AND 'party')
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
           let headerIdx = rawRows.findIndex(r =>
             r.some(c => /date/i.test(String(c))) && r.some(c => /party/i.test(String(c)))
@@ -345,6 +343,8 @@ export default function CSVImport() {
         }
       };
       reader.readAsArrayBuffer(f);
+    } else {
+      const reader = new FileReader();
       reader.onload = (ev) => {
         const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
         const { rows } = parser(ev.target.result);
