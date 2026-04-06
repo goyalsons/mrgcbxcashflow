@@ -63,6 +63,36 @@ export default function Debtors() {
     queryFn: () => base44.entities.Invoice.list('-due_date', 1000),
   });
 
+  const { data: receivables = [] } = useQuery({
+    queryKey: ['receivables'],
+    queryFn: () => base44.entities.Receivable.list(),
+  });
+
+  // Build a map of customer_name -> totals from Receivables (to sync with Debtors that have 0 totals)
+  const receivableTotalsMap = useMemo(() => {
+    const map = {};
+    receivables.forEach(r => {
+      const name = r.customer_name?.toLowerCase();
+      if (!name) return;
+      if (!map[name]) map[name] = { total_invoiced: 0, total_received: 0, total_outstanding: 0 };
+      map[name].total_invoiced += r.amount || 0;
+      map[name].total_received += r.amount_received || 0;
+      map[name].total_outstanding += (r.amount || 0) - (r.amount_received || 0);
+    });
+    return map;
+  }, [receivables]);
+
+  // Merge receivable totals into debtors that have no invoiced amount recorded
+  const mergedDebtors = useMemo(() => {
+    return debtors.map(d => {
+      if ((d.total_invoiced || 0) > 0) return d; // already has data, skip
+      const key = d.name?.toLowerCase();
+      const rtotals = key ? receivableTotalsMap[key] : null;
+      if (!rtotals) return d;
+      return { ...d, ...rtotals };
+    });
+  }, [debtors, receivableTotalsMap]);
+
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.Debtor.create(data),
     onSuccess: () => {
@@ -101,12 +131,12 @@ export default function Debtors() {
 
   // All hooks before conditional return
   const managers = useMemo(() => {
-    const set = new Set(debtors.map(d => d.assigned_manager).filter(Boolean));
+    const set = new Set(mergedDebtors.map(d => d.assigned_manager).filter(Boolean));
     return Array.from(set);
   }, [debtors]);
 
   const filtered = useMemo(() => {
-    return debtors.filter(d => {
+    return mergedDebtors.filter(d => {
       const matchSearch = !search || d.name.toLowerCase().includes(search.toLowerCase()) ||
         (d.contact_person || '').toLowerCase().includes(search.toLowerCase()) ||
         (d.email || '').toLowerCase().includes(search.toLowerCase());
@@ -142,7 +172,7 @@ export default function Debtors() {
       
       return matchSearch && matchManager && matchStatus && matchAmount && matchDebtorStatus && matchDaysOverdue;
     });
-  }, [debtors, search, filterManager, filterStatus, filterAmount, filterDebtorStatus]);
+  }, [mergedDebtors, search, filterManager, filterStatus, filterAmount, filterDebtorStatus]);
 
   // Sort debtors: overdue first, then other outstanding, then paid
   const sortedDebtors = useMemo(() => {
@@ -177,11 +207,11 @@ export default function Debtors() {
 
   const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
-  const totalOutstanding = debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
-  const totalInvoiced = debtors.reduce((s, d) => s + (d.total_invoiced || 0), 0);
-  const unpaidCount = debtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) === 0).length;
-  const partialCount = debtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) > 0).length;
-  const paidCount = debtors.filter(d => (d.total_outstanding || 0) <= 0 && (d.total_invoiced || 0) > 0).length;
+  const totalOutstanding = mergedDebtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
+  const totalInvoiced = mergedDebtors.reduce((s, d) => s + (d.total_invoiced || 0), 0);
+  const unpaidCount = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) === 0).length;
+  const partialCount = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) > 0).length;
+  const paidCount = mergedDebtors.filter(d => (d.total_outstanding || 0) <= 0 && (d.total_invoiced || 0) > 0).length;
 
   // Conditional return after all hooks
   if (profileDebtorId) {
@@ -275,14 +305,14 @@ export default function Debtors() {
     );
   };
 
-  const overdueDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0);
+  const overdueDebtors = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0);
 
   return (
     <div className="space-y-5">
       <OverdueAlertBanner overdueDebtors={overdueDebtors} />
       <PageHeader
         title="Debtors"
-        subtitle={`${debtors.length} debtors · ${formatINR(totalOutstanding)} outstanding`}
+        subtitle={`${mergedDebtors.length} debtors · ${formatINR(totalOutstanding)} outstanding`}
         actionLabel="New Debtor"
         onAction={() => { setEditingDebtor(null); setShowForm(true); }}
       >
@@ -292,7 +322,7 @@ export default function Debtors() {
       </PageHeader>
 
       {/* Analytics Cards */}
-      <DebtorAnalyticsCards debtors={debtors} payments={payments} />
+      <DebtorAnalyticsCards debtors={mergedDebtors} payments={payments} />
 
       {/* Summary pills */}
       <div className="flex flex-wrap gap-3 items-center">
@@ -432,7 +462,7 @@ export default function Debtors() {
             <div key={i} className="h-28 rounded-xl bg-muted animate-pulse" />
           ))}
         </div>
-      ) : debtors.length === 0 ? (
+      ) : mergedDebtors.length === 0 ? (
         <EmptyState
           title="No debtors yet"
           description="Add debtors to start tracking invoices and collections"
