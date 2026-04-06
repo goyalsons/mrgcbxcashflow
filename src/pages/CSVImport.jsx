@@ -37,7 +37,7 @@ function parseIndianAmount(str) {
 }
 
 function normKey(s) {
-  return s.toLowerCase().replace(/["'\s\.]+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/_+/g, '_').replace(/^_|_$/g, '');
+  return s.toLowerCase().replace(/["']/g, '').replace(/[\s\.]+/g, '_').replace(/[^a-z0-9_]/g, '').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
 function parseTallyCSV(text) {
@@ -78,7 +78,7 @@ function parseTallyCSV(text) {
     return row;
   }).filter(r => {
     // Must have a non-empty, non-numeric party name
-    const name = r['partys_name'] || r['party_name'] || r['party'] || '';
+    const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || '';
     return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
   });
 
@@ -237,7 +237,7 @@ const ENTITY_CONFIGS = {
     transform: (row) => {
       // Keys after normKey(): party's name -> partys_name, ref. no. -> ref_no,
       // pending amount -> pending_amount, due on -> due_on, overdue by days -> overdue_by_days
-      const customerName = row['partys_name'] || row['party_name'] || row['party'] || '';
+      const customerName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
       const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
       const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
@@ -324,7 +324,7 @@ export default function CSVImport() {
             });
             return row;
           }).filter(r => {
-            const name = r['partys_name'] || r['party_name'] || r['party'] || '';
+            const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || '';
             return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
           });
           processRows(rows);
