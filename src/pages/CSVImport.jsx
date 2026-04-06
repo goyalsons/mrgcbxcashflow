@@ -22,7 +22,7 @@ function parseIndianDate(str) {
   const isoMatch = str.match(/(\d{4}-\d{2}-\d{2})/);
   if (isoMatch) return isoMatch[1];
   // D-Mon-YY or D-Mon-YYYY (Tally format: 1-Apr-25)
-  const tallyMatch = str.match(/(\d{1,2})-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-?(\d{2,4})/i);
+  const tallyMatch = str.match(/(\d{1,2})[-\s](Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[-\s]?(\d{2,4})/i);
   if (tallyMatch) {
     const months = { jan:'01',feb:'02',mar:'03',apr:'04',may:'05',jun:'06',jul:'07',aug:'08',sep:'09',oct:'10',nov:'11',dec:'12' };
     const year = tallyMatch[3].length === 2 ? '20' + tallyMatch[3] : tallyMatch[3];
