@@ -228,7 +228,7 @@ const ENTITY_CONFIGS = {
     label: 'Tally Bills Receivable',
     entity: 'Receivable',
     fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
-    required: ["Party's Name", 'Pending Amount'],
+    required: ['customer_name', 'amount'],
     sampleData: [
       ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
@@ -242,7 +242,7 @@ const ENTITY_CONFIGS = {
       const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
       const invoiceNumber = row['ref_no'] || row['refno'] || row['invoice_number'] || '';
-      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || '';
+      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue'] || '';
       return {
         customer_name: customerName,
         invoice_number: invoiceNumber,
