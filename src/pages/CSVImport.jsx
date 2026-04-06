@@ -378,6 +378,21 @@ export default function CSVImport() {
       success += batch.length;
     }
 
+    // For tally_receivable: auto-create missing Debtor records from unique customer names
+    if (entityType === 'tally_receivable' && toCreate.length > 0) {
+      const uniqueNames = [...new Set(toCreate.map(r => r.customer_name).filter(Boolean))];
+      const existingDebtors = await base44.entities.Debtor.list().catch(() => []);
+      const existingNames = new Set(existingDebtors.map(d => d.name?.toLowerCase()));
+      const newDebtors = uniqueNames
+        .filter(name => !existingNames.has(name.toLowerCase()))
+        .map(name => ({ name, status: 'active' }));
+      if (newDebtors.length > 0) {
+        for (let i = 0; i < newDebtors.length; i += BATCH) {
+          await base44.entities.Debtor.bulkCreate(newDebtors.slice(i, i + BATCH));
+        }
+      }
+    }
+
     setResults({ success, failed: preview.rows.filter(r => !r.valid).length, duplicates });
     queryClient.invalidateQueries();
     setImporting(false);
