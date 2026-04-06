@@ -360,13 +360,22 @@ export default function CSVImport() {
     const validRows = preview.rows.filter(r => r.valid);
     let success = 0, duplicates = 0;
 
+    // Filter duplicates first if needed
+    const toCreate = [];
     for (const row of validRows) {
       if (config.dupCheck) {
         const isDup = await config.dupCheck(row.data);
         if (isDup) { duplicates++; continue; }
       }
-      await base44.entities[config.entity].create(row.data);
-      success++;
+      toCreate.push(row.data);
+    }
+
+    // Bulk create in batches of 25 to avoid rate limits
+    const BATCH = 25;
+    for (let i = 0; i < toCreate.length; i += BATCH) {
+      const batch = toCreate.slice(i, i + BATCH);
+      await base44.entities[config.entity].bulkCreate(batch);
+      success += batch.length;
     }
 
     setResults({ success, failed: preview.rows.filter(r => !r.valid).length, duplicates });
