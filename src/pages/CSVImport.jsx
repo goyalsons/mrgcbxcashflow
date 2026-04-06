@@ -228,7 +228,7 @@ const ENTITY_CONFIGS = {
     label: 'Tally Bills Receivable',
     entity: 'Receivable',
     fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
-    required: ['customer_name', 'amount'],
+    required: ['amount'],
     sampleData: [
       ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
