@@ -306,12 +306,23 @@ export default function CSVImport() {
 
     if (isXLSX) {
       reader.onload = (ev) => {
-        const workbook = XLSX.read(ev.target.result, { type: 'array' });
+        const workbook = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        // Convert to CSV string then use existing parsers
-        const csv = XLSX.utils.sheet_to_csv(sheet);
-        const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
-        const { rows } = parser(csv);
+        // Read as JSON to preserve dates and numbers natively
+        const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+        // Normalize keys using the same normKey function
+        const rows = jsonRows.map(r => {
+          const normalized = {};
+          Object.entries(r).forEach(([k, v]) => {
+            let val = v;
+            // Format Date objects to YYYY-MM-DD
+            if (val instanceof Date) {
+              val = val.toISOString().slice(0, 10);
+            }
+            normalized[normKey(String(k))] = String(val);
+          });
+          return normalized;
+        });
         processRows(rows);
       };
       reader.readAsArrayBuffer(f);
