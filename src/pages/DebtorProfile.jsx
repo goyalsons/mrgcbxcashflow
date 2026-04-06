@@ -223,6 +223,12 @@ export default function DebtorProfile({ debtorId, onBack }) {
     enabled: !!debtorId,
   });
 
+  const { data: receivables = [] } = useQuery({
+    queryKey: ['receivables', 'debtor', debtor?.name],
+    queryFn: () => base44.entities.Receivable.filter({ customer_name: debtor?.name }),
+    enabled: !!debtor?.name,
+  });
+
   const { data: payments = [] } = useQuery({
     queryKey: ['payments', debtorId],
     queryFn: () => base44.entities.Payment.filter({ debtor_id: debtorId }, '-payment_date'),
@@ -359,7 +365,24 @@ export default function DebtorProfile({ debtorId, onBack }) {
     onSuccess: () => { invalidate(); setShowEditDebtor(false); toast({ title: 'Debtor updated' }); },
   });
 
-  const filteredInvoices = useMemo(() => invoices.filter(i => {
+  // Merge invoices + receivables (receivables as fallback when no invoices exist)
+  const allInvoices = useMemo(() => {
+    if (invoices.length > 0) return invoices;
+    // Map receivables to invoice-like shape for display
+    return receivables.map(r => ({
+      id: r.id,
+      invoice_number: r.invoice_number,
+      invoice_date: r.invoice_date,
+      due_date: r.due_date,
+      amount: r.amount,
+      amount_paid: r.amount_received || 0,
+      status: r.status,
+      notes: r.notes,
+      _fromReceivable: true,
+    }));
+  }, [invoices, receivables]);
+
+  const filteredInvoices = useMemo(() => allInvoices.filter(i => {
     if (invoiceStatusFilter !== 'all' && i.status !== invoiceStatusFilter) return false;
     if (invoiceSearch && !(i.invoice_number || '').toLowerCase().includes(invoiceSearch.toLowerCase())) return false;
     if (invoiceDateFrom && (i.invoice_date || '') < invoiceDateFrom) return false;
@@ -371,7 +394,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
     if (paidMin !== '' && (i.amount_paid || 0) < Number(paidMin)) return false;
     if (paidMax !== '' && (i.amount_paid || 0) > Number(paidMax)) return false;
     return true;
-  }), [invoices, invoiceStatusFilter, invoiceSearch, invoiceDateFrom, invoiceDateTo, dueDateFrom, dueDateTo, amountMin, amountMax, paidMin, paidMax]);
+  }), [allInvoices, invoiceStatusFilter, invoiceSearch, invoiceDateFrom, invoiceDateTo, dueDateFrom, dueDateTo, amountMin, amountMax, paidMin, paidMax]);
 
   const filteredPayments = useMemo(() => payments.filter(p => {
     if (paymentModeFilter !== 'all' && p.payment_mode !== paymentModeFilter) return false;
@@ -441,7 +464,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
           <CardContent className="p-4 text-center">
             <div className="text-xs text-blue-600 font-medium mb-1">Total Invoiced</div>
             <div className="text-xl font-bold text-blue-700">{formatINR(invoiced)}</div>
-            <div className="text-xs text-blue-500 mt-0.5">{invoices.length} invoice{invoices.length !== 1 ? 's' : ''}</div>
+            <div className="text-xs text-blue-500 mt-0.5">{allInvoices.length} invoice{allInvoices.length !== 1 ? 's' : ''}</div>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50 border-emerald-100">
@@ -487,19 +510,19 @@ export default function DebtorProfile({ debtorId, onBack }) {
       <Tabs defaultValue="timeline">
         <TabsList>
           <TabsTrigger value="timeline" className="gap-1"><Clock className="w-3.5 h-3.5" />Timeline</TabsTrigger>
-          <TabsTrigger value="invoices" className="gap-1"><FileText className="w-3.5 h-3.5" />Invoices ({invoices.length})</TabsTrigger>
+          <TabsTrigger value="invoices" className="gap-1"><FileText className="w-3.5 h-3.5" />Invoices ({allInvoices.length})</TabsTrigger>
           <TabsTrigger value="payments" className="gap-1"><CreditCard className="w-3.5 h-3.5" />Payments ({payments.length})</TabsTrigger>
           <TabsTrigger value="followups" className="gap-1"><MessageSquare className="w-3.5 h-3.5" />Follow-Ups ({followUps.length})</TabsTrigger>
         </TabsList>
 
         {/* Timeline */}
         <TabsContent value="timeline" className="mt-4">
-          <ActivityTimeline payments={payments} followUps={followUps} invoices={invoices} />
+          <ActivityTimeline payments={payments} followUps={followUps} invoices={allInvoices} />
         </TabsContent>
 
         {/* Invoices */}
         <TabsContent value="invoices" className="mt-4">
-          {invoices.length > 0 && (
+          {allInvoices.length > 0 && (
             <div className="mb-3">
               {/* Always-visible compact filter bar */}
               <div className="flex items-center gap-2 flex-wrap">
@@ -521,8 +544,8 @@ export default function DebtorProfile({ debtorId, onBack }) {
                 >
                   <Filter className="w-3 h-3" /> More filters
                 </button>
-                {filteredInvoices.length !== invoices.length && (
-                  <span className="text-xs text-primary font-semibold ml-auto">{filteredInvoices.length} of {invoices.length}</span>
+                {filteredInvoices.length !== allInvoices.length && (
+                  <span className="text-xs text-primary font-semibold ml-auto">{filteredInvoices.length} of {allInvoices.length}</span>
                 )}
                 {(invoiceSearch || invoiceStatusFilter !== 'all' || invoiceDateFrom || invoiceDateTo || dueDateFrom || dueDateTo || amountMin || amountMax || paidMin || paidMax) && (
                   <button onClick={() => { setInvoiceSearch(''); setInvoiceStatusFilter('all'); setInvoiceDateFrom(''); setInvoiceDateTo(''); setDueDateFrom(''); setDueDateTo(''); setAmountMin(''); setAmountMax(''); setPaidMin(''); setPaidMax(''); }} className="text-xs text-destructive hover:underline">Clear</button>
@@ -543,7 +566,7 @@ export default function DebtorProfile({ debtorId, onBack }) {
               )}
             </div>
           )}
-          {invoices.length === 0 ? (
+          {allInvoices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No invoices yet</div>
           ) : filteredInvoices.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-sm">No invoices match this filter</div>
