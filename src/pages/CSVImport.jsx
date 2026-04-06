@@ -308,25 +308,43 @@ export default function CSVImport() {
       reader.onload = (ev) => {
         const workbook = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        // Read as JSON to preserve dates and numbers natively
-        const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-        // Normalize keys using the same normKey function
-        const rows = jsonRows.map(r => {
-          const normalized = {};
-          Object.entries(r).forEach(([k, v]) => {
-            let val = v;
-            // Format Date objects to YYYY-MM-DD
-            if (val instanceof Date) {
-              val = val.toISOString().slice(0, 10);
-            }
-            normalized[normKey(String(k))] = String(val);
+
+        if (entityType === 'tally_receivable') {
+          // Tally XLSX: scan for the real header row (contains 'date' AND 'party')
+          const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+          let headerIdx = rawRows.findIndex(r =>
+            r.some(c => /date/i.test(String(c))) && r.some(c => /party/i.test(String(c)))
+          );
+          if (headerIdx < 0) headerIdx = 0;
+          const headers = rawRows[headerIdx].map(h => normKey(String(h)));
+          const rows = rawRows.slice(headerIdx + 1).map(r => {
+            const row = {};
+            headers.forEach((h, i) => {
+              let val = r[i];
+              if (val instanceof Date) val = val.toISOString().slice(0, 10);
+              row[h] = String(val ?? '');
+            });
+            return row;
+          }).filter(r => {
+            const name = r['partys_name'] || r['party_name'] || r['party'] || '';
+            return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
           });
-          return normalized;
-        });
-        processRows(rows);
+          processRows(rows);
+        } else {
+          const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+          const rows = jsonRows.map(r => {
+            const normalized = {};
+            Object.entries(r).forEach(([k, v]) => {
+              let val = v;
+              if (val instanceof Date) val = val.toISOString().slice(0, 10);
+              normalized[normKey(String(k))] = String(val);
+            });
+            return normalized;
+          });
+          processRows(rows);
+        }
       };
       reader.readAsArrayBuffer(f);
-    } else {
       reader.onload = (ev) => {
         const parser = entityType === 'tally_receivable' ? parseTallyCSV : parseCSV;
         const { rows } = parser(ev.target.result);
