@@ -198,12 +198,25 @@ export default function Debtors() {
 
   const nextDueDateMap = useMemo(() => {
     const map = {};
+    // From Invoice records (linked by debtor_id)
     [...invoices]
       .filter(inv => inv.status !== 'paid' && inv.due_date && inv.debtor_id)
       .sort((a, b) => a.due_date.localeCompare(b.due_date))
       .forEach(inv => { if (!map[inv.debtor_id]) map[inv.debtor_id] = inv.due_date; });
+
+    // From Receivable records (linked by customer_name) — fill gaps
+    const nameToDebtorId = {};
+    debtors.forEach(d => { if (d.name) nameToDebtorId[d.name.toLowerCase()] = d.id; });
+    [...receivables]
+      .filter(r => r.status !== 'paid' && r.status !== 'written_off' && r.due_date && r.customer_name)
+      .sort((a, b) => a.due_date.localeCompare(b.due_date))
+      .forEach(r => {
+        const did = nameToDebtorId[r.customer_name.toLowerCase()];
+        if (did && !map[did]) map[did] = r.due_date;
+      });
+
     return map;
-  }, [invoices]);
+  }, [invoices, receivables, debtors]);
 
   const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
