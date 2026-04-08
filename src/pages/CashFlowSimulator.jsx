@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import PageHeader from '@/components/shared/PageHeader';
@@ -13,9 +13,11 @@ import SimAdjustmentDrawer from '@/components/simulator/SimAdjustmentDrawer';
 import SimChart from '@/components/simulator/SimChart';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
+import ScenarioManager from '@/components/simulator/ScenarioManager';
+import SimExport from '@/components/simulator/SimExport';
+import useDebounce from '@/hooks/useDebounce';
 
 function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
-const toDateStr = d => d ? new Date(d).toISOString().split('T')[0] : '';
 
 const EXP_CATEGORIES = {
   salary: 'Salary', rent: 'Rent/Utilities', utilities: 'Rent/Utilities',
@@ -50,24 +52,19 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
 
   const inWeek = (dateStr, w) => { const d = new Date(dateStr); return d >= w.start && d <= w.end; };
 
-  // Baseline inflow from receivables + invoices
   [...receivables, ...invoices].forEach(r => {
     if (['paid','written_off'].includes(r.status)) return;
     const w = weeks.find(w => inWeek(r.due_date, w));
     if (w) w.baseInflow += (r.amount || 0) - (r.amount_received || r.amount_paid || 0);
   });
-  // Baseline outflow from payables
   payables.filter(p => p.status !== 'paid').forEach(p => {
     const w = weeks.find(w => inWeek(p.due_date, w));
     if (w) w.baseOutflow += (p.amount || 0) - (p.amount_paid || 0);
   });
-  // Baseline expenses
   weeks.forEach(w => { EXPENSE_GROUPS.forEach(g => { w.baseOutflow += Math.round(expByGroup[g] || 0); }); });
 
-  // Copy baseline into sim
   weeks.forEach(w => { w.simInflow = w.baseInflow; w.simOutflow = w.baseOutflow; });
 
-  // --- Apply receivable adjustments ---
   recAdj.forEach((adj, id) => {
     const item = [...receivables, ...invoices].find(r => r.id === id);
     if (!item) return;
@@ -81,7 +78,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     if (adj.remainder > 0 && origWeek) origWeek.simInflow += adj.remainder;
   });
 
-  // --- Apply payable adjustments ---
   payAdj.forEach((adj, id) => {
     const item = payables.find(p => p.id === id);
     if (!item) return;
@@ -95,7 +91,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     if (adj.remainder > 0 && origWeek) origWeek.simOutflow += adj.remainder;
   });
 
-  // --- Hypotheticals ---
   hypotheticals.forEach(h => {
     h.tranches.forEach(t => {
       const tw = weeks.find(w => inWeek(t.date, w));
@@ -106,7 +101,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     });
   });
 
-  // --- Funding sources (Section D) → fundingInflow / repaymentOutflow ---
   fundingSources.forEach(f => {
     const { inflows, outflows } = buildSourceFlows(f);
     inflows.forEach(inf => {
@@ -119,7 +113,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     });
   });
 
-  // --- Cost levers (Section E) ---
   levers.forEach(l => {
     if (l.type === 'salary_defer') {
       const weeklyDeferred = Math.round((expByGroup['Salary'] || 0) * (Number(l.deferPct)||0) / 100);
@@ -163,14 +156,13 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     }
   });
 
-  // --- Tax items (Section F) ---
   taxItems.forEach(t => {
     if (t.type === 'itc' && t.amount && t.month) {
-      // Reduce outflow in weeks matching that month
-      weeks.filter(w => {
+      const matchWeeks = weeks.filter(w => {
         const wm = `${w.start.getFullYear()}-${String(w.start.getMonth()+1).padStart(2,'0')}`;
         return wm === t.month;
-      }).forEach((w, i, arr) => { if (i === 0) w.simOutflow -= Number(t.amount); });
+      });
+      if (matchWeeks[0]) matchWeeks[0].simOutflow -= Number(t.amount);
     }
     if (t.type === 'advance_tax' && t.amount) {
       const origWeek = weeks.find(w => inWeek(t.origDate, w));
@@ -184,7 +176,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     }
   });
 
-  // Compute net + running balances
   let baseRunning = openingBalance, simRunning = openingBalance;
   return weeks.map(w => {
     const baseNet = Math.round(w.baseInflow - w.baseOutflow);
@@ -197,31 +188,44 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
 export default function CashFlowSimulator() {
   const { data: receivables = [] }       = useQuery({ queryKey: ['receivables'],       queryFn: () => base44.entities.Receivable.list() });
   const { data: invoices = [] }          = useQuery({ queryKey: ['invoices'],          queryFn: () => base44.entities.Invoice.list() });
-  const { data: collectionTargets = [] } = useQuery({ queryKey: ['collectionTargets'], queryFn: () => base44.entities.CollectionTarget.list() });
   const { data: payables = [] }          = useQuery({ queryKey: ['payables'],          queryFn: () => base44.entities.Payable.list() });
   const { data: expenses = [] }          = useQuery({ queryKey: ['expenses'],          queryFn: () => base44.entities.Expense.list() });
-  const { data: recurringExpenses = [] } = useQuery({ queryKey: ['recurringExpenses'], queryFn: () => base44.entities.Expense.filter({ recurrence_type: 'monthly' }) });
+  const { data: recurringExpenses = [] } = useQuery({ queryKey: ['recurringExpensesAll'], queryFn: () => base44.entities.Expense.filter({ recurrence_type: 'monthly' }) });
   const { data: bankAccounts = [] }      = useQuery({ queryKey: ['bankAccounts'],      queryFn: () => base44.entities.BankAccount.list() });
 
-  const [recAdj, setRecAdj]       = useState(new Map());
-  const [payAdj, setPayAdj]       = useState(new Map());
-  const [hypotheticals, setHypo]  = useState([]);
-  const [fundingSources, setFunding] = useState([]);
-  const [levers, setLevers]       = useState([]);
-  const [taxItems, setTaxItems]   = useState([]);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [recAdj, setRecAdj]            = useState(new Map());
+  const [payAdj, setPayAdj]            = useState(new Map());
+  const [hypotheticals, setHypo]       = useState([]);
+  const [fundingSources, setFunding]   = useState([]);
+  const [levers, setLevers]            = useState([]);
+  const [taxItems, setTaxItems]        = useState([]);
+  const [drawerOpen, setDrawerOpen]    = useState(false);
+  const [currentScenarioId, setCurrentScenarioId] = useState(null);
+  const [activeScenarioName, setActiveScenarioName] = useState(null);
 
   const expByGroup = useMemo(() => {
     const g = {};
-    ['Salary','Rent/Utilities','Travel','Marketing','Software','Maintenance','Office & Other'].forEach(k => g[k] = 0);
+    EXPENSE_GROUPS.forEach(k => g[k] = 0);
     expenses.forEach(e => { const grp = EXP_CATEGORIES[e.category] || 'Office & Other'; g[grp] = (g[grp]||0) + (e.amount||0); });
     Object.keys(g).forEach(k => g[k] = g[k] / 52);
     return g;
   }, [expenses]);
 
+  // Debounce the adjustment state for expensive recomputation
+  const adjState = useMemo(() => ({ recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems }), [recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems]);
+  const debouncedAdj = useDebounce(adjState, 300);
+
+  // Memoize baseline data (static input — only recalculate if underlying entity data changes)
+  const baselineInputs = useMemo(() => ({ receivables, invoices, payables, expenses, bankAccounts }), [receivables, invoices, payables, expenses, bankAccounts]);
+
   const weeklyData = useMemo(() =>
-    buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems),
-    [receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems]
+    buildWeeklyData(
+      baselineInputs.receivables, baselineInputs.invoices,
+      baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
+      debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
+      debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems
+    ),
+    [baselineInputs, debouncedAdj]
   );
 
   const baseNet12W = weeklyData.reduce((s, w) => s + w.baseNet, 0);
@@ -231,22 +235,59 @@ export default function CashFlowSimulator() {
   const resetAll = useCallback(() => {
     setRecAdj(new Map()); setPayAdj(new Map()); setHypo([]);
     setFunding([]); setLevers([]); setTaxItems([]);
+    setCurrentScenarioId(null); setActiveScenarioName(null);
+  }, []);
+
+  const loadScenario = useCallback((state) => {
+    setRecAdj(state.recAdj || new Map());
+    setPayAdj(state.payAdj || new Map());
+    setHypo(state.hypotheticals || []);
+    setFunding(state.fundingSources || []);
+    setLevers(state.levers || []);
+    setTaxItems(state.taxItems || []);
   }, []);
 
   const totalAdjCount = recAdj.size + payAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
+  const hasAdjustments = totalAdjCount > 0;
+
+  const currentState = { recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems };
 
   return (
     <div className="flex flex-col min-h-0">
-      <PageHeader
-        title="Cash Flow Simulator"
-        subtitle="Model what-if scenarios by adjusting receivable and payable dates, splitting payments, and simulating funding sources."
-      />
+      <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight">Cash Flow Simulator</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Model what-if scenarios — adjust dates, splits, funding sources, and cost levers.</p>
+          {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <ScenarioManager
+            currentState={currentState}
+            onLoad={(state) => loadScenario(state)}
+            weeklyData={weeklyData}
+            currentScenarioId={currentScenarioId}
+            setCurrentScenarioId={setCurrentScenarioId}
+          />
+          <SimExport
+            weeklyData={weeklyData}
+            bankAccounts={bankAccounts}
+            scenarioName={activeScenarioName}
+            fundingSources={fundingSources}
+            levers={levers}
+            taxItems={taxItems}
+            recAdj={recAdj}
+            payAdj={payAdj}
+            hypotheticals={hypotheticals}
+          />
+        </div>
+      </div>
 
       <SimImpactBar baseNet={baseNet12W} simNet={simNet12W} improvement={improvement} onReset={resetAll} />
 
-      <div className="flex gap-5 mt-4 items-start">
+      {/* Responsive two-panel layout */}
+      <div className="flex flex-col lg:flex-row gap-5 mt-4 items-start">
         {/* Left panel */}
-        <div className="w-[35%] shrink-0 space-y-4 overflow-y-auto max-h-[calc(100vh-220px)] pb-6 pr-1">
+        <div className="w-full lg:w-[35%] shrink-0 space-y-4 lg:overflow-y-auto lg:max-h-[calc(100vh-220px)] pb-6 lg:pr-1">
           <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
           <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} />
           <SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} />
@@ -267,14 +308,18 @@ export default function CashFlowSimulator() {
         </div>
 
         {/* Right panel */}
-        <div className="flex-1 space-y-4 sticky top-4">
-          <SimChart weeklyData={weeklyData} />
+        <div className="flex-1 space-y-4 lg:sticky lg:top-4 w-full">
+          <SimChart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
           <SimTable weeklyData={weeklyData} bankAccounts={bankAccounts} />
           <FundingSummaryCard weeklyData={weeklyData} />
-          <p className="text-xs text-muted-foreground text-center pb-4 px-2">
-            All simulations are for planning purposes only. Salary deferrals, tax payment deferrals, and statutory obligations are subject to applicable laws and regulations. Consult your Chartered Accountant or legal advisor before acting on any simulation. This tool does not modify any actual records.
-          </p>
         </div>
+      </div>
+
+      {/* Persistent disclaimer footer */}
+      <div className="mt-6 pt-4 border-t">
+        <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-4xl mx-auto">
+          All simulations are for planning purposes only. Salary deferrals, tax payment deferrals, and all statutory obligations are subject to applicable Indian laws and regulations including but not limited to the Companies Act, Income Tax Act, GST Act, and applicable labour laws. Consult your Chartered Accountant or legal advisor before acting on any simulation result. This tool does not modify any actual records in your system.
+        </p>
       </div>
     </div>
   );

@@ -41,21 +41,18 @@ const SimTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function SimChart({ weeklyData }) {
-  const chartData = weeklyData.map((w, idx) => {
-    const simNetWithFunding = w.simNet; // simNet already includes funding
-    return {
-      name: w.label,
-      baseNet: w.baseNet,
-      simNet: w.simNet,
-      simNetWithFunding,
-      fundingInflow: w.fundingInflow || 0,
-      repaymentOutflow: w.repaymentOutflow || 0,
-      simItems: w.simItems,
-    };
-  });
-
+export default function SimChart({ weeklyData, hasAdjustments = true }) {
   const hasFunding = weeklyData.some(w => (w.fundingInflow || 0) + (w.repaymentOutflow || 0) > 0);
+
+  const chartData = weeklyData.map(w => ({
+    name: w.label,
+    baseNet: w.baseNet,
+    simNet: w.simNet,
+    simNetWithFunding: w.simNet,
+    fundingInflow: w.fundingInflow || 0,
+    repaymentOutflow: w.repaymentOutflow || 0,
+    simItems: w.simItems,
+  }));
 
   return (
     <Card>
@@ -86,7 +83,15 @@ export default function SimChart({ weeklyData }) {
             })}
           </div>
         )}
-        <ResponsiveContainer width="100%" height={280}>
+        <div className="relative">
+          {!hasAdjustments && (
+            <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+              <div className="bg-card/80 border rounded-xl px-4 py-2.5 text-sm text-muted-foreground text-center shadow">
+                Make adjustments on the left to see the simulated impact here.
+              </div>
+            </div>
+          )}
+        <ResponsiveContainer width="100%" height={260}>
           <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
             <defs>
               <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
@@ -104,10 +109,10 @@ export default function SimChart({ weeklyData }) {
               label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
             <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />
             <Area type="monotone" dataKey="baseNet" fill="url(#negGrad)" stroke="none" />
-            <Line type="monotone" dataKey="baseNet" name="Baseline" stroke="#3b82f6" strokeWidth={2.5} dot={false} />
-            <Line type="monotone" dataKey="simNet" name="Scheduled only" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+            <Line type="monotone" dataKey="baseNet" name="Baseline" stroke="#3b82f6" strokeWidth={2.5} dot={false} isAnimationActive={true} animationDuration={400} />
+            <Line type="monotone" dataKey="simNet" name="Scheduled only" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={false} isAnimationActive={true} animationDuration={400} />
             {hasFunding && (
-              <Line type="monotone" dataKey="simNetWithFunding" name="With funding" stroke="#9333ea" strokeWidth={2.5}
+              <Line type="monotone" dataKey="simNetWithFunding" name="With funding" stroke="#9333ea" strokeWidth={2.5} isAnimationActive={true} animationDuration={400}
                 dot={(props) => {
                   const { cx, cy, payload } = props;
                   if ((payload.fundingInflow || 0) > 0) return <polygon key={cx} points={`${cx},${cy-6} ${cx-5},${cy+4} ${cx+5},${cy+4}`} fill="#9333ea" />;
@@ -118,6 +123,7 @@ export default function SimChart({ weeklyData }) {
             )}
           </ComposedChart>
         </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

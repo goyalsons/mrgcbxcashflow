@@ -30,7 +30,8 @@ export default function SimTable({ weeklyData, bankAccounts }) {
     <Card>
       <CardHeader className="pb-2"><CardTitle className="text-base">Weekly Comparison</CardTitle></CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto max-w-full">
+          <div className="min-w-[700px]">
           <Table>
             <TableHeader>
               <TableRow>
@@ -113,6 +114,7 @@ export default function SimTable({ weeklyData, bankAccounts }) {
               </tr>
             </tfoot>
           </Table>
+          </div>
         </div>
       </CardContent>
     </Card>

@@ -1,0 +1,30 @@
+{
+  "name": "SimulatorScenario",
+  "type": "object",
+  "properties": {
+    "scenario_name": {
+      "type": "string",
+      "description": "Name of saved scenario (max 40 chars)"
+    },
+    "scenario_data": {
+      "type": "string",
+      "description": "JSON serialized scenario state"
+    },
+    "net_improvement": {
+      "type": "number",
+      "description": "Simulated net 12W minus baseline net 12W"
+    },
+    "baseline_net": {
+      "type": "number",
+      "description": "Baseline 12W net at time of save"
+    },
+    "sim_net": {
+      "type": "number",
+      "description": "Simulated 12W net at time of save"
+    }
+  },
+  "required": [
+    "scenario_name",
+    "scenario_data"
+  ]
+}
