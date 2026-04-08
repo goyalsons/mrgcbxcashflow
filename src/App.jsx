@@ -31,6 +31,7 @@ import Notifications from '@/pages/Notifications';
 import Analysis from '@/pages/Analysis';
 import TallyIntegration from '@/pages/TallyIntegration';
 import RecurringExpenses from '@/pages/RecurringExpenses';
+import CashFlowSimulator from '@/pages/CashFlowSimulator';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -81,6 +82,7 @@ const AuthenticatedApp = () => {
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/analysis" element={<Analysis />} />
         <Route path="/tally-integration" element={<TallyIntegration />} />
+        <Route path="/cash-flow-simulator" element={<CashFlowSimulator />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

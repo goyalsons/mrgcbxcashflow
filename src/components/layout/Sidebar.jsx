@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
   IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
-  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock, Link2
+  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal
 } from 'lucide-react';
 import { getRoleLabel, hasPermission } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2, Briefcase, Target, Clock,
   TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
-  ClipboardList, Settings, BarChart3, CalendarClock, Link2,
+  ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal,
 };
 
 const NAV_GROUPS = [
@@ -56,6 +56,7 @@ const NAV_GROUPS = [
     label: 'Analytics',
     items: [
       { key: 'cash_flow_forecast', label: 'Cash Flow', path: '/cash-flow-forecast', icon: 'TrendingUp' },
+      { key: 'cash_flow_simulator', label: 'CF Simulator', path: '/cash-flow-simulator', icon: 'SlidersHorizontal' },
       { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
       { key: 'analysis', label: 'Analysis', path: '/analysis', icon: 'BarChart3' },
       { key: 'reports', label: 'Reports', path: '/reports', icon: 'FileText' },
