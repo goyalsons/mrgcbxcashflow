@@ -288,8 +288,11 @@ export default function CashFlowSimulator() {
       <div className="flex flex-col lg:flex-row gap-5 mt-4 items-start">
         {/* Left panel */}
         <div className="w-full lg:w-[35%] shrink-0 space-y-4 lg:overflow-y-auto lg:max-h-[calc(100vh-220px)] pb-6 lg:pr-1">
-          <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
-          <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} />
+          {/* Sections A & B side by side */}
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
+            <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} />
+          </div>
           <SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} />
           <SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} />
           <SimSectionE levers={levers} setLevers={setLevers} recurringExpenses={recurringExpenses} payables={payables} expByGroup={expByGroup} />
