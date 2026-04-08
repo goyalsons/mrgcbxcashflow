@@ -386,6 +386,7 @@ export default function CashFlowForecast() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="sticky top-0 bg-card z-10 whitespace-nowrap">Week</TableHead>
+                      <TableHead className="sticky top-0 bg-indigo-50 z-10 text-right font-bold text-indigo-700">Net</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right text-emerald-700">Inflow</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right text-red-700">Payables</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right text-orange-600">Salary</TableHead>
@@ -395,7 +396,6 @@ export default function CashFlowForecast() {
                       <TableHead className="sticky top-0 bg-card z-10 text-right text-teal-600">Software</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right text-slate-600">Other</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Total Out</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Net</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Closing</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -403,7 +403,10 @@ export default function CashFlowForecast() {
                     {weeklyData.map((w, i) => (
                       <TableRow key={i} className={`${w.net < 0 ? 'bg-red-50/40' : i%2===0?'bg-white':'bg-muted/20'} ${w.isCurrentWeek ? 'ring-1 ring-inset ring-indigo-300' : ''}`}>
                         <TableCell className="font-medium text-xs whitespace-nowrap">
-                          {w.label}{w.isCurrentWeek && <span className="ml-1 text-indigo-500 text-xs">•</span>}
+                         {w.label}{w.isCurrentWeek && <span className="ml-1 text-indigo-500 text-xs">•</span>}
+                        </TableCell>
+                        <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${w.net>=0?'text-emerald-700':'text-red-700'}`}>
+                          {w.net>=0?'▲':'▼'} ₹{Math.abs(w.net).toLocaleString('en-IN')}
                         </TableCell>
                         <TableCell className="text-right text-emerald-600 text-xs">₹{w.inflow.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-red-600 text-xs">₹{w.payablesOut.toLocaleString('en-IN')}</TableCell>
@@ -414,9 +417,6 @@ export default function CashFlowForecast() {
                         <TableCell className="text-right text-teal-600 text-xs">₹{(w['Software']||0).toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-slate-600 text-xs">₹{(w['Office & Other']||0).toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-red-700 font-semibold text-xs">₹{w.outflow.toLocaleString('en-IN')}</TableCell>
-                        <TableCell className={`text-right font-bold text-xs ${w.net>=0?'text-emerald-600':'text-red-600'}`}>
-                          {w.net>=0?'▲':'▼'} ₹{Math.abs(w.net).toLocaleString('en-IN')}
-                        </TableCell>
                         <TableCell className={`text-right font-bold text-xs ${w.closing>=0?'text-foreground':'text-red-600'}`}>₹{Math.abs(w.closing).toLocaleString('en-IN')}</TableCell>
                       </TableRow>
                     ))}
@@ -477,11 +477,11 @@ export default function CashFlowForecast() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Month</TableHead>
+                    <TableHead className="text-right font-bold text-indigo-700 bg-indigo-50">Net</TableHead>
                     <TableHead className="text-right text-emerald-700">Inflow</TableHead>
                     <TableHead className="text-right text-muted-foreground">vs Prior</TableHead>
                     <TableHead className="text-right text-red-700">Outflow</TableHead>
                     <TableHead className="text-right text-muted-foreground">vs Prior</TableHead>
-                    <TableHead className="text-right">Net</TableHead>
                     <TableHead className="text-right">Closing Balance</TableHead>
                     <TableHead className="text-center">Health</TableHead>
                   </TableRow>
@@ -495,24 +495,16 @@ export default function CashFlowForecast() {
                     return (
                       <TableRow key={i} className={m.inflow === 0 ? 'bg-amber-50/50' : i%2===0?'bg-white':'bg-muted/20'}>
                         <TableCell className="font-medium">{m.label}{m.inflow===0 && <span className="ml-2 text-amber-500 text-xs">⚠ no inflow</span>}</TableCell>
+                        <TableCell className={`text-right font-bold bg-indigo-50 ${m.net>=0?'text-emerald-700':'text-red-700'}`}>
+                          {m.net>=0?'▲':'▼'} ₹{Math.abs(m.net).toLocaleString('en-IN')}
+                        </TableCell>
                         <TableCell className="text-right text-emerald-600">₹{m.inflow.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-xs">
-                          {inflowDelta !== null ? (
-                            <span className={inflowDelta >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                              {inflowDelta >= 0 ? '▲' : '▼'} ₹{Math.abs(inflowDelta).toLocaleString('en-IN')}
-                            </span>
-                          ) : <span className="text-muted-foreground">—</span>}
+                          {inflowDelta !== null ? (<span className={inflowDelta >= 0 ? 'text-emerald-600' : 'text-red-600'}>{inflowDelta >= 0 ? '▲' : '▼'} ₹{Math.abs(inflowDelta).toLocaleString('en-IN')}</span>) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className="text-right text-red-600">₹{m.outflow.toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-right text-xs">
-                          {outflowDelta !== null ? (
-                            <span className={outflowDelta <= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                              {outflowDelta <= 0 ? '▼' : '▲'} ₹{Math.abs(outflowDelta).toLocaleString('en-IN')}
-                            </span>
-                          ) : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className={`text-right font-semibold ${m.net>=0?'text-emerald-600':'text-red-600'}`}>
-                          {m.net>=0?'▲':'▼'} ₹{Math.abs(m.net).toLocaleString('en-IN')}
+                          {outflowDelta !== null ? (<span className={outflowDelta <= 0 ? 'text-emerald-600' : 'text-red-600'}>{outflowDelta <= 0 ? '▼' : '▲'} ₹{Math.abs(outflowDelta).toLocaleString('en-IN')}</span>) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
                         <TableCell className={`text-right font-bold ${m.closing>=0?'text-foreground':'text-red-600'}`}>₹{Math.abs(m.closing).toLocaleString('en-IN')}</TableCell>
                         <TableCell className="text-center">
