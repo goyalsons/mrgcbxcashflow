@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowDownLeft, Search } from 'lucide-react';
+import { ArrowDownLeft, Search, ArrowUpDown } from 'lucide-react';
 import SplitBuilder from './SplitBuilder';
 
 const INR = (v) => {
@@ -22,6 +22,16 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
   const [expanded, setExpanded]   = useState(new Set());
   const [bulkDays, setBulkDays]   = useState('');
   const [splitMode, setSplitMode] = useState(new Map()); // id → 'full'|'split'
+  const [sortByValue, setSortByValue] = useState(false);
+
+  const getWeekLabel = (dateStr) => {
+    if (!dateStr) return '—';
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    const diff = Math.floor((d - today) / 86400000);
+    if (diff < 0) return 'Overdue';
+    const week = Math.floor(diff / 7) + 1;
+    return `W${week}`;
+  };
 
   const allItems = useMemo(() => [
     ...receivables.filter(r => ['pending','overdue','partially_paid'].includes(r.status)),
@@ -40,8 +50,13 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
       const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
       items = items.filter(r => { const d = new Date(r.due_date); return d >= today && d <= end; });
     }
+    if (sortByValue) items = [...items].sort((a, b) => {
+      const aAmt = (a.amount || 0) - (a.amount_received || a.amount_paid || 0);
+      const bAmt = (b.amount || 0) - (b.amount_received || b.amount_paid || 0);
+      return bAmt - aAmt;
+    });
     return items;
-  }, [allItems, search, filter]);
+  }, [allItems, search, filter, sortByValue]);
 
   const checked = useMemo(() => new Set([...adjustments.keys()].filter(id => allItems.find(r => r.id === id))), [adjustments, allItems]);
 
@@ -136,15 +151,6 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
             <Input placeholder="Search customer / invoice…" className="h-7 text-xs pl-7" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
-        <div className="flex gap-1 flex-wrap">
-          {FILTERS.map(f => (
-            <button key={f.key} onClick={() => setFilter(f.key)}
-              className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${filter === f.key ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
-              {f.label}
-            </button>
-          ))}
-        </div>
-
         {/* List */}
         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
           {filtered.length === 0 && <p className="text-xs text-muted-foreground py-3 text-center">No receivables match this filter.</p>}
@@ -172,7 +178,7 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
                   <Checkbox checked={isChecked} onCheckedChange={() => toggle(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{item.customer_name || item.debtor_name || 'Unknown'}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.invoice_number || '—'} · {item.due_date}</p>
+                    <p className="text-[10px] text-muted-foreground">{item.invoice_number || '—'} · {item.due_date} <span className={`ml-1 font-semibold ${getWeekLabel(item.due_date) === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({getWeekLabel(item.due_date)})</span></p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xs font-bold">{INR(amt)}</p>
