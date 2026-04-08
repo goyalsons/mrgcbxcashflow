@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Medal, Target, TrendingUp, Plus, Pencil, Trash2, MoreHorizontal, Award } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
@@ -250,58 +251,64 @@ export default function CollectionTargets() {
          </Card>
        )}
 
-      {/* Leaderboard */}
-      {monthlyTargets.length > 0 && (
-        <div>
-          <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
-            <Trophy className="w-3.5 h-3.5" /> Leaderboard
-          </h2>
-          <div className="space-y-2">
-            {monthlyTargets.map((t, idx) => (
-              <Card key={t.id} className={`${idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}`}>
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="shrink-0 w-6 flex justify-center">
-                      <RankIcon rank={idx + 1} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between mb-1">
-                        <div>
-                          <span className="text-sm font-semibold">{t.manager_name || t.manager_email}</span>
-                          <span className="text-xs text-muted-foreground ml-1">{t.manager_email}</span>
-                        </div>
-                        <div className="text-right">
-                          <span className="font-bold text-primary text-sm">{t.pct}%</span>
-                        </div>
-                      </div>
-                      <Progress value={t.pct} className="h-1.5" />
-                      <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
-                        <span className="text-emerald-600 font-medium">{formatINR(t.collected)}</span>
-                        <span>{formatINR(t.target_amount)}</span>
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                          <Pencil className="w-3.5 h-3.5 mr-2" />Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
-                          <Trash2 className="w-3.5 h-3.5 mr-2" />Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+      <Tabs defaultValue="targets">
+        <TabsList>
+          <TabsTrigger value="targets" className="gap-1.5"><Target className="w-3.5 h-3.5" />All Targets</TabsTrigger>
+          <TabsTrigger value="leaderboard" className="gap-1.5"><Trophy className="w-3.5 h-3.5" />Leaderboard</TabsTrigger>
+        </TabsList>
 
-      {/* All Targets Table */}
+        {/* Leaderboard Tab */}
+        <TabsContent value="leaderboard" className="mt-4">
+          {monthlyTargets.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground text-sm">No targets for this period</div>
+          ) : (
+            <div className="space-y-2">
+              {monthlyTargets.map((t, idx) => (
+                <Card key={t.id} className={`${idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}`}>
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <div className="shrink-0 w-6 flex justify-center">
+                        <RankIcon rank={idx + 1} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <div>
+                            <span className="text-sm font-semibold">{t.manager_name || t.manager_email}</span>
+                            <span className="text-xs text-muted-foreground ml-1">{t.manager_email}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-primary text-sm">{t.pct}%</span>
+                          </div>
+                        </div>
+                        <Progress value={t.pct} className="h-1.5" />
+                        <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
+                          <span className="text-emerald-600 font-medium">{formatINR(t.collected)}</span>
+                          <span>{formatINR(t.target_amount)}</span>
+                        </div>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
+                            <Pencil className="w-3.5 h-3.5 mr-2" />Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
+                            <Trash2 className="w-3.5 h-3.5 mr-2" />Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* All Targets Tab */}
+        <TabsContent value="targets" className="mt-4">
       <div>
         <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
           <Target className="w-3.5 h-3.5" /> All Targets
@@ -382,7 +389,8 @@ export default function CollectionTargets() {
             </TableBody>
           </Table>
         )}
-      </div>
+        </TabsContent>
+      </Tabs>
 
       <TargetForm
         open={showForm}
