@@ -1,6 +1,7 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 
 Deno.serve(async (req) => {
+  try {
   const base44 = createClientFromRequest(req);
 
   const user = await base44.auth.me();
@@ -164,13 +165,13 @@ Return ONLY valid JSON in this exact format:
     response_json_schema: {
       type: 'object',
       properties: {
-        monthly_projection: { type: 'array' },
-        cash_gaps: { type: 'array' },
-        seasonal_insights: { type: 'array' },
-        recommendations: { type: 'array' },
+        monthly_projection: { type: 'array', items: { type: 'object', properties: { month: { type: 'string' }, projected_inflow: { type: 'number' }, projected_outflow: { type: 'number' }, net_cashflow: { type: 'number' }, closing_balance: { type: 'number' }, confidence: { type: 'string' }, risk_level: { type: 'string' } } } },
+        cash_gaps: { type: 'array', items: { type: 'object', properties: { period: { type: 'string' }, shortfall: { type: 'number' }, reason: { type: 'string' }, severity: { type: 'string' } } } },
+        seasonal_insights: { type: 'array', items: { type: 'object', properties: { pattern: { type: 'string' }, impact: { type: 'string' }, description: { type: 'string' } } } },
+        recommendations: { type: 'array', items: { type: 'object', properties: { priority: { type: 'string' }, action: { type: 'string' }, expected_impact: { type: 'string' }, timeline: { type: 'string' } } } },
         health_score: { type: 'number' },
         health_summary: { type: 'string' },
-        key_metrics: { type: 'object' },
+        key_metrics: { type: 'object', properties: { avg_days_to_collect: { type: 'number' }, collection_rate_pct: { type: 'number' }, months_of_runway: { type: 'number' }, overdue_receivables_pct: { type: 'number' } } },
       },
     },
   });
@@ -187,4 +188,8 @@ Return ONLY valid JSON in this exact format:
       },
     },
   });
+  } catch (error) {
+    console.error('aiCashFlowProjection error:', error);
+    return Response.json({ error: error.message }, { status: 500 });
+  }
 });

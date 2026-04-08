@@ -81,11 +81,15 @@ export default function AIProjectionPanel() {
   const run = async () => {
     setLoading(true);
     setError(null);
-    const res = await base44.functions.invoke('aiCashFlowProjection', {});
-    if (res.data?.projection) {
-      setData(res.data);
-    } else {
-      setError('Failed to generate projection. Please try again.');
+    try {
+      const res = await base44.functions.invoke('aiCashFlowProjection', {});
+      if (res.data?.projection) {
+        setData(res.data);
+      } else {
+        setError(res.data?.error || 'Failed to generate projection. Please try again.');
+      }
+    } catch (e) {
+      setError(e?.response?.data?.error || e.message || 'Failed to generate projection. Please try again.');
     }
     setLoading(false);
   };
