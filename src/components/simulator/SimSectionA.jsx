@@ -151,6 +151,22 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
             <Input placeholder="Search customer / invoice…" className="h-7 text-xs pl-7" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
         </div>
+        {/* Filters + Sort */}
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex gap-1 flex-wrap">
+            {FILTERS.map(f => (
+              <button key={f.key} onClick={() => setFilter(f.key)}
+                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${filter === f.key ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
+                {f.label}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setSortByValue(v => !v)}
+            className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border transition-colors ${sortByValue ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
+            <ArrowUpDown className="w-3 h-3" /> Sort by value
+          </button>
+        </div>
+
         {/* List */}
         <div className="space-y-1.5 max-h-72 overflow-y-auto pr-0.5">
           {filtered.length === 0 && <p className="text-xs text-muted-foreground py-3 text-center">No receivables match this filter.</p>}
