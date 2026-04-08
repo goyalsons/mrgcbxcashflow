@@ -109,6 +109,7 @@ const MonthlyInflowBar = (props) => {
 
 export default function CashFlowForecast() {
   const [weekOffset, setWeekOffset] = useState(0);
+  const [showExpenseDetail, setShowExpenseDetail] = useState(false);
 
   const { data: receivables = [] }       = useQuery({ queryKey: ['receivables'],       queryFn: () => base44.entities.Receivable.list() });
   const { data: invoices = [] }          = useQuery({ queryKey: ['invoices'],          queryFn: () => base44.entities.Invoice.list() });
@@ -387,14 +388,25 @@ export default function CashFlowForecast() {
                     <TableRow>
                       <TableHead className="sticky top-0 bg-card z-10 whitespace-nowrap">Week</TableHead>
                       <TableHead className="sticky top-0 bg-indigo-50 z-10 text-right font-bold text-indigo-700">Net</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-emerald-700">Inflow</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-red-700">Payables</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-orange-600">Salary</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-purple-600">Rent/Util</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-blue-600">Travel</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-pink-600">Mktg</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-teal-600">Software</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right text-slate-600">Other</TableHead>
+                      <TableHead
+                       className="sticky top-0 bg-card z-10 text-right cursor-pointer select-none"
+                       onClick={() => setShowExpenseDetail(v => !v)}
+                      >
+                       <span className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors">
+                         {showExpenseDetail ? <ChevronLeft className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                         <span className="text-xs font-medium">Expense Detail</span>
+                       </span>
+                      </TableHead>
+                      {showExpenseDetail && <>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-emerald-700 whitespace-nowrap">Inflow</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-red-700 whitespace-nowrap">Payables</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-orange-600 whitespace-nowrap">Salary</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-purple-600 whitespace-nowrap">Rent/Util</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-blue-600 whitespace-nowrap">Travel</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-pink-600 whitespace-nowrap">Mktg</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-teal-600 whitespace-nowrap">Software</TableHead>
+                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-slate-600 whitespace-nowrap">Other</TableHead>
+                      </>}
                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Total Out</TableHead>
                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Closing</TableHead>
                     </TableRow>
@@ -408,14 +420,19 @@ export default function CashFlowForecast() {
                         <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${w.net>=0?'text-emerald-700':'text-red-700'}`}>
                           {w.net>=0?'▲':'▼'} ₹{Math.abs(w.net).toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell className="text-right text-emerald-600 text-xs">₹{w.inflow.toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-red-600 text-xs">₹{w.payablesOut.toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-orange-600 text-xs">₹{(w['Salary']||0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-purple-600 text-xs">₹{(w['Rent/Utilities']||0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-blue-600 text-xs">₹{(w['Travel']||0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-pink-600 text-xs">₹{(w['Marketing']||0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-teal-600 text-xs">₹{(w['Software']||0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className="text-right text-slate-600 text-xs">₹{(w['Office & Other']||0).toLocaleString('en-IN')}</TableCell>
+                        <TableCell className="text-right text-xs text-muted-foreground cursor-pointer" onClick={() => setShowExpenseDetail(v => !v)}>
+                          {showExpenseDetail ? '▲ hide' : '▼ show'}
+                        </TableCell>
+                        {showExpenseDetail && <>
+                          <TableCell className="text-right text-emerald-600 text-xs bg-amber-50/40">₹{w.inflow.toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-red-600 text-xs bg-amber-50/40">₹{w.payablesOut.toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-orange-600 text-xs bg-amber-50/40">₹{(w['Salary']||0).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-purple-600 text-xs bg-amber-50/40">₹{(w['Rent/Utilities']||0).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-blue-600 text-xs bg-amber-50/40">₹{(w['Travel']||0).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-pink-600 text-xs bg-amber-50/40">₹{(w['Marketing']||0).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-teal-600 text-xs bg-amber-50/40">₹{(w['Software']||0).toLocaleString('en-IN')}</TableCell>
+                          <TableCell className="text-right text-slate-600 text-xs bg-amber-50/40">₹{(w['Office & Other']||0).toLocaleString('en-IN')}</TableCell>
+                        </>}
                         <TableCell className="text-right text-red-700 font-semibold text-xs">₹{w.outflow.toLocaleString('en-IN')}</TableCell>
                         <TableCell className={`text-right font-bold text-xs ${w.closing>=0?'text-foreground':'text-red-600'}`}>₹{Math.abs(w.closing).toLocaleString('en-IN')}</TableCell>
                       </TableRow>
