@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import { v2 as cloudinary } from 'npm:cloudinary@2.5.1';
 
 Deno.serve(async (req) => {
   try {
@@ -18,8 +17,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Cloudinary credentials not configured' }, { status: 500 });
     }
 
-    cloudinary.config({ cloud_name: cloudName, api_key: apiKey, api_secret: apiSecret });
-
     const body = await req.json();
     const { file, folder = 'cashflow-pro' } = body;
 
@@ -27,7 +24,29 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const data = await cloudinary.uploader.upload(file, { folder, resource_type: 'auto' });
+    // Generate SHA-1 signature
+    const timestamp = Math.floor(Date.now() / 1000);
+    const toSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+    const msgBuffer = new TextEncoder().encode(toSign);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
+    const signature = Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', folder);
+    formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
+
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    const response = await fetch(uploadUrl, { method: 'POST', body: formData });
+    const data = await response.json();
+
+    if (!response.ok) {
+      return Response.json({ error: data.error?.message || 'Upload failed', cloudName, timestamp }, { status: response.status });
+    }
 
     return Response.json({
       url: data.secure_url,
