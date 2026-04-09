@@ -137,10 +137,12 @@ export default function Expenses() {
   };
 
   const filtered = useMemo(() =>
-    expenses.filter(e =>
-      e.description?.toLowerCase().includes(search.toLowerCase()) ||
-      e.category?.toLowerCase().includes(search.toLowerCase())
-    ),
+    expenses
+      .filter(e =>
+        e.description?.toLowerCase().includes(search.toLowerCase()) ||
+        e.category?.toLowerCase().includes(search.toLowerCase())
+      )
+      .sort((a, b) => new Date(b.expense_date) - new Date(a.expense_date)),
     [expenses, search]
   );
 
