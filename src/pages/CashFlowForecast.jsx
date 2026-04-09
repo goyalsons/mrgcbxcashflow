@@ -388,6 +388,7 @@ export default function CashFlowForecast() {
                     <TableRow>
                       <TableHead className="sticky top-0 bg-card z-10 whitespace-nowrap">Week</TableHead>
                       <TableHead className="sticky top-0 bg-indigo-50 z-10 text-right font-bold text-indigo-700">Net</TableHead>
+                      <TableHead className="sticky top-0 bg-emerald-50 z-10 text-right text-emerald-700 whitespace-nowrap font-semibold">Inflow</TableHead>
                       <TableHead
                        className="sticky top-0 bg-card z-10 text-right cursor-pointer select-none"
                        onClick={() => setShowExpenseDetail(v => !v)}
@@ -398,7 +399,6 @@ export default function CashFlowForecast() {
                        </span>
                       </TableHead>
                       {showExpenseDetail && <>
-                       <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-emerald-700 whitespace-nowrap">Inflow</TableHead>
                        <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-red-700 whitespace-nowrap">Payables</TableHead>
                        <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-orange-600 whitespace-nowrap">Salary</TableHead>
                        <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-purple-600 whitespace-nowrap">Rent/Util</TableHead>
@@ -407,10 +407,10 @@ export default function CashFlowForecast() {
                        <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-teal-600 whitespace-nowrap">Software</TableHead>
                        <TableHead className="sticky top-0 bg-amber-50 z-10 text-right text-slate-600 whitespace-nowrap">Other</TableHead>
                       </>}
-                      <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Total Out</TableHead>
-                      <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Closing</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Total Out</TableHead>
+                       <TableHead className="sticky top-0 bg-card z-10 text-right font-bold">Closing</TableHead>
+                      </TableRow>
+                      </TableHeader>
                   <TableBody>
                     {weeklyData.map((w, i) => (
                       <TableRow key={i} className={`${w.net < 0 ? 'bg-red-50/40' : i%2===0?'bg-white':'bg-muted/20'} ${w.isCurrentWeek ? 'ring-1 ring-inset ring-indigo-300' : ''}`}>
@@ -418,24 +418,24 @@ export default function CashFlowForecast() {
                          {w.label}{w.isCurrentWeek && <span className="ml-1 text-indigo-500 text-xs">•</span>}
                         </TableCell>
                         <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${w.net>=0?'text-emerald-700':'text-red-700'}`}>
-                          {w.net>=0?'▲':'▼'} ₹{Math.abs(w.net).toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell className="text-right text-xs text-muted-foreground cursor-pointer" onClick={() => setShowExpenseDetail(v => !v)}>
-                          {showExpenseDetail ? '▲ hide' : '▼ show'}
-                        </TableCell>
-                        {showExpenseDetail && <>
-                          <TableCell className="text-right text-emerald-600 text-xs bg-amber-50/40">₹{w.inflow.toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-red-600 text-xs bg-amber-50/40">₹{w.payablesOut.toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-orange-600 text-xs bg-amber-50/40">₹{(w['Salary']||0).toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-purple-600 text-xs bg-amber-50/40">₹{(w['Rent/Utilities']||0).toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-blue-600 text-xs bg-amber-50/40">₹{(w['Travel']||0).toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-pink-600 text-xs bg-amber-50/40">₹{(w['Marketing']||0).toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-teal-600 text-xs bg-amber-50/40">₹{(w['Software']||0).toLocaleString('en-IN')}</TableCell>
-                          <TableCell className="text-right text-slate-600 text-xs bg-amber-50/40">₹{(w['Office & Other']||0).toLocaleString('en-IN')}</TableCell>
-                        </>}
-                        <TableCell className="text-right text-red-700 font-semibold text-xs">₹{w.outflow.toLocaleString('en-IN')}</TableCell>
-                        <TableCell className={`text-right font-bold text-xs ${w.closing>=0?'text-foreground':'text-red-600'}`}>₹{Math.abs(w.closing).toLocaleString('en-IN')}</TableCell>
-                      </TableRow>
+                           {w.net>=0?'▲':'▼'} ₹{Math.abs(w.net).toLocaleString('en-IN')}
+                         </TableCell>
+                         <TableCell className="text-right text-emerald-600 text-xs bg-emerald-50/40 font-medium">₹{w.inflow.toLocaleString('en-IN')}</TableCell>
+                         <TableCell className="text-right text-xs text-muted-foreground cursor-pointer" onClick={() => setShowExpenseDetail(v => !v)}>
+                           {showExpenseDetail ? '▲ hide' : '▼ show'}
+                         </TableCell>
+                         {showExpenseDetail && <>
+                            <TableCell className="text-right text-red-600 text-xs bg-amber-50/40">₹{w.payablesOut.toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-orange-600 text-xs bg-amber-50/40">₹{(w['Salary']||0).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-purple-600 text-xs bg-amber-50/40">₹{(w['Rent/Utilities']||0).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-blue-600 text-xs bg-amber-50/40">₹{(w['Travel']||0).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-pink-600 text-xs bg-amber-50/40">₹{(w['Marketing']||0).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-teal-600 text-xs bg-amber-50/40">₹{(w['Software']||0).toLocaleString('en-IN')}</TableCell>
+                            <TableCell className="text-right text-slate-600 text-xs bg-amber-50/40">₹{(w['Office & Other']||0).toLocaleString('en-IN')}</TableCell>
+                         </>}
+                         <TableCell className="text-right text-red-700 font-semibold text-xs">₹{w.outflow.toLocaleString('en-IN')}</TableCell>
+                         <TableCell className={`text-right font-bold text-xs ${w.closing>=0?'text-foreground':'text-red-600'}`}>₹{Math.abs(w.closing).toLocaleString('en-IN')}</TableCell>
+                         </TableRow>
                     ))}
                   </TableBody>
                 </Table>
