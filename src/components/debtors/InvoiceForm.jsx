@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { base44 } from '@/api/base44Client';
 import { Upload, Sparkles, Loader2, FileText, X, CheckCircle, Cloud, AlertTriangle } from 'lucide-react';
-import { uploadToCloudinary, getCloudinaryConfig } from '@/lib/utils/cloudinary';
+import { uploadToCloudinary } from '@/lib/utils/cloudinary';
 
 const EMPTY = { invoice_number: '', amount: '', invoice_date: '', due_date: '', description: '', notes: '', status: 'pending' };
 
@@ -57,23 +57,7 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
     setExtracting(true);
 
     try {
-      const cloudConfig = getCloudinaryConfig();
-      let fileUrl;
-
-      // Try Cloudinary first, fallback to Base44 upload
-      if (cloudConfig.cloud_name) {
-        try {
-          const result = await uploadToCloudinary(file, 'invoices');
-          fileUrl = result.url;
-        } catch (err) {
-          console.warn('Cloudinary upload failed, using Base44 upload:', err.message);
-          const { file_url } = await base44.integrations.Core.UploadFile({ file });
-          fileUrl = file_url;
-        }
-      } else {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        fileUrl = file_url;
-      }
+      const { url: fileUrl } = await uploadToCloudinary(file, 'invoices');
 
       const result = await base44.integrations.Core.ExtractDataFromUploadedFile({
         file_url: fileUrl,
@@ -149,11 +133,9 @@ export default function InvoiceForm({ open, onClose, onSave, editData, debtorId,
                     onChange={handleFileChange}
                   />
                 </label>
-                {getCloudinaryConfig().cloud_name && (
-                  <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
                     <Cloud className="w-3 h-3" /> Files uploaded to Cloudinary
                   </div>
-                )}
               </>
             ) : (
               <div className={`flex items-center gap-3 px-4 py-2.5 rounded-lg border ${

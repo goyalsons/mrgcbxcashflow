@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { base44 } from '@/api/base44Client';
+import { uploadToCloudinary } from '@/lib/utils/cloudinary';
 import { Paperclip, X, Loader2, FileText, AlertTriangle } from 'lucide-react';
 
 const CATEGORIES = [
@@ -75,8 +75,8 @@ export default function ExpenseForm({ open, onClose, onSave, editData, approvalT
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const { file_url } = await base44.integrations.Core.UploadFile({ file });
-    setForm(f => ({ ...f, receipt_url: file_url }));
+    const { url } = await uploadToCloudinary(file, 'expenses');
+    setForm(f => ({ ...f, receipt_url: url }));
     setUploading(false);
     e.target.value = '';
   };

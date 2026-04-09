@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { uploadToCloudinary } from '@/lib/utils/cloudinary';
 
 const CATEGORIES = [
   { value: 'raw_materials', label: 'Raw Materials' },
@@ -60,16 +61,10 @@ export default function PayableForm({ open, onClose, onSave, editData }) {
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploading(true);
-    try {
-      const response = await base44.integrations.Core.UploadFile({ file });
-      setForm(f => ({ ...f, document_url: response.file_url }));
-    } catch (err) {
-      console.error('Upload failed:', err);
-    } finally {
-      setUploading(false);
-    }
+    const { url } = await uploadToCloudinary(file, 'payables');
+    setForm(f => ({ ...f, document_url: url }));
+    setUploading(false);
   };
 
   const handleSubmit = async (e) => {

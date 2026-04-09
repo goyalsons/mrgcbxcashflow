@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
     }
 
     const cloudName = Deno.env.get('CLOUDINARY_CLOUD_NAME');
-    const apiKey = Deno.env.get('CLOUDINARY_API_KEY');
+    const apiKey    = Deno.env.get('CLOUDINARY_API_KEY');
     const apiSecret = Deno.env.get('CLOUDINARY_API_SECRET');
 
     if (!cloudName || !apiKey || !apiSecret) {
@@ -24,11 +24,20 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'No file provided' }, { status: 400 });
     }
 
+    // Generate signature for authenticated upload
+    const timestamp = Math.floor(Date.now() / 1000);
+    const toSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+
+    const msgBuffer = new TextEncoder().encode(toSign);
+    const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
+    const signature = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
     const formData = new FormData();
-    formData.append('file', file);
-    formData.append('upload_preset', 'cashflow_pro');
+    formData.append('file', file); // base64 data URL accepted by Cloudinary
     formData.append('folder', folder);
     formData.append('api_key', apiKey);
+    formData.append('timestamp', String(timestamp));
+    formData.append('signature', signature);
 
     const response = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
       method: 'POST',
@@ -37,7 +46,7 @@ Deno.serve(async (req) => {
 
     if (!response.ok) {
       const error = await response.json();
-      return Response.json({ error: error.error.message }, { status: response.status });
+      return Response.json({ error: error.error?.message || 'Upload failed' }, { status: response.status });
     }
 
     const data = await response.json();
