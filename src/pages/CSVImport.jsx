@@ -358,56 +358,77 @@ export default function CSVImport() {
     if (!preview) return;
     setImporting(true);
     const validRows = preview.rows.filter(r => r.valid);
-    let success = 0, duplicates = 0;
-
-    // Filter duplicates first if needed
-    const toCreate = [];
-    for (const row of validRows) {
-      if (config.dupCheck) {
-        const isDup = await config.dupCheck(row.data);
-        if (isDup) { duplicates++; continue; }
-      }
-      toCreate.push(row.data);
-    }
-
-    // Bulk create in batches of 25 to avoid rate limits
+    let success = 0, updated = 0, duplicates = 0;
     const BATCH = 25;
-    for (let i = 0; i < toCreate.length; i += BATCH) {
-      const batch = toCreate.slice(i, i + BATCH);
-      await base44.entities[config.entity].bulkCreate(batch);
-      success += batch.length;
-    }
 
-    // For tally_receivable: auto-create missing Debtor records from unique customer names
-    if (entityType === 'tally_receivable' && toCreate.length > 0) {
-      const uniqueNames = [...new Set(toCreate.map(r => r.customer_name).filter(Boolean))];
-      const existingDebtors = await base44.entities.Debtor.list().catch(() => []);
-      const existingNames = new Set(existingDebtors.map(d => d.name?.toLowerCase()));
-      const newDebtors = uniqueNames
-        .filter(name => !existingNames.has(name.toLowerCase()))
-        .map(name => ({ name, status: 'active' }));
-      if (newDebtors.length > 0) {
-        for (let i = 0; i < newDebtors.length; i += BATCH) {
-          await base44.entities.Debtor.bulkCreate(newDebtors.slice(i, i + BATCH));
+    if (entityType === 'tally_receivable') {
+      // Upsert logic: fetch all existing receivables once, then update or create
+      const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
+      // Build a map of invoice_number -> receivable record (case-insensitive)
+      const existingMap = {};
+      existingReceivables.forEach(r => {
+        if (r.invoice_number) existingMap[r.invoice_number.trim().toLowerCase()] = r;
+      });
+
+      const toCreate = [];
+      for (const row of validRows) {
+        const invNum = (row.data.invoice_number || '').trim().toLowerCase();
+        if (invNum && existingMap[invNum]) {
+          // Update existing record: only update amount and due_date
+          const existing = existingMap[invNum];
+          await base44.entities.Receivable.update(existing.id, {
+            amount: row.data.amount,
+            due_date: row.data.due_date,
+          });
+          updated++;
+        } else {
+          toCreate.push(row.data);
         }
       }
+
+      // Bulk create new records
+      for (let i = 0; i < toCreate.length; i += BATCH) {
+        const batch = toCreate.slice(i, i + BATCH);
+        await base44.entities.Receivable.bulkCreate(batch);
+        success += batch.length;
+      }
+
+      // Auto-create missing Debtor records
+      const allNewRows = [...toCreate];
+      if (allNewRows.length > 0) {
+        const uniqueNames = [...new Set(allNewRows.map(r => r.customer_name).filter(Boolean))];
+        const existingDebtors = await base44.entities.Debtor.list().catch(() => []);
+        const existingNames = new Set(existingDebtors.map(d => d.name?.toLowerCase()));
+        const newDebtors = uniqueNames
+          .filter(name => !existingNames.has(name.toLowerCase()))
+          .map(name => ({ name, status: 'active' }));
+        if (newDebtors.length > 0) {
+          for (let i = 0; i < newDebtors.length; i += BATCH) {
+            await base44.entities.Debtor.bulkCreate(newDebtors.slice(i, i + BATCH));
+          }
+        }
+      }
+    } else {
+      // Standard import with dupCheck
+      const toCreate = [];
+      for (const row of validRows) {
+        if (config.dupCheck) {
+          const isDup = await config.dupCheck(row.data);
+          if (isDup) { duplicates++; continue; }
+        }
+        toCreate.push(row.data);
+      }
+      for (let i = 0; i < toCreate.length; i += BATCH) {
+        const batch = toCreate.slice(i, i + BATCH);
+        await base44.entities[config.entity].bulkCreate(batch);
+        success += batch.length;
+      }
     }
 
-    setResults({ success, failed: preview.rows.filter(r => !r.valid).length, duplicates });
+    setResults({ success, updated, failed: preview.rows.filter(r => !r.valid).length, duplicates });
     queryClient.invalidateQueries();
     setImporting(false);
-    toast({ title: `Import complete: ${success} imported${duplicates ? `, ${duplicates} duplicates skipped` : ''}` });
-  };
-
-  const downloadSampleCSV = () => {
-    const csv = [config.fields.join(','), ...config.sampleData.map(row => row.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sample-${entityType}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
+    toast({ title: `Import complete: ${success} created, ${updated} updated${duplicates ? `, ${duplicates} skipped` : ''}` });
   };
 
   const handleTypeChange = (v) => {
@@ -472,9 +493,9 @@ export default function CSVImport() {
               <CardContent className="p-4 space-y-2">
                 <div className="flex items-center gap-2 text-emerald-700 font-semibold"><CheckCircle className="w-5 h-5" /> Import Complete</div>
                 <div className="text-sm space-y-1">
-                  <div className="text-emerald-700">✓ {results.success} records imported</div>
+                  {results.success > 0 && <div className="text-emerald-700">✓ {results.success} new records created</div>}
+                  {results.updated > 0 && <div className="text-blue-700">↻ {results.updated} records updated</div>}
                   {results.duplicates > 0 && <div className="text-amber-700">↪ {results.duplicates} duplicates skipped</div>}
-                  {results.failed > 0 && <div className="text-red-700">✗ {results.failed} invalid rows skipped</div>}
                 </div>
                 <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => navigate(PAGE_MAP[entityType])}>
                   View {config.label}
