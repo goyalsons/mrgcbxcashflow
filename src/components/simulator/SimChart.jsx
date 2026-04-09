@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine, Area
+  ResponsiveContainer, ReferenceLine, Area, ReferenceArea
 } from 'recharts';
 
 const INR = (v) => {
@@ -65,6 +65,8 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
           {hasFunding && <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#9333ea' }} /><span className="text-[11px] text-muted-foreground">With funding &amp; levers</span></div>}
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Improvement</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Worsening</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-[11px] text-muted-foreground">Baseline negative week</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-[11px] text-muted-foreground">Sim negative week</span></div>
         </div>
       </CardHeader>
       <CardContent>
@@ -101,16 +103,32 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
                 <stop offset="0%" stopColor="#ef4444" stopOpacity={0.02} /><stop offset="100%" stopColor="#ef4444" stopOpacity={0.2} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--border))" vertical={true} />
             <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" />
+            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={10} />
             <Tooltip content={<SimTooltip />} />
-            <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1}
+            {/* Shade negative baseline weeks */}
+            {chartData.map((d, i) => d.baseNet < 0 && (
+              <ReferenceArea key={`base-neg-${i}`} x1={d.name} x2={d.name} fill="#ef444415" />
+            ))}
+            <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5}
               label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
             <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />
             <Area type="monotone" dataKey="baseNet" fill="url(#negGrad)" stroke="none" />
-            <Line type="monotone" dataKey="baseNet" name="Baseline" stroke="#3b82f6" strokeWidth={2.5} dot={false} isAnimationActive={true} animationDuration={400} />
-            <Line type="monotone" dataKey="simNet" name="Scheduled only" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" dot={false} isAnimationActive={true} animationDuration={400} />
+            <Line type="monotone" dataKey="baseNet" name="Baseline" stroke="#3b82f6" strokeWidth={2.5} isAnimationActive={true} animationDuration={400}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (payload.baseNet < 0) return <circle key={`bd-${cx}`} cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#fff" strokeWidth={1.5} />;
+                return <circle key={`bd-${cx}`} cx={cx} cy={cy} r={2.5} fill="#3b82f6" />;
+              }}
+            />
+            <Line type="monotone" dataKey="simNet" name="Scheduled only" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" isAnimationActive={true} animationDuration={400}
+              dot={(props) => {
+                const { cx, cy, payload } = props;
+                if (payload.simNet < 0) return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={5} fill="#f97316" stroke="#fff" strokeWidth={1.5} />;
+                return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={2.5} fill="#10b981" />;
+              }}
+            />
             {hasFunding && (
               <Line type="monotone" dataKey="simNetWithFunding" name="With funding" stroke="#9333ea" strokeWidth={2.5} isAnimationActive={true} animationDuration={400}
                 dot={(props) => {
@@ -124,6 +142,28 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
           </ComposedChart>
         </ResponsiveContainer>
         </div>
+        {/* Negative week indicators */}
+        {(() => {
+          const baseNeg = chartData.filter(d => d.baseNet < 0).map(d => d.name.split(' ')[0]);
+          const simNeg  = chartData.filter(d => d.simNet  < 0).map(d => d.name.split(' ')[0]);
+          if (!baseNeg.length && !simNeg.length) return null;
+          return (
+            <div className="mt-2 space-y-1 px-1">
+              {baseNeg.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground shrink-0">Baseline negative:</span>
+                  {baseNeg.map(w => <span key={w} className="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 font-medium">{w}</span>)}
+                </div>
+              )}
+              {simNeg.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  <span className="text-[10px] text-muted-foreground shrink-0">Sim negative:</span>
+                  {simNeg.map(w => <span key={w} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">{w}</span>)}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </CardContent>
     </Card>
   );
