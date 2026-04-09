@@ -16,7 +16,7 @@ const today = new Date(); today.setHours(0,0,0,0);
 const isOverdue = (d) => d && new Date(d) < today;
 const daysDiff = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000);
 
-export default function SimSectionB({ payables, adjustments, setAdjustments, expenses = [], expAdj, setExpAdj }) {
+export default function SimSectionB({ payables, adjustments, setAdjustments, expenses = [], recurringExpenses = [], expAdj, setExpAdj }) {
   const [filter, setFilter]       = useState('all');
   const [expanded, setExpanded]   = useState(new Set());
   const [splitMode, setSplitMode] = useState(new Map());
@@ -76,9 +76,9 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
     setAdjustments(next);
   };
 
-  const [expFilter, setExpFilter]       = useState('all');
-  const [expExpanded, setExpExpanded]   = useState(new Set());
-  const [showExpenses, setShowExpenses] = useState(false);
+  const [expFilter, setExpFilter]     = useState('all');
+  const [expExpanded, setExpExpanded] = useState(new Set());
+  const [expSortByValue, setExpSortByValue] = useState(false);
 
   const EXP_CATEGORIES_LABEL = {
     salary: 'Salary', rent: 'Rent/Utilities', utilities: 'Rent/Utilities',
@@ -87,18 +87,29 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
     meals: 'Office & Other', miscellaneous: 'Office & Other',
   };
 
+  // Merge regular + recurring expenses, deduplicated by id
+  const allExpenses = useMemo(() => {
+    const ids = new Set(expenses.map(e => e.id));
+    const recur = recurringExpenses.filter(e => !ids.has(e.id));
+    return [...expenses, ...recur].filter(e => e.expense_date || e.recurrence_start_date);
+  }, [expenses, recurringExpenses]);
+
+  const getExpDate = (e) => e.expense_date || e.recurrence_start_date || '';
+
   const filteredExpenses = useMemo(() => {
-    let items = expenses.filter(e => e.expense_date);
+    let items = allExpenses;
     if (expFilter !== 'all') {
       items = items.filter(e => {
-        const d = new Date(e.expense_date); d.setHours(0,0,0,0);
+        const dateStr = getExpDate(e);
+        const d = new Date(dateStr); d.setHours(0,0,0,0);
         const diff = Math.floor((d - today) / 86400000);
         const week = diff < 0 ? 'Overdue' : `W${Math.floor(diff / 7) + 1}`;
         return week === expFilter;
       });
     }
+    if (expSortByValue) items = [...items].sort((a, b) => (b.amount || 0) - (a.amount || 0));
     return items;
-  }, [expenses, expFilter]);
+  }, [allExpenses, expFilter, expSortByValue]);
 
   const toggleExp = (item) => {
     const id = item.id;
@@ -108,7 +119,7 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
       setExpExpanded(prev => { const s = new Set(prev); s.delete(id); return s; });
     } else {
       const next = new Map(expAdj);
-      next.set(id, { date: toDateStr(item.expense_date) });
+      next.set(id, { date: toDateStr(getExpDate(item)) });
       setExpAdj(next);
       setExpExpanded(prev => new Set([...prev, id]));
     }
@@ -234,67 +245,72 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
             );
           })}
         </div>
-        {/* Expenses sub-section */}
-        <div className="border-t pt-3">
-          <button onClick={() => setShowExpenses(v => !v)}
-            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
-            {showExpenses ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-            Defer Expenses ({expenses.length})
-            {expAdj.size > 0 && <span className="ml-auto text-primary font-semibold">{expAdj.size} deferred</span>}
-          </button>
+        {/* Expenses sub-section — always expanded */}
+        <div className="border-t pt-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-semibold text-foreground">
+              Defer Expenses ({allExpenses.length})
+              {expAdj.size > 0 && <span className="ml-2 text-primary">{expAdj.size} deferred</span>}
+            </span>
+            <button onClick={() => setExpSortByValue(v => !v)}
+              className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border transition-colors ${expSortByValue ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
+              <ArrowUpDown className="w-3 h-3" /> Sort by value
+            </button>
+          </div>
 
-          {showExpenses && (
-            <div className="mt-2 space-y-2">
-              {/* Expense filters */}
-              <div className="flex gap-1 flex-wrap">
-                {['all','overdue',...Array.from({length:12},(_,i)=>`W${i+1}`)].map(f => (
-                  <button key={f} onClick={() => setExpFilter(f)}
-                    className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${expFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
-                    {f}
-                  </button>
-                ))}
-              </div>
+          {/* Expense week filters */}
+          <div className="flex gap-1 flex-wrap">
+            {['all','overdue',...Array.from({length:12},(_,i)=>`W${i+1}`)].map(f => (
+              <button key={f} onClick={() => setExpFilter(f)}
+                className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${expFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
+                {f}
+              </button>
+            ))}
+          </div>
 
-              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
-                {filteredExpenses.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No expenses match this filter.</p>}
-                {filteredExpenses.map(item => {
-                  const id = item.id;
-                  const isChecked = expAdj.has(id);
-                  const adj = expAdj.get(id);
-                  const isExpanded = expExpanded.has(id);
-                  const d = new Date(item.expense_date); d.setHours(0,0,0,0);
-                  const diff = Math.floor((d - today) / 86400000);
-                  const wLabel = diff < 0 ? 'Overdue' : `W${Math.floor(diff / 7) + 1}`;
-                  const catLabel = EXP_CATEGORIES_LABEL[item.category] || item.category || 'Other';
-                  return (
-                    <div key={id} className={`border border-l-4 rounded-lg overflow-hidden ${isChecked ? 'border-l-orange-400' : 'border-l-transparent'}`}>
-                      <div className="flex items-start gap-2 p-2 cursor-pointer hover:bg-muted/30"
-                        onClick={() => { if (!isChecked) toggleExp(item); else setExpExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }); }}>
-                        <Checkbox checked={isChecked} onCheckedChange={() => toggleExp(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium truncate">{item.description || 'Expense'}</p>
-                          <p className="text-[10px] text-muted-foreground">{catLabel} · {item.expense_date} <span className={`ml-1 font-semibold ${wLabel === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({wLabel})</span></p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-bold">{INR(item.amount)}</p>
-                        </div>
-                      </div>
-                      {isChecked && isExpanded && (
-                        <div className="px-3 pb-3 bg-muted/20 border-t">
-                          <div className="flex items-center gap-2 pt-2">
-                            <span className="text-[11px] text-muted-foreground shrink-0">Defer {INR(item.amount)} to:</span>
-                            <Input type="date" className="h-7 text-xs flex-1"
-                              value={adj?.date || toDateStr(item.expense_date)}
-                              onChange={e => { const next = new Map(expAdj); next.set(id, { date: e.target.value }); setExpAdj(next); }} />
-                          </div>
-                        </div>
-                      )}
+          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
+            {filteredExpenses.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No expenses match this filter.</p>}
+            {filteredExpenses.map(item => {
+              const id = item.id;
+              const isChecked = expAdj.has(id);
+              const adj = expAdj.get(id);
+              const isExpanded = expExpanded.has(id);
+              const dateStr = getExpDate(item);
+              const d = new Date(dateStr); d.setHours(0,0,0,0);
+              const diff = Math.floor((d - today) / 86400000);
+              const wLabel = diff < 0 ? 'Overdue' : `W${Math.floor(diff / 7) + 1}`;
+              const catLabel = EXP_CATEGORIES_LABEL[item.category] || item.category || 'Other';
+              const isRecurring = item.recurrence_type && item.recurrence_type !== 'none';
+              return (
+                <div key={id} className={`border border-l-4 rounded-lg overflow-hidden ${isChecked ? 'border-l-orange-400' : 'border-l-transparent'}`}>
+                  <div className="flex items-start gap-2 p-2 cursor-pointer hover:bg-muted/30"
+                    onClick={() => { if (!isChecked) toggleExp(item); else setExpExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }); }}>
+                    <Checkbox checked={isChecked} onCheckedChange={() => toggleExp(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium truncate flex items-center gap-1">
+                        {item.description || 'Expense'}
+                        {isRecurring && <span className="text-[9px] bg-purple-100 text-purple-700 px-1 rounded">recurring</span>}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground">{catLabel} · {dateStr} <span className={`ml-1 font-semibold ${wLabel === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({wLabel})</span></p>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-bold">{INR(item.amount)}</p>
+                    </div>
+                  </div>
+                  {isChecked && isExpanded && (
+                    <div className="px-3 pb-3 bg-muted/20 border-t">
+                      <div className="flex items-center gap-2 pt-2">
+                        <span className="text-[11px] text-muted-foreground shrink-0">Defer {INR(item.amount)} to:</span>
+                        <Input type="date" className="h-7 text-xs flex-1"
+                          value={adj?.date || toDateStr(dateStr)}
+                          onChange={e => { const next = new Map(expAdj); next.set(id, { date: e.target.value }); setExpAdj(next); }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </CardContent>
     </Card>
