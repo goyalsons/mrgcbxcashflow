@@ -6,7 +6,7 @@ import { formatINR, formatDateIN } from '@/lib/utils/currency';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Building2, Mail, Phone, CreditCard, CheckCircle2, AlertTriangle, Clock, Receipt } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Phone, CreditCard, CheckCircle2, AlertTriangle, Clock, Receipt, FileEdit } from 'lucide-react';
 import StatusBadge from '@/components/shared/StatusBadge';
 
 function StatCard({ icon: Icon, label, value, color = 'blue' }) {
@@ -53,6 +53,11 @@ export default function VendorProfile() {
     queryFn: () => base44.entities.SupplierPayment.list('-payment_date'),
   });
 
+  const { data: auditLogs = [] } = useQuery({
+    queryKey: ['auditLogs'],
+    queryFn: () => base44.entities.AuditLog.list('-created_date'),
+  });
+
   const vendorPayables = useMemo(() =>
     payables.filter(p => p.vendor_id === id || p.vendor_name === vendor?.name),
     [payables, id, vendor]
@@ -78,6 +83,16 @@ export default function VendorProfile() {
 
   // Build unified timeline
   const timeline = useMemo(() => {
+    const vendorPayableIds = new Set(vendorPayables.map(p => p.id));
+    const vendorPaymentIds = new Set(vendorPayments.map(p => p.id));
+
+    const relevantLogs = auditLogs.filter(log => {
+      if (log.entity_type === 'Vendor' && log.entity_id === id) return true;
+      if (log.entity_type === 'Payable' && vendorPayableIds.has(log.entity_id)) return true;
+      if (log.entity_type === 'SupplierPayment' && vendorPaymentIds.has(log.entity_id)) return true;
+      return false;
+    });
+
     const items = [
       ...vendorPayables.map(p => ({
         type: 'bill',
@@ -97,9 +112,16 @@ export default function VendorProfile() {
         reference: p.reference_number,
         id: p.id,
       })),
+      ...relevantLogs.map(log => ({
+        type: 'audit',
+        date: log.created_date,
+        label: `${log.action?.replace(/_/g, ' ')} — ${log.entity_type}${log.entity_name ? ` (${log.entity_name})` : ''}`,
+        by: log.performed_by_name || log.performed_by,
+        id: log.id,
+      })),
     ];
     return items.sort((a, b) => new Date(b.date) - new Date(a.date));
-  }, [vendorPayables, vendorPayments]);
+  }, [vendorPayables, vendorPayments, auditLogs, id, vendor]);
 
   if (loadingVendor) return <div className="p-8 text-muted-foreground">Loading...</div>;
   if (!vendor) return <div className="p-8 text-muted-foreground">Vendor not found.</div>;
@@ -200,42 +222,50 @@ export default function VendorProfile() {
             <div className="relative space-y-0">
               {timeline.map((item, i) => (
                 <div key={item.id + item.type} className="flex gap-3 pb-4 relative">
-                  <div className="flex flex-col items-center">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${item.type === 'payment' ? 'bg-emerald-100' : 'bg-blue-100'}`}>
-                      {item.type === 'payment'
-                        ? <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                        : <Receipt className="w-4 h-4 text-blue-600" />
-                      }
-                    </div>
-                    {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-border mt-1" />}
+                <div className="flex flex-col items-center">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 z-10 ${
+                    item.type === 'payment' ? 'bg-emerald-100' :
+                    item.type === 'audit' ? 'bg-purple-100' : 'bg-blue-100'
+                  }`}>
+                    {item.type === 'payment' && <CheckCircle2 className="w-4 h-4 text-emerald-600" />}
+                    {item.type === 'bill' && <Receipt className="w-4 h-4 text-blue-600" />}
+                    {item.type === 'audit' && <FileEdit className="w-4 h-4 text-purple-600" />}
                   </div>
-                  <Card className="flex-1 p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <p className="text-sm font-medium">{item.label}</p>
-                        <p className="text-xs text-muted-foreground">{item.date ? new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
-                        {item.type === 'bill' && item.due_date && (
-                          <p className="text-xs text-muted-foreground">Due: {new Date(item.due_date).toLocaleDateString('en-IN')}</p>
-                        )}
-                        {item.type === 'payment' && (
-                          <div className="flex items-center gap-2 mt-0.5">
-                            {item.mode && <Badge variant="outline" className="text-[10px] py-0 h-4">{item.mode.replace(/_/g, ' ').toUpperCase()}</Badge>}
-                            {item.reference && <span className="text-[10px] text-muted-foreground">Ref: {item.reference}</span>}
-                          </div>
-                        )}
-                      </div>
-                      <div className="text-right shrink-0">
+                  {i < timeline.length - 1 && <div className="w-0.5 flex-1 bg-border mt-1" />}
+                </div>
+                <Card className="flex-1 p-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium capitalize">{item.label}</p>
+                      <p className="text-xs text-muted-foreground">{item.date ? new Date(item.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</p>
+                      {item.type === 'bill' && item.due_date && (
+                        <p className="text-xs text-muted-foreground">Due: {new Date(item.due_date).toLocaleDateString('en-IN')}</p>
+                      )}
+                      {item.type === 'payment' && (
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {item.mode && <Badge variant="outline" className="text-[10px] py-0 h-4">{item.mode.replace(/_/g, ' ').toUpperCase()}</Badge>}
+                          {item.reference && <span className="text-[10px] text-muted-foreground">Ref: {item.reference}</span>}
+                        </div>
+                      )}
+                      {item.type === 'audit' && item.by && (
+                        <p className="text-xs text-muted-foreground">By: {item.by}</p>
+                      )}
+                    </div>
+                    <div className="text-right shrink-0">
+                      {item.amount !== undefined && (
                         <p className={`text-sm font-bold ${item.type === 'payment' ? 'text-emerald-600' : 'text-foreground'}`}>
                           {item.type === 'payment' ? '-' : ''}{formatINR(item.amount)}
                         </p>
-                        {item.type === 'bill' && <StatusBadge status={item.status} />}
-                      </div>
+                      )}
+                      {item.type === 'bill' && <StatusBadge status={item.status} />}
+                      {item.type === 'audit' && <Badge variant="outline" className="text-[10px] text-purple-600 border-purple-200">Audit</Badge>}
                     </div>
-                  </Card>
+                  </div>
+                </Card>
                 </div>
-              ))}
-            </div>
-          )}
+                ))}
+                </div>
+                )}
         </div>
       </div>
     </div>
