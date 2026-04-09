@@ -98,29 +98,6 @@ function parseCSV(text) {
 }
 
 const ENTITY_CONFIGS = {
-  debtor: {
-    label: 'Debtors',
-    entity: 'Debtor',
-    fields: ['name', 'email', 'phone', 'gstin', 'contact_person', 'address'],
-    required: ['name'],
-    sampleData: [
-      ['Acme Corporation', 'contact@acme.com', '+91 98765 43210', '27AAAAA0000A1Z5', 'Raj Kumar', '123 Business Street, Mumbai'],
-      ['Tech Solutions Ltd', 'admin@techsol.com', '+91 88765 43210', '27BBBBB1111B2Z6', 'Priya Singh', '456 Tech Park, Bangalore'],
-    ],
-    transform: (row) => ({
-      name: row.name || row.company || row.debtor_name,
-      email: row.email,
-      phone: row.phone || row.mobile,
-      gstin: row.gstin || row.gst,
-      contact_person: row.contact_person || row.contact,
-      address: row.address,
-      status: 'active',
-    }),
-    dupCheck: async (data) => {
-      const existing = await base44.entities.Debtor.filter({ name: data.name }).catch(() => []);
-      return existing.length > 0;
-    },
-  },
   payable: {
     label: 'Payables',
     entity: 'Payable',
@@ -258,7 +235,6 @@ const ENTITY_CONFIGS = {
 };
 
 const PAGE_MAP = {
-  debtor: '/debtors',
   payable: '/payables',
   expense: '/expenses',
   bank_account: '/bank-accounts',
