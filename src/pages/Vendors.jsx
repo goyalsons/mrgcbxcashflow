@@ -81,10 +81,13 @@ export default function Vendors() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <TableHead>Company</TableHead>
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>Phone</TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Country</TableHead>
                   <TableHead>GSTIN</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -96,6 +99,9 @@ export default function Vendors() {
                     <TableCell>{v.contact_person || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{v.email || '-'}</TableCell>
                     <TableCell>{v.phone || '-'}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.address || '-'}</TableCell>
+                    <TableCell>{v.state || '-'}</TableCell>
+                    <TableCell>{v.country || '-'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">{v.gstin || '-'}</TableCell>
                     <TableCell>
                       <DropdownMenu>

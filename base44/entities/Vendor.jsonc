@@ -1,0 +1,41 @@
+{
+  "name": "Vendor",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Vendor/supplier name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Vendor email"
+    },
+    "phone": {
+      "type": "string",
+      "description": "Phone number"
+    },
+    "gstin": {
+      "type": "string",
+      "description": "GST Identification Number"
+    },
+    "address": {
+      "type": "string",
+      "description": "Business address"
+    },
+    "state": {
+      "type": "string",
+      "description": "State"
+    },
+    "country": {
+      "type": "string",
+      "description": "Country"
+    },
+    "contact_person": {
+      "type": "string",
+      "description": "Primary contact person"
+    }
+  },
+  "required": [
+    "name"
+  ]
+}

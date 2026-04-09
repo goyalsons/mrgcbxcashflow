@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 
-const EMPTY = { name: '', email: '', phone: '', gstin: '', address: '', contact_person: '' };
+const EMPTY = { name: '', email: '', phone: '', gstin: '', address: '', state: '', country: '', contact_person: '' };
 
 export default function ContactForm({ open, onClose, onSave, editData, type = 'Customer' }) {
   const [form, setForm] = useState(EMPTY);
@@ -55,6 +55,16 @@ export default function ContactForm({ open, onClose, onSave, editData, type = 'C
           <div className="space-y-1.5">
             <Label>Address</Label>
             <Textarea value={form.address} onChange={e => setForm(f => ({...f, address: e.target.value}))} rows={2} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>State</Label>
+              <Input value={form.state} onChange={e => setForm(f => ({...f, state: e.target.value}))} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Country</Label>
+              <Input value={form.country} onChange={e => setForm(f => ({...f, country: e.target.value}))} />
+            </div>
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
