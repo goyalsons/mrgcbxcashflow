@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowDownLeft, Search, ArrowUpDown } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpDown } from 'lucide-react';
 import SplitBuilder from './SplitBuilder';
 
 const INR = (v) => {
@@ -17,11 +17,9 @@ const today = new Date(); today.setHours(0,0,0,0);
 const isOverdue = (d) => d && new Date(d) < today;
 
 export default function SimSectionA({ receivables, invoices, adjustments, setAdjustments }) {
-  const [search, setSearch]       = useState('');
   const [filter, setFilter]       = useState('all');
   const [expanded, setExpanded]   = useState(new Set());
-  const [bulkDays, setBulkDays]   = useState('');
-  const [splitMode, setSplitMode] = useState(new Map()); // id → 'full'|'split'
+  const [splitMode, setSplitMode] = useState(new Map());
   const [sortByValue, setSortByValue] = useState(false);
 
   const getWeekLabel = (dateStr) => {
@@ -40,15 +38,9 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
 
   const filtered = useMemo(() => {
     let items = allItems;
-    if (search) items = items.filter(r => (r.customer_name||r.debtor_name||'').toLowerCase().includes(search.toLowerCase()) || (r.invoice_number||'').toLowerCase().includes(search.toLowerCase()));
-    if (filter === 'overdue')    items = items.filter(r => isOverdue(r.due_date));
-    if (filter === 'this_week') {
-      const end = new Date(today); end.setDate(today.getDate() + 7);
-      items = items.filter(r => { const d = new Date(r.due_date); return d >= today && d <= end; });
-    }
-    if (filter === 'this_month') {
-      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      items = items.filter(r => { const d = new Date(r.due_date); return d >= today && d <= end; });
+    if (filter === 'overdue') items = items.filter(r => isOverdue(r.due_date));
+    else if (filter.startsWith('W')) {
+      items = items.filter(r => getWeekLabel(r.due_date) === filter);
     }
     if (sortByValue) items = [...items].sort((a, b) => {
       const aAmt = (a.amount || 0) - (a.amount_received || a.amount_paid || 0);
@@ -56,7 +48,7 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
       return bAmt - aAmt;
     });
     return items;
-  }, [allItems, search, filter, sortByValue]);
+  }, [allItems, filter, sortByValue]);
 
   const checked = useMemo(() => new Set([...adjustments.keys()].filter(id => allItems.find(r => r.id === id))), [adjustments, allItems]);
 
@@ -75,52 +67,18 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
     }
   };
 
-  const selectAllOverdue = () => {
-    const next = new Map(adjustments);
-    allItems.filter(r => isOverdue(r.due_date)).forEach(item => {
-      if (!next.has(item.id)) {
-        const amt = (item.amount || 0) - (item.amount_received || item.amount_paid || 0);
-        next.set(item.id, { tranches: [{ amount: amt, date: toDateStr(item.due_date) }], remainder: 0 });
-      }
-    });
-    setAdjustments(next);
-  };
-
-  const applyBulk = () => {
-    if (!bulkDays) return;
-    const next = new Map(adjustments);
-    [...checked].forEach(id => {
-      const item = allItems.find(r => r.id === id);
-      if (!item) return;
-      const adj = next.get(id);
-      if (adj?.tranches?.length === 1) {
-        const newDate = new Date(item.due_date);
-        newDate.setDate(newDate.getDate() - parseInt(bulkDays));
-        next.set(id, { ...adj, tranches: [{ ...adj.tranches[0], date: toDateStr(newDate) }] });
-      }
-    });
-    setAdjustments(next);
-  };
-
   const updateAdj = (id, item, tranches) => {
     const total = (item.amount || 0) - (item.amount_received || item.amount_paid || 0);
     const allocated = tranches.reduce((s, t) => s + (Number(t.amount) || 0), 0);
     const remainder = Math.max(0, total - allocated);
-    const next = new Map(adjustments);
-    next.set(id, { tranches, remainder });
+    const next = new Map(adjustments); next.set(id, { tranches, remainder });
     setAdjustments(next);
   };
-
-  const selectedAmt = [...checked].reduce((s, id) => {
-    const item = allItems.find(r => r.id === id);
-    return s + ((item?.amount || 0) - (item?.amount_received || item?.amount_paid || 0));
-  }, 0);
 
   const FILTERS = [
     { key: 'all', label: 'All' },
     { key: 'overdue', label: 'Overdue' },
-    { key: 'this_week', label: 'This Week' },
-    { key: 'this_month', label: 'This Month' },
+    ...Array.from({ length: 12 }, (_, i) => ({ key: `W${i+1}`, label: `W${i+1}` })),
   ];
 
   return (
@@ -128,29 +86,11 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
       <CardHeader className="pb-2">
         <CardTitle className="text-sm flex items-center gap-2">
           <ArrowDownLeft className="w-4 h-4 text-emerald-600" />
-          Section A — Prepone Receivables
+          Section B — Prepone Receivables
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Shortcuts */}
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={selectAllOverdue}>Select All Overdue</Button>
-          <div className="flex items-center gap-1.5">
-            <Input type="number" placeholder="Days" className="h-7 w-16 text-xs" value={bulkDays} onChange={e => setBulkDays(e.target.value)} />
-            <Button variant="outline" size="sm" className="h-7 text-xs" onClick={applyBulk}>Bulk prepone</Button>
-          </div>
-        </div>
-        {checked.size > 0 && (
-          <p className="text-[11px] text-muted-foreground">{checked.size} selected · {INR(selectedAmt)} being adjusted</p>
-        )}
 
-        {/* Search + filter */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <Search className="w-3.5 h-3.5 absolute left-2.5 top-2 text-muted-foreground" />
-            <Input placeholder="Search customer / invoice…" className="h-7 text-xs pl-7" value={search} onChange={e => setSearch(e.target.value)} />
-          </div>
-        </div>
         {/* Filters + Sort */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <div className="flex gap-1 flex-wrap">
