@@ -27,15 +27,17 @@ function InviteModal({ open, onClose, onInvited }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('user');
-  const INVITE_ROLES = ['admin', 'user'];
+  const INVITE_ROLES = ['admin', 'user', 'account_manager'];
   const [inviting, setInviting] = useState(false);
   const queryClient = useQueryClient();
 
   const handleInvite = async (e) => {
     e.preventDefault();
     setInviting(true);
-    await base44.users.inviteUser(email, role);
-    // Store as pending invitation
+    // Platform only supports 'user' or 'admin' — invite as 'user' then upgrade role
+    const platformRole = role === 'account_manager' ? 'user' : role;
+    await base44.users.inviteUser(email, platformRole);
+    // If account_manager, the role will be updated once they log in via the pending invitation record
     const me = await base44.auth.me();
     await base44.entities.PendingInvitation.create({ email, role, invited_by: me?.email, invited_by_name: me?.full_name });
     queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] });
@@ -90,9 +92,14 @@ export default function AdminPanel() {
     queryFn: () => base44.entities.PendingInvitation.list('-created_date'),
   });
 
-  // Remove pending invitation once the user has joined
+  // Remove pending invitation once the user has joined with the correct role
   const joinedEmails = new Set(users.map(u => u.email));
   const stillPending = pendingInvitations.filter(inv => !joinedEmails.has(inv.email));
+  // Account managers who joined as 'user' and need role upgrade
+  const needsRoleUpgrade = pendingInvitations.filter(inv =>
+    inv.role === 'account_manager' &&
+    users.find(u => u.email === inv.email && u.role !== 'account_manager')
+  );
 
   const { data: currentUser } = useQuery({
     queryKey: ['me'],
@@ -125,6 +132,39 @@ export default function AdminPanel() {
         actionLabel="Invite User"
         onAction={() => setShowInvite(true)}
       />
+
+      {/* Needs Role Upgrade */}
+      {needsRoleUpgrade.length > 0 && (
+        <Card className="border-blue-200 bg-blue-50">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center gap-2 text-blue-700">
+              <UserCheck className="w-4 h-4" /> Finalize Account Manager Roles ({needsRoleUpgrade.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
+              {needsRoleUpgrade.map(inv => {
+                const u = users.find(usr => usr.email === inv.email);
+                return (
+                  <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg border border-blue-200 px-3 py-2">
+                    <div>
+                      <div className="text-sm font-medium">{u?.full_name || inv.email}</div>
+                      <div className="text-xs text-muted-foreground">{inv.email} · joined as User, needs Account Manager role</div>
+                    </div>
+                    <Button size="sm" className="h-7 text-xs" onClick={async () => {
+                      await base44.functions.invoke('updateUserRole', { userId: u?.id, role: 'account_manager' });
+                      await base44.entities.PendingInvitation.delete(inv.id);
+                      queryClient.invalidateQueries({ queryKey: ['users'] });
+                      queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] });
+                      toast({ title: `${u?.full_name || inv.email} is now an Account Manager` });
+                    }}>Assign Role</Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending Invitations */}
       {stillPending.length > 0 && (
