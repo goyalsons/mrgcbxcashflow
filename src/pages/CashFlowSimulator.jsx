@@ -7,8 +7,9 @@ import SimSectionA from '@/components/simulator/SimSectionA';
 import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
-import SimSectionE from '@/components/simulator/SimSectionE';
-import SimSectionF from '@/components/simulator/SimSectionF';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Button } from '@/components/ui/button';
+import { Settings } from 'lucide-react';
 import SimAdjustmentDrawer from '@/components/simulator/SimAdjustmentDrawer';
 import SimChart from '@/components/simulator/SimChart';
 import SimTable from '@/components/simulator/SimTable';
@@ -27,9 +28,18 @@ const EXP_CATEGORIES = {
 };
 const EXPENSE_GROUPS = ['Salary', 'Rent/Utilities', 'Travel', 'Marketing', 'Software', 'Maintenance', 'Office & Other'];
 
-export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = [], expAdj = new Map()) {
+export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = [], expAdj = new Map(), minAmount = 0) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const openingBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
+  // Use only the latest snapshot per account (same as CashFlowForecast)
+  const latestByAccount = {};
+  bankAccounts.forEach(a => {
+    const key = a.account_number || a.name;
+    const existing = latestByAccount[key];
+    if (!existing || new Date(a.snapshot_date || a.created_date) > new Date(existing.snapshot_date || existing.created_date)) {
+      latestByAccount[key] = a;
+    }
+  });
+  const openingBalance = Object.values(latestByAccount).reduce((s, a) => s + (a.balance || 0), 0);
 
   // Build expense group totals, excluding individually-deferred expenses
   const adjustedExpenseIds = new Set(expAdj.keys());
@@ -58,10 +68,13 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
 
   const inWeek = (dateStr, w) => { const d = new Date(dateStr); return d >= w.start && d <= w.end; };
 
+  const filterAmt = (amt) => amt < minAmount ? 0 : amt;
+
   [...receivables, ...invoices].forEach(r => {
     if (['paid','written_off'].includes(r.status)) return;
+    const amt = filterAmt((r.amount || 0) - (r.amount_received || r.amount_paid || 0));
     const w = weeks.find(w => inWeek(r.due_date, w));
-    if (w) w.baseInflow += (r.amount || 0) - (r.amount_received || r.amount_paid || 0);
+    if (w) w.baseInflow += amt;
   });
 
   collectionTargets.forEach(ct => {
@@ -75,8 +88,9 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   });
 
   payables.filter(p => p.status !== 'paid').forEach(p => {
+    const amt = filterAmt((p.amount || 0) - (p.amount_paid || 0));
     const w = weeks.find(w => inWeek(p.due_date, w));
-    if (w) w.baseOutflow += (p.amount || 0) - (p.amount_paid || 0);
+    if (w) w.baseOutflow += amt;
   });
   weeks.forEach(w => { EXPENSE_GROUPS.forEach(g => { w.baseOutflow += Math.round(expByGroup[g] || 0); }); });
 
@@ -239,6 +253,8 @@ export default function CashFlowSimulator() {
   const [drawerOpen, setDrawerOpen]    = useState(false);
   const [currentScenarioId, setCurrentScenarioId] = useState(null);
   const [activeScenarioName, setActiveScenarioName] = useState(null);
+  const [minAmount, setMinAmount]      = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const expByGroup = useMemo(() => {
     const g = {};
@@ -260,9 +276,9 @@ export default function CashFlowSimulator() {
       baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
       debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
       debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems,
-      baselineInputs.collectionTargets, debouncedAdj.expAdj
+      baselineInputs.collectionTargets, debouncedAdj.expAdj, minAmount
     ),
-    [baselineInputs, debouncedAdj]
+    [baselineInputs, debouncedAdj, minAmount]
   );
 
   const baseNet12W = weeklyData.reduce((s, w) => s + w.baseNet, 0);
@@ -299,6 +315,30 @@ export default function CashFlowSimulator() {
           {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+          <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="icon" className="h-8 w-8" title="Simulator Settings">
+                <Settings className="w-4 h-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-3" align="end">
+              <p className="text-sm font-semibold mb-3">Simulator Settings</p>
+              <div>
+                <label className="text-xs text-muted-foreground">Ignore amounts less than (₹)</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    value={minAmount}
+                    min={0}
+                    placeholder="0"
+                    onChange={e => setMinAmount(Number(e.target.value) || 0)}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-1">Receivables and payables below this amount will be excluded from the simulation.</p>
+              </div>
+            </PopoverContent>
+          </Popover>
           <ScenarioManager
             currentState={currentState}
             onLoad={(state) => loadScenario(state)}
@@ -330,8 +370,6 @@ export default function CashFlowSimulator() {
           <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
           <SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} />
           <SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} />
-          <SimSectionE levers={levers} setLevers={setLevers} recurringExpenses={recurringExpenses} payables={payables} expByGroup={expByGroup} />
-          <SimSectionF taxItems={taxItems} setTaxItems={setTaxItems} />
           <SimAdjustmentDrawer
             open={drawerOpen} onToggle={() => setDrawerOpen(v => !v)}
             recAdj={recAdj} setRecAdj={setRecAdj}
