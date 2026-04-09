@@ -7,11 +7,12 @@ import SimSectionA from '@/components/simulator/SimSectionA';
 import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
+import SimZone1Chart from '@/components/simulator/SimZone1Chart';
+import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
+import SimWeekHealthBar from '@/components/simulator/SimWeekHealthBar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Settings } from 'lucide-react';
-import SimAdjustmentDrawer from '@/components/simulator/SimAdjustmentDrawer';
-import SimChart from '@/components/simulator/SimChart';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
@@ -250,7 +251,6 @@ export default function CashFlowSimulator() {
   const [fundingSources, setFunding]   = useState([]);
   const [levers, setLevers]            = useState([]);
   const [taxItems, setTaxItems]        = useState([]);
-  const [drawerOpen, setDrawerOpen]    = useState(false);
   const [currentScenarioId, setCurrentScenarioId] = useState(null);
   const [activeScenarioName, setActiveScenarioName] = useState(null);
   const [minAmount, setMinAmount]      = useState(0);
@@ -306,12 +306,16 @@ export default function CashFlowSimulator() {
 
   const currentState = { recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems };
 
+  const [secCOpen, setSecCOpen] = useState(false);
+  const [secDOpen, setSecDOpen] = useState(false);
+
   return (
-    <div className="flex flex-col min-h-0">
+    <div className="flex flex-col" style={{ paddingBottom: 64 }}>
+      {/* Page header */}
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
         <div>
           <h1 className="text-xl font-bold tracking-tight">Cash Flow Simulator</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Model what-if scenarios — adjust dates, splits, funding sources, and cost levers.</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Model what-if scenarios — drag to reschedule, add funding sources and hypothetical entries.</p>
           {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
@@ -362,41 +366,64 @@ export default function CashFlowSimulator() {
 
       <SimImpactBar baseNet={baseNet12W} simNet={simNet12W} improvement={improvement} onReset={resetAll} />
 
-      {/* Responsive two-panel layout */}
-      <div className="flex flex-col lg:flex-row gap-5 mt-4 items-start">
-        {/* Left panel */}
-        <div className="w-full lg:w-[35%] shrink-0 space-y-4 pb-6 lg:pr-1">
-          <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} expenses={expenses} recurringExpenses={recurringExpenses} expAdj={expAdj} setExpAdj={setExpAdj} />
-          <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
-          <SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} />
-          <SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} />
-          <SimAdjustmentDrawer
-            open={drawerOpen} onToggle={() => setDrawerOpen(v => !v)}
-            recAdj={recAdj} setRecAdj={setRecAdj}
-            payAdj={payAdj} setPayAdj={setPayAdj}
-            hypotheticals={hypotheticals} setHypo={setHypo}
-            fundingSources={fundingSources} setFunding={setFunding}
-            levers={levers} setLevers={setLevers}
-            taxItems={taxItems} setTaxItems={setTaxItems}
-            receivables={[...receivables, ...invoices]} payables={payables}
-            count={totalAdjCount}
-          />
-        </div>
+      {/* Zone 1: Collapsible chart */}
+      <div className="mt-4">
+        <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
+      </div>
 
-        {/* Right panel */}
-        <div className="flex-1 space-y-4 lg:sticky lg:top-4 w-full">
-          <SimChart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
-          <SimTable weeklyData={weeklyData} bankAccounts={bankAccounts} />
-          <FundingSummaryCard weeklyData={weeklyData} />
+      {/* Zone 2: Drag-and-drop board */}
+      <div className="mt-4">
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-sm font-semibold">Timeline Board</h2>
+          <p className="text-xs text-muted-foreground">Drag cards between weeks to reschedule payments</p>
+        </div>
+        <SimTimelineBoard
+          receivables={receivables}
+          invoices={invoices}
+          payables={payables}
+          recAdj={recAdj}
+          setRecAdj={setRecAdj}
+          payAdj={payAdj}
+          setPayAdj={setPayAdj}
+          weeklyData={weeklyData}
+        />
+      </div>
+
+      {/* Summary table */}
+      <div className="mt-4">
+        <SimTable weeklyData={weeklyData} bankAccounts={bankAccounts} />
+      </div>
+
+      {/* Funding summary */}
+      <FundingSummaryCard weeklyData={weeklyData} />
+
+      {/* Accordion sections below board */}
+      <div className="mt-4 space-y-2">
+        <div className="border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
+            <span>Hypothetical Entries</span>
+            <span>{secCOpen ? '▲' : '▼'}</span>
+          </button>
+          {secCOpen && <div className="p-4"><SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} /></div>}
+        </div>
+        <div className="border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecDOpen(v => !v)}>
+            <span>External Funding Sources</span>
+            <span>{secDOpen ? '▲' : '▼'}</span>
+          </button>
+          {secDOpen && <div className="p-4"><SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} /></div>}
         </div>
       </div>
 
-      {/* Persistent disclaimer footer */}
+      {/* Disclaimer */}
       <div className="mt-6 pt-4 border-t">
         <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-4xl mx-auto">
-          All simulations are for planning purposes only. Salary deferrals, tax payment deferrals, and all statutory obligations are subject to applicable Indian laws and regulations including but not limited to the Companies Act, Income Tax Act, GST Act, and applicable labour laws. Consult your Chartered Accountant or legal advisor before acting on any simulation result. This tool does not modify any actual records in your system.
+          All simulations are for planning purposes only. This tool does not modify any actual records in your system.
         </p>
       </div>
+
+      {/* Zone 3: Sticky week health bar */}
+      <SimWeekHealthBar weeklyData={weeklyData} />
     </div>
   );
 }
