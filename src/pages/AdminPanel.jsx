@@ -27,6 +27,7 @@ function InviteModal({ open, onClose, onInvited }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('user');
+  const INVITE_ROLES = ['admin', 'user'];
   const [inviting, setInviting] = useState(false);
   const queryClient = useQueryClient();
 
@@ -56,7 +57,7 @@ function InviteModal({ open, onClose, onInvited }) {
             <Select value={role} onValueChange={setRole}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                {ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
+                {INVITE_ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
