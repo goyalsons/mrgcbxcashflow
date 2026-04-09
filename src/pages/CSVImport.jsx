@@ -431,6 +431,17 @@ export default function CSVImport() {
     toast({ title: `Import complete: ${success} created, ${updated} updated${duplicates ? `, ${duplicates} skipped` : ''}` });
   };
 
+  const downloadSampleCSV = () => {
+    const csv = [config.fields.join(','), ...config.sampleData.map(row => row.join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sample-${entityType}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  };
+
   const handleTypeChange = (v) => {
     setEntityType(v);
     setFile(null);
