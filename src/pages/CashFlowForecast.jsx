@@ -118,7 +118,18 @@ export default function CashFlowForecast() {
   const { data: expenses = [] }          = useQuery({ queryKey: ['expenses'],          queryFn: () => base44.entities.Expense.list() });
   const { data: bankAccounts = [] }      = useQuery({ queryKey: ['bankAccounts'],      queryFn: () => base44.entities.BankAccount.list() });
 
-  const openingBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
+  // Use only the latest snapshot per account (by account_number or name), not sum of all historical snapshots
+  const openingBalance = useMemo(() => {
+    const latestByAccount = {};
+    bankAccounts.forEach(a => {
+      const key = a.account_number || a.name;
+      const existing = latestByAccount[key];
+      if (!existing || new Date(a.snapshot_date || a.created_date) > new Date(existing.snapshot_date || existing.created_date)) {
+        latestByAccount[key] = a;
+      }
+    });
+    return Object.values(latestByAccount).reduce((s, a) => s + (a.balance || 0), 0);
+  }, [bankAccounts]);
 
   const expByGroup = useMemo(() => {
     const grouped = {};
