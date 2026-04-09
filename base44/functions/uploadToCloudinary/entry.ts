@@ -9,9 +9,9 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cloudName = Deno.env.get('CLOUDINARY_CLOUD_NAME');
-    const apiKey    = Deno.env.get('CLOUDINARY_API_KEY');
-    const apiSecret = Deno.env.get('CLOUDINARY_API_SECRET');
+    const cloudName = (Deno.env.get('CLOUDINARY_CLOUD_NAME') || '').trim();
+    const apiKey    = (Deno.env.get('CLOUDINARY_API_KEY') || '').trim();
+    const apiSecret = (Deno.env.get('CLOUDINARY_API_SECRET') || '').trim();
 
     if (!cloudName || !apiKey || !apiSecret) {
       return Response.json({ error: 'Cloudinary credentials not configured' }, { status: 500 });
