@@ -145,6 +145,17 @@ export default function Payables() {
     queryFn: () => base44.entities.Payable.list('-created_date'),
   });
 
+  const { data: vendors = [] } = useQuery({
+    queryKey: ['vendors'],
+    queryFn: () => base44.entities.Vendor.list(),
+  });
+
+  const findVendorId = (p) => {
+    if (p.vendor_id) return p.vendor_id;
+    const match = vendors.find(v => v.name?.toLowerCase() === p.vendor_name?.toLowerCase());
+    return match?.id || null;
+  };
+
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.Payable.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['payables'] }); setShowForm(false); toast({ title: 'Payable created' }); },
@@ -422,7 +433,7 @@ export default function Payables() {
                             <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                           {p.vendor_id && <DropdownMenuItem onClick={() => navigate(`/vendor/${p.vendor_id}`)}><Eye className="w-4 h-4 mr-2" /> View Supplier Profile</DropdownMenuItem>}
+                           {(() => { const vid = findVendorId(p); return vid ? <DropdownMenuItem onClick={() => navigate(`/vendor/${vid}`)}><Eye className="w-4 h-4 mr-2" /> View Supplier Profile</DropdownMenuItem> : null; })()}
                            <DropdownMenuItem onClick={() => setPayingPayable(p)}><Banknote className="w-4 h-4 mr-2" /> Record Payment</DropdownMenuItem>
                            <DropdownMenuItem onClick={() => { setEditing(p); setShowForm(true); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                            <DropdownMenuItem onClick={() => { if (confirm('Delete?')) deleteMut.mutate(p.id); }} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
