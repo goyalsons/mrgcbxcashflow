@@ -1,0 +1,61 @@
+{
+  "name": "SupplierPayment",
+  "type": "object",
+  "properties": {
+    "vendor_id": {
+      "type": "string",
+      "description": "Reference to Vendor"
+    },
+    "vendor_name": {
+      "type": "string",
+      "description": "Vendor name for display"
+    },
+    "payable_id": {
+      "type": "string",
+      "description": "Reference to Payable bill (optional)"
+    },
+    "bill_number": {
+      "type": "string",
+      "description": "Bill number reference"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Payment amount in INR"
+    },
+    "payment_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of payment"
+    },
+    "payment_mode": {
+      "type": "string",
+      "enum": [
+        "cash",
+        "bank_transfer",
+        "upi",
+        "cheque",
+        "neft",
+        "rtgs",
+        "imps"
+      ],
+      "description": "Mode of payment"
+    },
+    "reference_number": {
+      "type": "string",
+      "description": "Transaction/UTR reference number"
+    },
+    "bank_account_id": {
+      "type": "string",
+      "description": "Bank account debited"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Additional notes"
+    }
+  },
+  "required": [
+    "vendor_name",
+    "amount",
+    "payment_date"
+  ]
+}

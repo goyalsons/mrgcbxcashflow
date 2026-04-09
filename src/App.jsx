@@ -32,6 +32,7 @@ import Analysis from '@/pages/Analysis';
 import TallyIntegration from '@/pages/TallyIntegration';
 import RecurringExpenses from '@/pages/RecurringExpenses';
 import CashFlowSimulator from '@/pages/CashFlowSimulator';
+import VendorProfile from '@/pages/VendorProfile';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -83,6 +84,7 @@ const AuthenticatedApp = () => {
         <Route path="/analysis" element={<Analysis />} />
         <Route path="/tally-integration" element={<TallyIntegration />} />
         <Route path="/cash-flow-simulator" element={<CashFlowSimulator />} />
+        <Route path="/vendor/:id" element={<VendorProfile />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>

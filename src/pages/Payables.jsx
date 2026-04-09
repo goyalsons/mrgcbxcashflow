@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload, ChevronUp, ChevronDown, AlertTriangle, Calendar, TrendingDown, CheckCircle2, CreditCard } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, ChevronUp, ChevronDown, AlertTriangle, Calendar, TrendingDown, CheckCircle2, CreditCard, Banknote } from 'lucide-react';
+import RecordPaymentModal from '@/components/vendors/RecordPaymentModal';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
@@ -135,6 +136,7 @@ export default function Payables() {
   const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [payingPayable, setPayingPayable] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -420,8 +422,9 @@ export default function Payables() {
                             <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setEditing(p); setShowForm(true); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => { if (confirm('Delete?')) deleteMut.mutate(p.id); }} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => setPayingPayable(p)}><Banknote className="w-4 h-4 mr-2" /> Record Payment</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => { setEditing(p); setShowForm(true); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
+                           <DropdownMenuItem onClick={() => { if (confirm('Delete?')) deleteMut.mutate(p.id); }} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -451,6 +454,7 @@ export default function Payables() {
       )}
 
       <PayableForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} />
+      <RecordPaymentModal open={!!payingPayable} payable={payingPayable} onClose={() => setPayingPayable(null)} />
       <PlanPaymentModal
         open={showPlanModal}
         selectedBills={selectedBills}
