@@ -103,9 +103,9 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
                 <stop offset="0%" stopColor="#ef4444" stopOpacity={0.02} /><stop offset="100%" stopColor="#ef4444" stopOpacity={0.2} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="2 2" stroke="hsl(var(--border))" vertical={true} />
-            <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={10} />
+            <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--border))" vertical={true} strokeOpacity={0.7} />
+            <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval={0} angle={-30} textAnchor="end" height={40} />
+            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={12} />
             <Tooltip content={<SimTooltip />} />
             {/* Shade negative baseline weeks */}
             {chartData.map((d, i) => d.baseNet < 0 && (
