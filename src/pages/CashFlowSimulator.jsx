@@ -27,14 +27,15 @@ const EXP_CATEGORIES = {
 };
 const EXPENSE_GROUPS = ['Salary', 'Rent/Utilities', 'Travel', 'Marketing', 'Software', 'Maintenance', 'Office & Other'];
 
-export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems) {
+export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = []) {
   const today = new Date(); today.setHours(0,0,0,0);
   const openingBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
 
   const expByGroup = {};
   EXPENSE_GROUPS.forEach(g => expByGroup[g] = 0);
   expenses.forEach(e => { const g = EXP_CATEGORIES[e.category] || 'Office & Other'; expByGroup[g] = (expByGroup[g] || 0) + (e.amount || 0); });
-  EXPENSE_GROUPS.forEach(k => expByGroup[k] = expByGroup[k] / 52);
+  // Divide by 12 (monthly average per week) — matches CashFlowForecast method
+  EXPENSE_GROUPS.forEach(k => expByGroup[k] = expByGroup[k] / 12);
 
   const weeks = Array.from({ length: 12 }, (_, i) => {
     const start = addDays(today, i * 7);
@@ -57,6 +58,18 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     const w = weeks.find(w => inWeek(r.due_date, w));
     if (w) w.baseInflow += (r.amount || 0) - (r.amount_received || r.amount_paid || 0);
   });
+
+  // Include collection targets — matches CashFlowForecast
+  collectionTargets.forEach(ct => {
+    const remaining = (ct.target_amount || 0) - (ct.collected_amount || 0);
+    if (remaining <= 0) return;
+    const matchingWeeks = weeks.filter(w => w.start.getMonth() + 1 === ct.period_month && w.start.getFullYear() === ct.period_year);
+    if (matchingWeeks.length > 0) {
+      const perWeek = remaining / matchingWeeks.length;
+      matchingWeeks.forEach(w => w.baseInflow += perWeek);
+    }
+  });
+
   payables.filter(p => p.status !== 'paid').forEach(p => {
     const w = weeks.find(w => inWeek(p.due_date, w));
     if (w) w.baseOutflow += (p.amount || 0) - (p.amount_paid || 0);
@@ -190,7 +203,8 @@ export default function CashFlowSimulator() {
   const { data: invoices = [] }          = useQuery({ queryKey: ['invoices'],          queryFn: () => base44.entities.Invoice.list() });
   const { data: payables = [] }          = useQuery({ queryKey: ['payables'],          queryFn: () => base44.entities.Payable.list() });
   const { data: expenses = [] }          = useQuery({ queryKey: ['expenses'],          queryFn: () => base44.entities.Expense.list() });
-  const { data: recurringExpenses = [] } = useQuery({ queryKey: ['recurringExpensesAll'], queryFn: () => base44.entities.Expense.filter({ recurrence_type: 'monthly' }) });
+  const { data: recurringExpenses = [] }    = useQuery({ queryKey: ['recurringExpensesAll'],    queryFn: () => base44.entities.Expense.filter({ recurrence_type: 'monthly' }) });
+  const { data: collectionTargets = [] }    = useQuery({ queryKey: ['collectionTargets'],         queryFn: () => base44.entities.CollectionTarget.list() });
   const { data: bankAccounts = [] }      = useQuery({ queryKey: ['bankAccounts'],      queryFn: () => base44.entities.BankAccount.list() });
 
   const [recAdj, setRecAdj]            = useState(new Map());
@@ -207,7 +221,7 @@ export default function CashFlowSimulator() {
     const g = {};
     EXPENSE_GROUPS.forEach(k => g[k] = 0);
     expenses.forEach(e => { const grp = EXP_CATEGORIES[e.category] || 'Office & Other'; g[grp] = (g[grp]||0) + (e.amount||0); });
-    Object.keys(g).forEach(k => g[k] = g[k] / 52);
+    Object.keys(g).forEach(k => g[k] = g[k] / 12); // monthly avg, matches CashFlowForecast
     return g;
   }, [expenses]);
 
@@ -216,14 +230,15 @@ export default function CashFlowSimulator() {
   const debouncedAdj = useDebounce(adjState, 300);
 
   // Memoize baseline data (static input — only recalculate if underlying entity data changes)
-  const baselineInputs = useMemo(() => ({ receivables, invoices, payables, expenses, bankAccounts }), [receivables, invoices, payables, expenses, bankAccounts]);
+  const baselineInputs = useMemo(() => ({ receivables, invoices, payables, expenses, bankAccounts, collectionTargets }), [receivables, invoices, payables, expenses, bankAccounts, collectionTargets]);
 
   const weeklyData = useMemo(() =>
     buildWeeklyData(
       baselineInputs.receivables, baselineInputs.invoices,
       baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
       debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
-      debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems
+      debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems,
+      baselineInputs.collectionTargets
     ),
     [baselineInputs, debouncedAdj]
   );
