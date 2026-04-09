@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Users, Shield, UserCheck, UserX, MoreHorizontal, Mail, Search, UserPlus } from 'lucide-react';
+import { Users, Shield, UserCheck, UserX, MoreHorizontal, Mail, Search, UserPlus, Clock, Trash2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
@@ -23,16 +23,21 @@ const ROLE_COLORS = {
 };
 const ROLE_LABELS = { admin: 'Admin', user: 'User', account_manager: 'Account Manager' };
 
-function InviteModal({ open, onClose }) {
+function InviteModal({ open, onClose, onInvited }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('user');
   const [inviting, setInviting] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleInvite = async (e) => {
     e.preventDefault();
     setInviting(true);
     await base44.users.inviteUser(email, role);
+    // Store as pending invitation
+    const me = await base44.auth.me();
+    await base44.entities.PendingInvitation.create({ email, role, invited_by: me?.email, invited_by_name: me?.full_name });
+    queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] });
     toast({ title: `Invitation sent to ${email}` });
     setEmail(''); setRole('user'); setInviting(false); onClose();
   };
@@ -79,6 +84,15 @@ export default function AdminPanel() {
     },
   });
 
+  const { data: pendingInvitations = [] } = useQuery({
+    queryKey: ['pendingInvitations'],
+    queryFn: () => base44.entities.PendingInvitation.list('-created_date'),
+  });
+
+  // Remove pending invitation once the user has joined
+  const joinedEmails = new Set(users.map(u => u.email));
+  const stillPending = pendingInvitations.filter(inv => !joinedEmails.has(inv.email));
+
   const { data: currentUser } = useQuery({
     queryKey: ['me'],
     queryFn: () => base44.auth.me(),
@@ -87,6 +101,11 @@ export default function AdminPanel() {
   const updateRoleMut = useMutation({
     mutationFn: ({ id, role }) => base44.functions.invoke('updateUserRole', { userId: id, role }),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast({ title: 'Role updated' }); },
+  });
+
+  const removeInviteMut = useMutation({
+    mutationFn: (id) => base44.entities.PendingInvitation.delete(id),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] }); toast({ title: 'Invitation removed' }); },
   });
 
   const filtered = users.filter(u =>
@@ -105,6 +124,40 @@ export default function AdminPanel() {
         actionLabel="Invite User"
         onAction={() => setShowInvite(true)}
       />
+
+      {/* Pending Invitations */}
+      {stillPending.length > 0 && (
+        <Card className="border-amber-200 bg-amber-50">
+          <CardHeader className="pb-2 pt-4 px-4">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-700">
+              <Clock className="w-4 h-4" /> Pending Invitations ({stillPending.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="px-4 pb-4">
+            <div className="space-y-2">
+              {stillPending.map(inv => (
+                <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg border border-amber-200 px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center">
+                      <Mail className="w-3.5 h-3.5 text-amber-600" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">{inv.email}</div>
+                      <div className="text-xs text-muted-foreground">Invited as <span className="font-medium">{ROLE_LABELS[inv.role] || inv.role}</span> · by {inv.invited_by_name || inv.invited_by}</div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-300">Pending Login</Badge>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeInviteMut.mutate(inv.id)}>
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -191,7 +244,7 @@ export default function AdminPanel() {
         </Table>
       )}
 
-      <InviteModal open={showInvite} onClose={() => setShowInvite(false)} />
+      <InviteModal open={showInvite} onClose={() => { setShowInvite(false); queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] }); }} />
     </div>
   );
 }
