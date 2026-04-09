@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowDownLeft, ArrowUpDown } from 'lucide-react';
 import SplitBuilder from './SplitBuilder';
 
+const fmt = (d) => { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}`; };
 const INR = (v) => {
   const abs = Math.abs(v || 0);
   if (abs >= 100000) return `₹${(abs / 100000).toFixed(1)}L`;
@@ -134,7 +135,7 @@ export default function SimSectionA({ receivables, invoices, adjustments, setAdj
                   <Checkbox checked={isChecked} onCheckedChange={() => toggle(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{item.customer_name || item.debtor_name || 'Unknown'}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.invoice_number || '—'} · {item.due_date} <span className={`ml-1 font-semibold ${getWeekLabel(item.due_date) === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({getWeekLabel(item.due_date)})</span></p>
+                    <p className="text-[10px] text-muted-foreground">{item.invoice_number || '—'} · {fmt(item.due_date)} <span className={`ml-1 font-semibold ${getWeekLabel(item.due_date) === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({getWeekLabel(item.due_date)})</span></p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xs font-bold">{INR(amt)}</p>

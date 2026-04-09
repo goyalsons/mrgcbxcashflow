@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ArrowUpRight, AlertTriangle, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import SplitBuilder from './SplitBuilder';
 
+const fmt = (d) => { if (!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}`; };
 const INR = (v) => {
   const abs = Math.abs(v || 0);
   if (abs >= 100000) return `₹${(abs / 100000).toFixed(1)}L`;
@@ -180,7 +181,7 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
                   <Checkbox checked={isChecked} onCheckedChange={() => toggle(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{item.vendor_name || 'Unknown Vendor'}</p>
-                    <p className="text-[10px] text-muted-foreground">{item.bill_number || '—'} · {item.due_date} <span className={`ml-1 font-semibold ${getWeekLabel(item.due_date) === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({getWeekLabel(item.due_date)})</span></p>
+                    <p className="text-[10px] text-muted-foreground">{item.bill_number || '—'} · {fmt(item.due_date)} <span className={`ml-1 font-semibold ${getWeekLabel(item.due_date) === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({getWeekLabel(item.due_date)})</span></p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-xs font-bold">{INR(amt)}</p>
@@ -291,7 +292,7 @@ export default function SimSectionB({ payables, adjustments, setAdjustments, exp
                         {item.description || 'Expense'}
                         {isRecurring && <span className="text-[9px] bg-purple-100 text-purple-700 px-1 rounded">recurring</span>}
                       </p>
-                      <p className="text-[10px] text-muted-foreground">{catLabel} · {dateStr} <span className={`ml-1 font-semibold ${wLabel === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({wLabel})</span></p>
+                      <p className="text-[10px] text-muted-foreground">{catLabel} · {fmt(dateStr)} <span className={`ml-1 font-semibold ${wLabel === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({wLabel})</span></p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-xs font-bold">{INR(item.amount)}</p>
