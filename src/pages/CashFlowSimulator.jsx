@@ -27,14 +27,19 @@ const EXP_CATEGORIES = {
 };
 const EXPENSE_GROUPS = ['Salary', 'Rent/Utilities', 'Travel', 'Marketing', 'Software', 'Maintenance', 'Office & Other'];
 
-export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = []) {
+export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = [], expAdj = new Map()) {
   const today = new Date(); today.setHours(0,0,0,0);
   const openingBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
 
+  // Build expense group totals, excluding individually-deferred expenses
+  const adjustedExpenseIds = new Set(expAdj.keys());
   const expByGroup = {};
   EXPENSE_GROUPS.forEach(g => expByGroup[g] = 0);
-  expenses.forEach(e => { const g = EXP_CATEGORIES[e.category] || 'Office & Other'; expByGroup[g] = (expByGroup[g] || 0) + (e.amount || 0); });
-  // Divide by 12 (monthly average per week) — matches CashFlowForecast method
+  expenses.forEach(e => {
+    if (adjustedExpenseIds.has(e.id)) return; // excluded — will be added explicitly
+    const g = EXP_CATEGORIES[e.category] || 'Office & Other';
+    expByGroup[g] = (expByGroup[g] || 0) + (e.amount || 0);
+  });
   EXPENSE_GROUPS.forEach(k => expByGroup[k] = expByGroup[k] / 12);
 
   const weeks = Array.from({ length: 12 }, (_, i) => {
@@ -59,7 +64,6 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     if (w) w.baseInflow += (r.amount || 0) - (r.amount_received || r.amount_paid || 0);
   });
 
-  // Include collection targets — matches CashFlowForecast
   collectionTargets.forEach(ct => {
     const remaining = (ct.target_amount || 0) - (ct.collected_amount || 0);
     if (remaining <= 0) return;
@@ -76,7 +80,25 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   });
   weeks.forEach(w => { EXPENSE_GROUPS.forEach(g => { w.baseOutflow += Math.round(expByGroup[g] || 0); }); });
 
+  // Add individually-deferred expenses at their original dates for baseline
+  expAdj.forEach((adj, id) => {
+    const item = expenses.find(e => e.id === id);
+    if (!item) return;
+    const origWeek = weeks.find(w => inWeek(item.expense_date, w));
+    if (origWeek) origWeek.baseOutflow += item.amount || 0;
+  });
+
   weeks.forEach(w => { w.simInflow = w.baseInflow; w.simOutflow = w.baseOutflow; });
+
+  // Apply expense deferrals to sim
+  expAdj.forEach((adj, id) => {
+    const item = expenses.find(e => e.id === id);
+    if (!item) return;
+    const origWeek = weeks.find(w => inWeek(item.expense_date, w));
+    const newWeek  = weeks.find(w => inWeek(adj.date, w));
+    if (origWeek) origWeek.simOutflow -= item.amount || 0;
+    if (newWeek)  { newWeek.simOutflow += item.amount || 0; newWeek.simItems.push({ label: item.description || 'Expense', amount: item.amount || 0, type: 'outflow' }); }
+  });
 
   recAdj.forEach((adj, id) => {
     const item = [...receivables, ...invoices].find(r => r.id === id);
@@ -209,6 +231,7 @@ export default function CashFlowSimulator() {
 
   const [recAdj, setRecAdj]            = useState(new Map());
   const [payAdj, setPayAdj]            = useState(new Map());
+  const [expAdj, setExpAdj]            = useState(new Map());
   const [hypotheticals, setHypo]       = useState([]);
   const [fundingSources, setFunding]   = useState([]);
   const [levers, setLevers]            = useState([]);
@@ -225,8 +248,7 @@ export default function CashFlowSimulator() {
     return g;
   }, [expenses]);
 
-  // Debounce the adjustment state for expensive recomputation
-  const adjState = useMemo(() => ({ recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems }), [recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems]);
+  const adjState = useMemo(() => ({ recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems }), [recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems]);
   const debouncedAdj = useDebounce(adjState, 300);
 
   // Memoize baseline data (static input — only recalculate if underlying entity data changes)
@@ -238,7 +260,7 @@ export default function CashFlowSimulator() {
       baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
       debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
       debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems,
-      baselineInputs.collectionTargets
+      baselineInputs.collectionTargets, debouncedAdj.expAdj
     ),
     [baselineInputs, debouncedAdj]
   );
@@ -248,7 +270,7 @@ export default function CashFlowSimulator() {
   const improvement = simNet12W - baseNet12W;
 
   const resetAll = useCallback(() => {
-    setRecAdj(new Map()); setPayAdj(new Map()); setHypo([]);
+    setRecAdj(new Map()); setPayAdj(new Map()); setExpAdj(new Map()); setHypo([]);
     setFunding([]); setLevers([]); setTaxItems([]);
     setCurrentScenarioId(null); setActiveScenarioName(null);
   }, []);
@@ -256,16 +278,17 @@ export default function CashFlowSimulator() {
   const loadScenario = useCallback((state) => {
     setRecAdj(state.recAdj || new Map());
     setPayAdj(state.payAdj || new Map());
+    setExpAdj(state.expAdj || new Map());
     setHypo(state.hypotheticals || []);
     setFunding(state.fundingSources || []);
     setLevers(state.levers || []);
     setTaxItems(state.taxItems || []);
   }, []);
 
-  const totalAdjCount = recAdj.size + payAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
+  const totalAdjCount = recAdj.size + payAdj.size + expAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
   const hasAdjustments = totalAdjCount > 0;
 
-  const currentState = { recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems };
+  const currentState = { recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems };
 
   return (
     <div className="flex flex-col min-h-0">
@@ -303,7 +326,7 @@ export default function CashFlowSimulator() {
       <div className="flex flex-col lg:flex-row gap-5 mt-4 items-start">
         {/* Left panel */}
         <div className="w-full lg:w-[35%] shrink-0 space-y-4 pb-6 lg:pr-1">
-          <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} />
+          <SimSectionB payables={payables} adjustments={payAdj} setAdjustments={setPayAdj} expenses={expenses} expAdj={expAdj} setExpAdj={setExpAdj} />
           <SimSectionA receivables={receivables} invoices={invoices} adjustments={recAdj} setAdjustments={setRecAdj} />
           <SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} />
           <SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} />

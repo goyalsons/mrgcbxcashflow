@@ -1,10 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ArrowUpRight, AlertTriangle, ArrowUpDown } from 'lucide-react';
+import { ArrowUpRight, AlertTriangle, ArrowUpDown, ChevronDown, ChevronRight } from 'lucide-react';
 import SplitBuilder from './SplitBuilder';
 
 const INR = (v) => {
@@ -17,7 +16,7 @@ const today = new Date(); today.setHours(0,0,0,0);
 const isOverdue = (d) => d && new Date(d) < today;
 const daysDiff = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000);
 
-export default function SimSectionB({ payables, adjustments, setAdjustments }) {
+export default function SimSectionB({ payables, adjustments, setAdjustments, expenses = [], expAdj, setExpAdj }) {
   const [filter, setFilter]       = useState('all');
   const [expanded, setExpanded]   = useState(new Set());
   const [splitMode, setSplitMode] = useState(new Map());
@@ -75,6 +74,44 @@ export default function SimSectionB({ payables, adjustments, setAdjustments }) {
     const remainder = Math.max(0, total - allocated);
     const next = new Map(adjustments); next.set(id, { tranches, remainder });
     setAdjustments(next);
+  };
+
+  const [expFilter, setExpFilter]       = useState('all');
+  const [expExpanded, setExpExpanded]   = useState(new Set());
+  const [showExpenses, setShowExpenses] = useState(false);
+
+  const EXP_CATEGORIES_LABEL = {
+    salary: 'Salary', rent: 'Rent/Utilities', utilities: 'Rent/Utilities',
+    travel: 'Travel', marketing: 'Marketing', software: 'Software',
+    maintenance: 'Maintenance', office_supplies: 'Office & Other',
+    meals: 'Office & Other', miscellaneous: 'Office & Other',
+  };
+
+  const filteredExpenses = useMemo(() => {
+    let items = expenses.filter(e => e.expense_date);
+    if (expFilter !== 'all') {
+      items = items.filter(e => {
+        const d = new Date(e.expense_date); d.setHours(0,0,0,0);
+        const diff = Math.floor((d - today) / 86400000);
+        const week = diff < 0 ? 'Overdue' : `W${Math.floor(diff / 7) + 1}`;
+        return week === expFilter;
+      });
+    }
+    return items;
+  }, [expenses, expFilter]);
+
+  const toggleExp = (item) => {
+    const id = item.id;
+    if (expAdj.has(id)) {
+      const next = new Map(expAdj); next.delete(id);
+      setExpAdj(next);
+      setExpExpanded(prev => { const s = new Set(prev); s.delete(id); return s; });
+    } else {
+      const next = new Map(expAdj);
+      next.set(id, { date: toDateStr(item.expense_date) });
+      setExpAdj(next);
+      setExpExpanded(prev => new Set([...prev, id]));
+    }
   };
 
   const FILTERS = [
@@ -196,6 +233,68 @@ export default function SimSectionB({ payables, adjustments, setAdjustments }) {
               </div>
             );
           })}
+        </div>
+        {/* Expenses sub-section */}
+        <div className="border-t pt-3">
+          <button onClick={() => setShowExpenses(v => !v)}
+            className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors w-full">
+            {showExpenses ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+            Defer Expenses ({expenses.length})
+            {expAdj.size > 0 && <span className="ml-auto text-primary font-semibold">{expAdj.size} deferred</span>}
+          </button>
+
+          {showExpenses && (
+            <div className="mt-2 space-y-2">
+              {/* Expense filters */}
+              <div className="flex gap-1 flex-wrap">
+                {['all','overdue',...Array.from({length:12},(_,i)=>`W${i+1}`)].map(f => (
+                  <button key={f} onClick={() => setExpFilter(f)}
+                    className={`text-[11px] px-2 py-0.5 rounded-full border transition-colors ${expFilter === f ? 'bg-primary text-primary-foreground border-primary' : 'border-border text-muted-foreground hover:border-foreground'}`}>
+                    {f}
+                  </button>
+                ))}
+              </div>
+
+              <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">
+                {filteredExpenses.length === 0 && <p className="text-xs text-muted-foreground py-2 text-center">No expenses match this filter.</p>}
+                {filteredExpenses.map(item => {
+                  const id = item.id;
+                  const isChecked = expAdj.has(id);
+                  const adj = expAdj.get(id);
+                  const isExpanded = expExpanded.has(id);
+                  const d = new Date(item.expense_date); d.setHours(0,0,0,0);
+                  const diff = Math.floor((d - today) / 86400000);
+                  const wLabel = diff < 0 ? 'Overdue' : `W${Math.floor(diff / 7) + 1}`;
+                  const catLabel = EXP_CATEGORIES_LABEL[item.category] || item.category || 'Other';
+                  return (
+                    <div key={id} className={`border border-l-4 rounded-lg overflow-hidden ${isChecked ? 'border-l-orange-400' : 'border-l-transparent'}`}>
+                      <div className="flex items-start gap-2 p-2 cursor-pointer hover:bg-muted/30"
+                        onClick={() => { if (!isChecked) toggleExp(item); else setExpExpanded(prev => { const s = new Set(prev); s.has(id) ? s.delete(id) : s.add(id); return s; }); }}>
+                        <Checkbox checked={isChecked} onCheckedChange={() => toggleExp(item)} onClick={e => e.stopPropagation()} className="mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium truncate">{item.description || 'Expense'}</p>
+                          <p className="text-[10px] text-muted-foreground">{catLabel} · {item.expense_date} <span className={`ml-1 font-semibold ${wLabel === 'Overdue' ? 'text-red-500' : 'text-primary'}`}>({wLabel})</span></p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-bold">{INR(item.amount)}</p>
+                        </div>
+                      </div>
+                      {isChecked && isExpanded && (
+                        <div className="px-3 pb-3 bg-muted/20 border-t">
+                          <div className="flex items-center gap-2 pt-2">
+                            <span className="text-[11px] text-muted-foreground shrink-0">Defer {INR(item.amount)} to:</span>
+                            <Input type="date" className="h-7 text-xs flex-1"
+                              value={adj?.date || toDateStr(item.expense_date)}
+                              onChange={e => { const next = new Map(expAdj); next.set(id, { date: e.target.value }); setExpAdj(next); }} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
