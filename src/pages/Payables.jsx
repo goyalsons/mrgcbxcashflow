@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload, ChevronUp, ChevronDown, AlertTriangle, Calendar, TrendingDown, CheckCircle2, CreditCard, Banknote } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, ChevronUp, ChevronDown, AlertTriangle, Calendar, TrendingDown, CheckCircle2, CreditCard, Banknote, Eye } from 'lucide-react';
 import RecordPaymentModal from '@/components/vendors/RecordPaymentModal';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
@@ -422,6 +422,7 @@ export default function Payables() {
                             <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-4 h-4" /></Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                           {p.vendor_id && <DropdownMenuItem onClick={() => navigate(`/vendor/${p.vendor_id}`)}><Eye className="w-4 h-4 mr-2" /> View Supplier Profile</DropdownMenuItem>}
                            <DropdownMenuItem onClick={() => setPayingPayable(p)}><Banknote className="w-4 h-4 mr-2" /> Record Payment</DropdownMenuItem>
                            <DropdownMenuItem onClick={() => { setEditing(p); setShowForm(true); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
                            <DropdownMenuItem onClick={() => { if (confirm('Delete?')) deleteMut.mutate(p.id); }} className="text-destructive"><Trash2 className="w-4 h-4 mr-2" /> Delete</DropdownMenuItem>
