@@ -8,6 +8,7 @@ import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
+import SimCFOverview from '@/components/simulator/SimCFOverview';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 
 import { Button } from '@/components/ui/button';
@@ -373,7 +374,12 @@ export default function CashFlowSimulator() {
 
       <SimImpactBar baseNet={baseNet12W} simNet={simNet12W} improvement={improvement} onReset={resetAll} />
 
-      {/* Zone 1: Collapsible chart */}
+      {/* Zone 0: Simulated inflow/outflow overview */}
+      <div className="mt-4">
+        <SimCFOverview weeklyData={weeklyData} />
+      </div>
+
+      {/* Zone 1: Collapsible chart (Simulated Cash Flow) */}
       <div className="mt-4">
         <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
       </div>
@@ -399,14 +405,12 @@ export default function CashFlowSimulator() {
       {/* Zone 2: Drag-and-drop board */}
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-sm font-semibold">Timeline Board</h2>
-            <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={undoBoard} disabled={!boardHistory.length}>
-              ↩ Undo
-            </Button>
-            <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={redoBoard} disabled={!redoHistory.length}>
-              ↪ Redo
-            </Button>
+            <span className="text-xs text-muted-foreground">
+              (Base: <span className={`font-semibold ${baseNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{baseNet12W < 0 ? '-' : ''}{(() => { const abs = Math.abs(baseNet12W); return abs >= 10000000 ? `₹${(abs/10000000).toFixed(1)}Cr` : abs >= 100000 ? `₹${(abs/100000).toFixed(1)}L` : `₹${Math.round(abs).toLocaleString('en-IN')}`; })()}</span>
+              {' → '}Sim: <span className={`font-semibold ${simNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{simNet12W < 0 ? '-' : ''}{(() => { const abs = Math.abs(simNet12W); return abs >= 10000000 ? `₹${(abs/10000000).toFixed(1)}Cr` : abs >= 100000 ? `₹${(abs/100000).toFixed(1)}L` : `₹${Math.round(abs).toLocaleString('en-IN')}`; })()}</span>)
+            </span>
           </div>
           <p className="text-xs text-muted-foreground">Drag cards between weeks to reschedule payments</p>
         </div>
@@ -428,6 +432,8 @@ export default function CashFlowSimulator() {
           history={boardHistory}
           setHistory={pushHistory}
           onReset={resetAll}
+          onUndo={undoBoard}
+          onRedo={redoBoard}
         />
       </div>
 

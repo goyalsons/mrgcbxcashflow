@@ -37,9 +37,10 @@ function dueDateToWeek(dateStr) {
 }
 
 function getWeekColors(w) {
-  if ((w.simNet || 0) > 0) return { dot: 'bg-emerald-500', text: 'text-emerald-700', header: 'bg-emerald-50 border-emerald-200', baseText: 'text-emerald-600' };
-  if ((w.simNet || 0) < 0) return { dot: 'bg-red-500', text: 'text-red-700', header: 'bg-red-50 border-red-200', baseText: 'text-red-500' };
-  return { dot: 'bg-amber-500', text: 'text-amber-700', header: 'bg-amber-50 border-amber-200', baseText: 'text-amber-600' };
+  if ((w.simClosing || 0) < 0) return { dot: 'bg-red-500', text: 'text-red-700', header: 'bg-red-50 border-red-200' };
+  if ((w.simNet || 0) > 0) return { dot: 'bg-emerald-500', text: 'text-emerald-700', header: 'bg-emerald-50 border-emerald-200' };
+  if ((w.simNet || 0) < 0) return { dot: 'bg-amber-500', text: 'text-amber-700', header: 'bg-amber-50 border-amber-200' };
+  return { dot: 'bg-amber-500', text: 'text-amber-700', header: 'bg-amber-50 border-amber-200' };
 }
 
 const CARD_STYLES = {
@@ -161,7 +162,7 @@ export default function SimTimelineBoard({
   hypotheticals = [], fundingSources = [],
   setHypotheticals = () => {}, setFundingSources = () => {},
   recAdj, setRecAdj, payAdj, setPayAdj,
-  weeklyData, history, setHistory, onReset,
+  weeklyData, history, setHistory, onReset, onUndo, onRedo,
 }) {
   const weekColumnRefs = useRef([]);
   const [search, setSearch] = useState('');
@@ -330,28 +331,6 @@ export default function SimTimelineBoard({
 
         {/* ── Board toolbar ── */}
         <div className="border-b bg-card px-3 py-2 flex flex-col gap-2 shrink-0">
-          {/* Net summary row */}
-          <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[11px] text-muted-foreground font-medium">Base 12W Net</span>
-              <span className={`text-lg font-bold ${totalBaseNet >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                {totalBaseNet < 0 ? '-' : ''}{INR(Math.abs(totalBaseNet))}
-              </span>
-            </div>
-            <span className="text-muted-foreground text-sm">→</span>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-[11px] text-muted-foreground font-medium">Simulated</span>
-              <span className={`text-xl font-extrabold ${totalSimNet >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                {totalSimNet < 0 ? '-' : ''}{INR(Math.abs(totalSimNet))}
-              </span>
-            </div>
-            {improved !== 0 && (
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${improved > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                {improved > 0 ? '+' : ''}{INR(improved)}
-              </span>
-            )}
-          </div>
-
           {/* Filter row */}
           <div className="flex items-center gap-2 flex-wrap">
             <div className="relative">
@@ -381,6 +360,16 @@ export default function SimTimelineBoard({
             >
               <RotateCcw className="w-3 h-3" /> Reset
             </button>
+            {history && history.length > 0 && (
+              <button onClick={onUndo} className="flex items-center gap-1 h-7 px-2 text-xs rounded-md border border-input bg-background hover:bg-muted font-medium">
+                ↩ Undo
+              </button>
+            )}
+            {onRedo && (
+              <button onClick={onRedo} className="flex items-center gap-1 h-7 px-2 text-xs rounded-md border border-input bg-background hover:bg-muted font-medium">
+                ↪ Redo
+              </button>
+            )}
             <div className="flex items-center gap-1 ml-auto">
               <Filter className="w-3 h-3 text-muted-foreground shrink-0" />
               <span className="text-[11px] text-muted-foreground">Min ₹</span>
@@ -432,37 +421,35 @@ export default function SimTimelineBoard({
                       {/* Column header */}
                       <div className={`px-2 pt-1.5 pb-1.5 border-b ${header} shrink-0`}>
                         {/* Week label row */}
-                        <div className="flex items-center gap-1 mb-1">
+                        <div className="flex items-center gap-1 mb-1.5">
                           <div className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                           <span className="text-xs font-bold">W{i + 1}</span>
                           <span className="text-[9px] text-muted-foreground">{weekLabel(i)}</span>
                         </div>
 
-                        {/* Simulated net — large */}
-                        <div className="mb-0.5">
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium leading-tight">Simulated Net</p>
-                          <p className={`text-base font-extrabold leading-tight ${text}`}>
-                            {(w.simNet || 0) < 0 ? '-' : '+'}{INR(Math.abs(w.simNet || 0))}
-                          </p>
+                        {/* Closing Balance */}
+                        <p className="text-[8px] text-muted-foreground uppercase tracking-wider font-bold leading-tight mb-0.5">Closing Balance</p>
+                        <div className="flex justify-between items-baseline mb-1">
+                          <span className={`text-[10px] font-semibold ${(w.baseClosing || 0) >= 0 ? 'text-slate-600' : 'text-red-600'}`}>
+                            {INR(w.baseClosing || 0)}
+                          </span>
+                          <span className="text-[8px] text-muted-foreground mx-0.5">|</span>
+                          <span className={`text-[10px] font-bold ${(w.simClosing || 0) >= 0 ? 'text-indigo-700' : 'text-red-700'}`}>
+                            {INR(w.simClosing || 0)}
+                          </span>
                         </div>
 
-                        {/* Baseline net */}
-                        <div className="mb-0.5">
-                          <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-medium leading-tight">Baseline Net</p>
-                          <p className={`text-xs font-semibold leading-tight ${netChanged ? 'text-muted-foreground' : text}`}
-                             style={netChanged ? { textDecoration: 'line-through', opacity: 0.65 } : {}}>
-                            {(w.baseNet || 0) < 0 ? '-' : '+'}{INR(Math.abs(w.baseNet || 0))}
-                          </p>
+                        {/* Weekly Cash Flow */}
+                        <p className="text-[8px] text-muted-foreground uppercase tracking-wider font-bold leading-tight mb-0.5">Weekly Cash Flow</p>
+                        <div className="flex justify-between items-baseline">
+                          <span className={`text-[10px] font-semibold ${(w.baseNet || 0) >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                            {(w.baseNet || 0) >= 0 ? '+' : ''}{INR(w.baseNet || 0)}
+                          </span>
+                          <span className="text-[8px] text-muted-foreground mx-0.5">|</span>
+                          <span className={`text-[10px] font-bold ${(w.simNet || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                            {(w.simNet || 0) >= 0 ? '+' : ''}{INR(w.simNet || 0)}
+                          </span>
                         </div>
-
-                        {/* Delta badge */}
-                        {netChanged && (
-                          <div className={`inline-flex items-center text-[9px] font-bold px-1.5 py-0.5 rounded-full mt-0.5 ${
-                            (w.simNet - w.baseNet) > 0 ? 'bg-emerald-200 text-emerald-800' : 'bg-red-200 text-red-800'
-                          }`}>
-                            {(w.simNet - w.baseNet) > 0 ? '▲' : '▼'} {INR(Math.abs(w.simNet - w.baseNet))}
-                          </div>
-                        )}
                       </div>
 
                       {/* Droppable content — placeholder MUST be last inside ref'd div */}
