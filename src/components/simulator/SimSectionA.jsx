@@ -17,7 +17,8 @@ const toDateStr = (d) => d ? new Date(d).toISOString().split('T')[0] : '';
 const today = new Date(); today.setHours(0,0,0,0);
 const isOverdue = (d) => d && new Date(d) < today;
 
-export default function SimSectionA({ receivables, invoices, adjustments, setAdjustments }) {
+export default function SimSectionA({ receivables = [], invoices = [], adjustments, setAdjustments }) {
+  adjustments = adjustments instanceof Map ? adjustments : new Map();
   const [filter, setFilter]       = useState('all');
   const [expanded, setExpanded]   = useState(new Set());
   const [splitMode, setSplitMode] = useState(new Map());
