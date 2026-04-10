@@ -15,7 +15,7 @@ import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
 import SimExport from '@/components/simulator/SimExport';
-import useDebounce from '@/hooks/useDebounce';
+
 
 function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 
@@ -261,21 +261,19 @@ export default function CashFlowSimulator() {
     return g;
   }, [expenses]);
 
-  const adjState = useMemo(() => ({ recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems }), [recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems]);
-  const debouncedAdj = useDebounce(adjState, 300);
-
   // Memoize baseline data (static input — only recalculate if underlying entity data changes)
   const baselineInputs = useMemo(() => ({ receivables, invoices, payables, expenses, bankAccounts, collectionTargets }), [receivables, invoices, payables, expenses, bankAccounts, collectionTargets]);
 
+  // Compute weeklyData directly (no debounce) so drag-and-drop updates are instant
   const weeklyData = useMemo(() =>
     buildWeeklyData(
       baselineInputs.receivables, baselineInputs.invoices,
       baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
-      debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
-      debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems,
-      baselineInputs.collectionTargets, debouncedAdj.expAdj, 0
+      recAdj, payAdj, hypotheticals,
+      fundingSources, levers, taxItems,
+      baselineInputs.collectionTargets, expAdj, 0
     ),
-    [baselineInputs, debouncedAdj]
+    [baselineInputs, recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems]
   );
 
   const baseNet12W = weeklyData.reduce((s, w) => s + w.baseNet, 0);
@@ -311,8 +309,8 @@ export default function CashFlowSimulator() {
 
   const currentState = { recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems };
 
-  const [secCOpen, setSecCOpen] = useState(false);
-  const [secDOpen, setSecDOpen] = useState(false);
+  const [secCOpen, setSecCOpen] = useState(true);
+  const [secDOpen, setSecDOpen] = useState(true);
 
   return (
     <div className="flex flex-col" style={{ paddingBottom: 64 }}>
@@ -353,6 +351,24 @@ export default function CashFlowSimulator() {
         <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
       </div>
 
+      {/* Hypothetical Entries & Funding — above the board so they feed into it */}
+      <div className="mt-4 space-y-2">
+        <div className="border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
+            <span>Hypothetical Entries {hypotheticals.length > 0 && <span className="ml-1.5 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{hypotheticals.length}</span>}</span>
+            <span>{secCOpen ? '▲' : '▼'}</span>
+          </button>
+          {secCOpen && <div className="p-4"><SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} /></div>}
+        </div>
+        <div className="border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecDOpen(v => !v)}>
+            <span>External Funding Sources {fundingSources.length > 0 && <span className="ml-1.5 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{fundingSources.length}</span>}</span>
+            <span>{secDOpen ? '▲' : '▼'}</span>
+          </button>
+          {secDOpen && <div className="p-4"><SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} /></div>}
+        </div>
+      </div>
+
       {/* Zone 2: Drag-and-drop board */}
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
@@ -370,6 +386,8 @@ export default function CashFlowSimulator() {
           payables={payables}
           expenses={expenses}
           recurringExpenses={recurringExpenses}
+          hypotheticals={hypotheticals}
+          fundingSources={fundingSources}
           recAdj={recAdj}
           setRecAdj={setRecAdj}
           payAdj={payAdj}
@@ -377,6 +395,7 @@ export default function CashFlowSimulator() {
           weeklyData={weeklyData}
           history={boardHistory}
           setHistory={setBoardHistory}
+          onReset={resetAll}
         />
       </div>
 
@@ -387,24 +406,6 @@ export default function CashFlowSimulator() {
 
       {/* Funding summary */}
       <FundingSummaryCard weeklyData={weeklyData} />
-
-      {/* Accordion sections below board */}
-      <div className="mt-4 space-y-2">
-        <div className="border rounded-lg overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
-            <span>Hypothetical Entries</span>
-            <span>{secCOpen ? '▲' : '▼'}</span>
-          </button>
-          {secCOpen && <div className="p-4"><SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} /></div>}
-        </div>
-        <div className="border rounded-lg overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecDOpen(v => !v)}>
-            <span>External Funding Sources</span>
-            <span>{secDOpen ? '▲' : '▼'}</span>
-          </button>
-          {secDOpen && <div className="p-4"><SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} /></div>}
-        </div>
-      </div>
 
       {/* Disclaimer */}
       <div className="mt-6 pt-4 border-t">
