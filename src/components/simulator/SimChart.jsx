@@ -21,7 +21,9 @@ const SimTooltip = ({ active, payload, label }) => {
     <div className="bg-card border rounded-lg shadow-lg p-3 text-xs space-y-1 min-w-[200px]">
       <p className="font-semibold border-b pb-1">{label}</p>
       <p className="text-blue-600">Baseline Net: {INR(d.baseNet)}</p>
+      <p className="text-slate-500">Baseline Closing: {INR(d.baseClosing)}</p>
       <p className="text-emerald-600">Sim (Scheduled): {INR(d.simNet)}</p>
+      <p className="text-teal-600">Sim Closing: {INR(d.simClosing)}</p>
       {d.simNetWithFunding !== undefined && <p className="text-purple-600">Sim (With Funding): {INR(d.simNetWithFunding)}</p>}
       <p className={`font-bold ${delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Δ Schedule: {delta >= 0 ? '+' : ''}{INR(delta)}</p>
       {fundingImpact !== 0 && <p className="text-purple-600">Funding net: {fundingImpact >= 0 ? '+' : ''}{INR(fundingImpact)}</p>}
@@ -49,6 +51,8 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
     baseNet: w.baseNet,
     simNet: w.simNet,
     simNetWithFunding: w.simNet,
+    baseClosing: w.baseClosing,
+    simClosing: w.simClosing,
     fundingInflow: w.fundingInflow || 0,
     repaymentOutflow: w.repaymentOutflow || 0,
     simItems: w.simItems,
@@ -60,8 +64,10 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
         <CardTitle className="text-base">Net Cash Flow — Baseline vs Simulated</CardTitle>
         {/* Custom legend */}
         <div className="flex items-center gap-5 mt-1 flex-wrap">
-          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#3b82f6' }} /><span className="text-[11px] text-muted-foreground">Baseline</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #10b981' }} /><span className="text-[11px] text-muted-foreground">Scheduled only</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#3b82f6' }} /><span className="text-[11px] text-muted-foreground">Baseline Net</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #10b981' }} /><span className="text-[11px] text-muted-foreground">Sim Net</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #94a3b8' }} /><span className="text-[11px] text-muted-foreground">Baseline Closing</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #0d9488' }} /><span className="text-[11px] text-muted-foreground">Sim Closing</span></div>
           {hasFunding && <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#9333ea' }} /><span className="text-[11px] text-muted-foreground">With funding &amp; levers</span></div>}
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Improvement</span></div>
           <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Worsening</span></div>
@@ -139,6 +145,8 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
                 }}
               />
             )}
+            <Line type="monotone" dataKey="baseClosing" name="Baseline Closing" stroke="#94a3b8" strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            <Line type="monotone" dataKey="simClosing" name="Sim Closing" stroke="#0d9488" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
           </ComposedChart>
         </ResponsiveContainer>
         </div>
