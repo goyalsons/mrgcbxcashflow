@@ -75,7 +75,7 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar({ user, collapsed, onToggle }) {
+export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobileClose }) {
   const location = useLocation();
   const role = user?.role || 'user';
   
@@ -88,7 +88,11 @@ export default function Sidebar({ user, collapsed, onToggle }) {
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? 'w-[68px]' : 'w-60'}`}>
+    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50
+      ${collapsed ? 'md:w-[68px]' : 'md:w-60'}
+      w-72
+      ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+    `}>
       {/* Logo */}
       <div className={`flex items-center gap-3 h-14 border-b border-sidebar-border shrink-0 ${collapsed ? 'px-4 justify-center' : 'px-5'}`}>
         <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
@@ -130,6 +134,7 @@ export default function Sidebar({ user, collapsed, onToggle }) {
                        key={item.key}
                        to={item.path}
                        title={collapsed ? item.label : undefined}
+                       onClick={onMobileClose}
                        className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
                          ${isActive
                            ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
