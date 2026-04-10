@@ -88,9 +88,10 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50
-      w-72 md:${collapsed ? 'w-[68px]' : 'w-60'}
-      ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 overflow-hidden
+      ${mobileOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'}
+      md:${collapsed ? 'w-[68px]' : 'w-60'}
+      md:translate-x-0
     `}>
       {/* Logo */}
       <div className={`flex items-center gap-3 h-14 border-b border-sidebar-border shrink-0 ${collapsed ? 'px-4 justify-center' : 'px-5'}`}>
