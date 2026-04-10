@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -89,8 +89,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
 
   return (
     <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50
-      ${collapsed ? 'md:w-[68px]' : 'md:w-60'}
-      ${'w-72'}
+      w-72 md:${collapsed ? 'w-[68px]' : 'w-60'}
       ${mobileOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
     `}>
       {/* Logo */}
@@ -122,41 +121,40 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
               {collapsed && <div className="mx-3 my-1.5 border-t border-sidebar-border/40" />}
               <div className="px-2 space-y-0.5">
                 {visibleItems.map((item) => {
-                   const Icon = iconMap[item.icon];
-                   const isActive = item.path === '/'
-                     ? location.pathname === '/'
-                     : location.pathname.startsWith(item.path);
+                  const Icon = iconMap[item.icon];
+                  const isActive = item.path === '/'
+                    ? location.pathname === '/'
+                    : location.pathname.startsWith(item.path);
+                  const showBadge = item.key === 'notifications' && unreadCount > 0;
 
-                   const showBadge = item.key === 'notifications' && unreadCount > 0;
-
-                   return (
-                     <Link
-                       key={item.key}
-                       to={item.path}
-                       title={collapsed ? item.label : undefined}
-                       onClick={onMobileClose}
-                       className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
-                         ${isActive
-                           ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                           : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                         } ${collapsed ? 'justify-center' : ''}
-                       `}
-                     >
-                       {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
-                       {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
-                       {showBadge && (
-                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                           {unreadCount > 99 ? '99+' : unreadCount}
-                         </span>
-                       )}
-                     </Link>
-                   );
-                   })}
-                   </div>
-                   </div>
-                   );
-                   })}
-                   </nav>
+                  return (
+                    <Link
+                      key={item.key}
+                      to={item.path}
+                      title={collapsed ? item.label : undefined}
+                      onClick={onMobileClose}
+                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
+                        ${isActive
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                        } ${collapsed ? 'justify-center' : ''}
+                      `}
+                    >
+                      {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
+                      {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
+                      {showBadge && (
+                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </nav>
 
       {/* Footer */}
       <div className="border-t border-sidebar-border p-2 shrink-0">
@@ -179,7 +177,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
           <Button
             variant="ghost"
             size="icon"
-            className="text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 shrink-0"
+            className="hidden md:flex text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 shrink-0"
             onClick={onToggle}
           >
             {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
