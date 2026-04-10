@@ -117,32 +117,54 @@ export default function LLMSettings() {
         <CardContent>
           <div className="grid grid-cols-2 gap-4">
             {/* Gemini Toggle */}
-            <button
-              type="button"
-              onClick={() => set('active_provider', settings.active_provider === 'gemini' ? '' : 'gemini')}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${settings.active_provider === 'gemini' ? 'border-blue-500 bg-blue-50' : 'border-border bg-card hover:bg-muted/50'}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl">🌟</span>
-                {settings.active_provider === 'gemini' && <Badge className="bg-blue-500 text-white text-xs">Active</Badge>}
+            <div className={`p-4 rounded-xl border-2 transition-all ${settings.active_provider === 'gemini' ? 'border-blue-500 bg-blue-50' : 'border-border bg-card'}`}>
+              <button
+                type="button"
+                onClick={() => set('active_provider', settings.active_provider === 'gemini' ? '' : 'gemini')}
+                className="w-full text-left"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">🌟</span>
+                  {settings.active_provider === 'gemini' && <Badge className="bg-blue-500 text-white text-xs">Active</Badge>}
+                </div>
+                <p className="font-semibold">Google Gemini</p>
+              </button>
+              <div className="mt-2" onClick={e => e.stopPropagation()}>
+                <Select value={settings.gemini_model} onValueChange={v => set('gemini_model', v)}>
+                  <SelectTrigger className="h-7 text-xs w-full bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GEMINI_MODELS.map(m => <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="font-semibold">Google Gemini</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{GEMINI_MODELS.find(m => m.value === settings.gemini_model)?.label || 'Gemini 2.0 Flash'}</p>
-            </button>
+            </div>
 
             {/* Claude Toggle */}
-            <button
-              type="button"
-              onClick={() => set('active_provider', settings.active_provider === 'claude' ? '' : 'claude')}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${settings.active_provider === 'claude' ? 'border-orange-500 bg-orange-50' : 'border-border bg-card hover:bg-muted/50'}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-2xl">🤖</span>
-                {settings.active_provider === 'claude' && <Badge className="bg-orange-500 text-white text-xs">Active</Badge>}
+            <div className={`p-4 rounded-xl border-2 transition-all ${settings.active_provider === 'claude' ? 'border-orange-500 bg-orange-50' : 'border-border bg-card'}`}>
+              <button
+                type="button"
+                onClick={() => set('active_provider', settings.active_provider === 'claude' ? '' : 'claude')}
+                className="w-full text-left"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-2xl">🤖</span>
+                  {settings.active_provider === 'claude' && <Badge className="bg-orange-500 text-white text-xs">Active</Badge>}
+                </div>
+                <p className="font-semibold">Anthropic Claude</p>
+              </button>
+              <div className="mt-2" onClick={e => e.stopPropagation()}>
+                <Select value={settings.claude_model} onValueChange={v => set('claude_model', v)}>
+                  <SelectTrigger className="h-7 text-xs w-full bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CLAUDE_MODELS.map(m => <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
-              <p className="font-semibold">Anthropic Claude</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{CLAUDE_MODELS.find(m => m.value === settings.claude_model)?.label || 'Claude Sonnet 4.5'}</p>
-            </button>
+            </div>
           </div>
 
           {!settings.active_provider && (

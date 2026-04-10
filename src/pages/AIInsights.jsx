@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { loadActiveLLM } from '@/components/settings/LLMSettings';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR, formatDateIN } from '@/lib/utils/currency';
@@ -60,6 +61,22 @@ export default function AIInsights() {
 
   const generateInsights = async () => {
     setLoading(true);
+    const activeLLM = loadActiveLLM();
+
+    // Map user-configured model to Base44 InvokeLLM model param
+    const MODEL_MAP = {
+      'gemini-2.0-flash': 'gemini_3_flash',
+      'gemini-2.0-pro': 'gemini_3_1_pro',
+      'gemini-1.5-flash': 'gemini_3_flash',
+      'gemini-1.5-pro': 'gemini_3_1_pro',
+      'claude-opus-4-5': 'claude_opus_4_6',
+      'claude-sonnet-4-5': 'claude_sonnet_4_6',
+      'claude-haiku-3-5': 'claude_sonnet_4_6',
+    };
+    let selectedModel = undefined;
+    if (activeLLM.provider === 'gemini') selectedModel = MODEL_MAP[activeLLM.gemini_model];
+    else if (activeLLM.provider === 'claude') selectedModel = MODEL_MAP[activeLLM.claude_model];
+
     const totalBankBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
     const totalOutstanding = debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
     const overdueRec = receivables.filter(r => {
@@ -87,6 +104,7 @@ Return JSON: { "insights": [ { "title": "...", "description": "...", "type": "su
 
     const result = await base44.integrations.Core.InvokeLLM({
       prompt,
+      ...(selectedModel && { model: selectedModel }),
       response_json_schema: {
         type: 'object',
         properties: {
