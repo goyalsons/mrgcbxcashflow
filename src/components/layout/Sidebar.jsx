@@ -57,6 +57,7 @@ const NAV_GROUPS = [
     items: [
       { key: 'cash_flow_forecast', label: 'Cash Flow', path: '/cash-flow-forecast', icon: 'TrendingUp' },
       { key: 'cash_flow_simulator', label: 'CF Simulator', path: '/cash-flow-simulator', icon: 'SlidersHorizontal' },
+      { key: 'cash_flow_simulator_monthly', label: 'CF Simulator (Monthly)', path: '/cash-flow-simulator-monthly', icon: 'SlidersHorizontal' },
       { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
       { key: 'analysis', label: 'Analysis', path: '/analysis', icon: 'BarChart3' },
       { key: 'reports', label: 'Reports', path: '/reports', icon: 'FileText' },
