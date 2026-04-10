@@ -35,7 +35,7 @@ function Sparkline({ weeklyData }) {
   );
 }
 
-export default function SimZone1Chart({ weeklyData, hasAdjustments }) {
+export default function SimZone1Chart({ weeklyData, hasAdjustments, bankAccounts = [] }) {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -70,7 +70,7 @@ export default function SimZone1Chart({ weeklyData, hasAdjustments }) {
           >
             <ChevronUp className="w-4 h-4" /> Collapse
           </button>
-          <SimChart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
+          <SimChart weeklyData={weeklyData} hasAdjustments={hasAdjustments} bankAccounts={bankAccounts} />
         </div>
       )}
     </div>

@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChevronDown, ChevronUp } from 'lucide-react';
+import SimTable from '@/components/simulator/SimTable';
 import {
-  ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Area, ReferenceArea
 } from 'recharts';
 
@@ -15,17 +17,14 @@ const INR = (v) => {
 const SimTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   const d = payload[0]?.payload || {};
-  const delta = d.simNet - d.baseNet;
   const fundingImpact = (d.fundingInflow || 0) - (d.repaymentOutflow || 0);
   return (
     <div className="bg-card border rounded-lg shadow-lg p-3 text-xs space-y-1 min-w-[200px]">
       <p className="font-semibold border-b pb-1">{label}</p>
-      <p className="text-blue-600">Baseline Net: {INR(d.baseNet)}</p>
-      <p className="text-slate-500">Baseline Closing: {INR(d.baseClosing)}</p>
-      <p className="text-emerald-600">Sim (Scheduled): {INR(d.simNet)}</p>
+      <p className="text-emerald-600">Sim Inflow: {INR(d.simInflow)}</p>
+      <p className="text-red-600">Sim Outflow: {INR(d.simOutflow)}</p>
+      <p className="text-indigo-700 font-semibold">Sim Net: {INR(d.simNet)}</p>
       <p className="text-teal-600">Sim Closing: {INR(d.simClosing)}</p>
-      {d.simNetWithFunding !== undefined && <p className="text-purple-600">Sim (With Funding): {INR(d.simNetWithFunding)}</p>}
-      <p className={`font-bold ${delta >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>Δ Schedule: {delta >= 0 ? '+' : ''}{INR(delta)}</p>
       {fundingImpact !== 0 && <p className="text-purple-600">Funding net: {fundingImpact >= 0 ? '+' : ''}{INR(fundingImpact)}</p>}
       {d.simItems?.length > 0 && (
         <div className="border-t pt-1 space-y-0.5">
@@ -43,16 +42,19 @@ const SimTooltip = ({ active, payload, label }) => {
   );
 };
 
-export default function SimChart({ weeklyData, hasAdjustments = true }) {
+export default function SimChart({ weeklyData, hasAdjustments = true, bankAccounts = [] }) {
   const hasFunding = weeklyData.some(w => (w.fundingInflow || 0) + (w.repaymentOutflow || 0) > 0);
+  const [tableOpen, setTableOpen] = useState(false);
 
   const chartData = weeklyData.map(w => ({
     name: w.label,
-    baseNet: w.baseNet,
+    simInflow: Math.round(w.simInflow),
+    simOutflow: Math.round(w.simOutflow),
     simNet: w.simNet,
     simNetWithFunding: w.simNet,
-    baseClosing: w.baseClosing,
     simClosing: w.simClosing,
+    baseNet: w.baseNet,
+    baseClosing: w.baseClosing,
     fundingInflow: w.fundingInflow || 0,
     repaymentOutflow: w.repaymentOutflow || 0,
     simItems: w.simItems,
@@ -62,20 +64,15 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Simulated Cash Flow</CardTitle>
-        {/* Custom legend */}
         <div className="flex items-center gap-5 mt-1 flex-wrap">
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-400" /><span className="text-[11px] text-muted-foreground">Sim Inflow</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-400" /><span className="text-[11px] text-muted-foreground">Sim Outflow</span></div>
           <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #10b981' }} /><span className="text-[11px] text-muted-foreground">Sim Net</span></div>
           <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #0d9488' }} /><span className="text-[11px] text-muted-foreground">Sim Closing</span></div>
-          {hasFunding && <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-[11px] text-muted-foreground">Sim negative week</span></div>}
-          {hasFunding && <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#9333ea' }} /><span className="text-[11px] text-muted-foreground">With funding &amp; levers</span></div>}
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Improvement</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-200 opacity-70" /><span className="text-[11px] text-muted-foreground">Worsening</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-[11px] text-muted-foreground">Baseline negative week</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-orange-500" /><span className="text-[11px] text-muted-foreground">Sim negative week</span></div>
+          {hasFunding && <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#9333ea' }} /><span className="text-[11px] text-muted-foreground">With funding</span></div>}
         </div>
       </CardHeader>
       <CardContent>
-        {/* Funding markers */}
         {hasFunding && (
           <div className="flex flex-wrap gap-1 mb-2 px-1">
             {weeklyData.map((w, i) => {
@@ -98,61 +95,58 @@ export default function SimChart({ weeklyData, hasAdjustments = true }) {
               </div>
             </div>
           )}
-        <ResponsiveContainer width="100%" height={260}>
-          <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-            <defs>
-              <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#10b981" stopOpacity={0.2} /><stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
-              </linearGradient>
-              <linearGradient id="negGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#ef4444" stopOpacity={0.02} /><stop offset="100%" stopColor="#ef4444" stopOpacity={0.2} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--border))" vertical={true} strokeOpacity={0.7} />
-            <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval={0} angle={-30} textAnchor="end" height={40} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={12} />
-            <Tooltip content={<SimTooltip />} />
-            {/* Shade negative sim weeks */}
-            {chartData.map((d, i) => d.simNet < 0 && (
-              <ReferenceArea key={`sim-neg-${i}`} x1={d.name} x2={d.name} fill="#ef444415" />
-            ))}
-            <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5}
-              label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
-            <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />
-            <Line type="monotone" dataKey="simNet" name="Scheduled only" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" isAnimationActive={true} animationDuration={400}
-              dot={(props) => {
-                const { cx, cy, payload } = props;
-                if (payload.simNet < 0) return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={5} fill="#f97316" stroke="#fff" strokeWidth={1.5} />;
-                return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={2.5} fill="#10b981" />;
-              }}
-            />
-            {hasFunding && (
-              <Line type="monotone" dataKey="simNetWithFunding" name="With funding" stroke="#9333ea" strokeWidth={2.5} isAnimationActive={true} animationDuration={400}
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+              <defs>
+                <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} /><stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--border))" strokeOpacity={0.7} />
+              <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval={0} angle={-30} textAnchor="end" height={40} />
+              <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={10} />
+              <Tooltip content={<SimTooltip />} />
+              {chartData.map((d, i) => d.simNet < 0 && (
+                <ReferenceArea key={`sim-neg-${i}`} x1={d.name} x2={d.name} fill="#ef444415" />
+              ))}
+              <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5}
+                label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
+              <Bar dataKey="simInflow" name="Sim Inflow" fill="#10b981" opacity={0.65} radius={[3,3,0,0]} />
+              <Bar dataKey="simOutflow" name="Sim Outflow" fill="#ef4444" opacity={0.65} radius={[3,3,0,0]} />
+              <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />
+              <Line type="monotone" dataKey="simNet" name="Sim Net" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" isAnimationActive={true} animationDuration={400}
                 dot={(props) => {
                   const { cx, cy, payload } = props;
-                  if ((payload.fundingInflow || 0) > 0) return <polygon key={cx} points={`${cx},${cy-6} ${cx-5},${cy+4} ${cx+5},${cy+4}`} fill="#9333ea" />;
-                  if ((payload.repaymentOutflow || 0) > 0) return <polygon key={cx} points={`${cx},${cy+6} ${cx-5},${cy-4} ${cx+5},${cy-4}`} fill="#b91c1c" />;
-                  return <circle key={cx} cx={cx} cy={cy} r={2} fill="#9333ea" />;
+                  if (payload.simNet < 0) return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={5} fill="#f97316" stroke="#fff" strokeWidth={1.5} />;
+                  return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={2.5} fill="#10b981" />;
                 }}
               />
-            )}
-            <Line type="monotone" dataKey="simClosing" name="Sim Closing" stroke="#0d9488" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
-          </ComposedChart>
-        </ResponsiveContainer>
+              {hasFunding && (
+                <Line type="monotone" dataKey="simNetWithFunding" name="With funding" stroke="#9333ea" strokeWidth={2.5} isAnimationActive={true} animationDuration={400}
+                  dot={(props) => {
+                    const { cx, cy, payload } = props;
+                    if ((payload.fundingInflow || 0) > 0) return <polygon key={cx} points={`${cx},${cy-6} ${cx-5},${cy+4} ${cx+5},${cy+4}`} fill="#9333ea" />;
+                    if ((payload.repaymentOutflow || 0) > 0) return <polygon key={cx} points={`${cx},${cy+6} ${cx-5},${cy-4} ${cx+5},${cy-4}`} fill="#b91c1c" />;
+                    return <circle key={cx} cx={cx} cy={cy} r={2} fill="#9333ea" />;
+                  }}
+                />
+              )}
+              <Line type="monotone" dataKey="simClosing" name="Sim Closing" stroke="#0d9488" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
-        {/* Negative week indicators */}
-        {(() => {
-          const simNeg = chartData.filter(d => d.simNet < 0).map(d => d.name.split(' ')[0]);
-          if (!simNeg.length) return null;
-          return (
-            <div className="mt-2 px-1">
-              <div className="flex items-center gap-1 flex-wrap">
-                <span className="text-[10px] text-muted-foreground shrink-0">Sim negative:</span>
-                {simNeg.map(w => <span key={w} className="text-[10px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-700 font-medium">{w}</span>)}
-              </div>
-            </div>
-          );
-        })()}
+
+        {/* Collapsible Weekly Comparison Table */}
+        <div className="mt-3 border rounded-lg overflow-hidden">
+          <button
+            onClick={() => setTableOpen(v => !v)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 bg-muted/10 transition-colors"
+          >
+            <span>Weekly Comparison Table</span>
+            {tableOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+          </button>
+          {tableOpen && <SimTable weeklyData={weeklyData} bankAccounts={bankAccounts} />}
+        </div>
       </CardContent>
     </Card>
   );

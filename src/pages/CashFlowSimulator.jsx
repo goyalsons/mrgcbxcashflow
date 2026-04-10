@@ -8,7 +8,6 @@ import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
-import SimCFOverview from '@/components/simulator/SimCFOverview';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 
 import { Button } from '@/components/ui/button';
@@ -374,14 +373,9 @@ export default function CashFlowSimulator() {
 
       <SimImpactBar baseNet={baseNet12W} simNet={simNet12W} improvement={improvement} onReset={resetAll} />
 
-      {/* Zone 0: Simulated inflow/outflow overview */}
-      <div className="mt-4">
-        <SimCFOverview weeklyData={weeklyData} />
-      </div>
-
       {/* Zone 1: Collapsible chart (Simulated Cash Flow) */}
       <div className="mt-4">
-        <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
+        <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} bankAccounts={bankAccounts} />
       </div>
 
       {/* Hypothetical Entries & Funding — side by side, above the board */}
@@ -437,10 +431,7 @@ export default function CashFlowSimulator() {
         />
       </div>
 
-      {/* Summary table */}
-      <div className="mt-4">
-        <SimTable weeklyData={weeklyData} bankAccounts={bankAccounts} />
-      </div>
+
 
       {/* Funding summary */}
       <FundingSummaryCard weeklyData={weeklyData} />
