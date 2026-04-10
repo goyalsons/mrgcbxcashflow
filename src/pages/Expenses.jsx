@@ -9,6 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Search, MoreHorizontal, Pencil, Trash2, AlertTriangle, CheckCircle, Clock, XCircle, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
@@ -51,10 +53,25 @@ export default function Expenses() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState('');
+  const [filterWeek, setFilterWeek] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState(null);
   const [reviewExpense, setReviewExpense] = useState(null);
   const [processing, setProcessing] = useState(false);
+
+  function getISOWeekLabel(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const w1 = new Date(d.getFullYear(), 0, 4);
+    const wn = 1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+    return `W${wn} '${String(d.getFullYear()).slice(2)}`;
+  }
+  function getMonthLabel(dateStr) {
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  }
 
   const approvalThreshold = loadApprovalThreshold();
 
@@ -136,14 +153,29 @@ export default function Expenses() {
     toast({ title: 'Expense rejected' });
   };
 
+  const weekOptions = useMemo(() => {
+    const s = new Set();
+    expenses.forEach(e => { const w = getISOWeekLabel(e.expense_date); if (w) s.add(w); });
+    return [...s].sort();
+  }, [expenses]);
+
+  const monthOptions = useMemo(() => {
+    const s = new Set();
+    expenses.forEach(e => { const m = getMonthLabel(e.expense_date); if (m) s.add(m); });
+    return [...s];
+  }, [expenses]);
+
   const filtered = useMemo(() =>
     expenses
-      .filter(e =>
-        e.description?.toLowerCase().includes(search.toLowerCase()) ||
-        e.category?.toLowerCase().includes(search.toLowerCase())
-      )
+      .filter(e => {
+        const matchSearch = e.description?.toLowerCase().includes(search.toLowerCase()) ||
+          e.category?.toLowerCase().includes(search.toLowerCase());
+        const matchWeek = filterWeek === 'all' || getISOWeekLabel(e.expense_date) === filterWeek;
+        const matchMonth = filterMonth === 'all' || getMonthLabel(e.expense_date) === filterMonth;
+        return matchSearch && matchWeek && matchMonth;
+      })
       .sort((a, b) => new Date(b.expense_date) - new Date(a.expense_date)),
-    [expenses, search]
+    [expenses, search, filterWeek, filterMonth]
   );
 
   const pending = filtered.filter(e => e.approval_status === 'pending');
@@ -264,11 +296,25 @@ export default function Expenses() {
         </Card>
       </div>
 
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row items-center gap-3 flex-wrap">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search expenses..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
+        <Select value={filterWeek} onValueChange={setFilterWeek}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Week" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Weeks</SelectItem>
+            {weekOptions.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Month" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {monthOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
+          </SelectContent>
+        </Select>
       </div>
 
       <Tabs defaultValue="all">

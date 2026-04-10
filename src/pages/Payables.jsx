@@ -133,6 +133,8 @@ export default function Payables() {
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterCategory, setFilterCategory] = useState('all');
   const [filterDuePeriod, setFilterDuePeriod] = useState('all');
+  const [filterWeek, setFilterWeek] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
   const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showPlanModal, setShowPlanModal] = useState(false);
@@ -214,6 +216,18 @@ export default function Payables() {
     return { overdueNow, dueWeek };
   }, [payables]);
 
+  const weekOptions = useMemo(() => {
+    const s = new Set();
+    payables.forEach(p => { const w = getISOWeek(p.due_date); if (w !== '—') s.add(`W${w} '${String(new Date(p.due_date).getFullYear()).slice(2)}`); });
+    return [...s].sort();
+  }, [payables]);
+
+  const monthOptions = useMemo(() => {
+    const s = new Set();
+    payables.forEach(p => { if (p.due_date) s.add(getDueMonth(p.due_date)); });
+    return [...s];
+  }, [payables]);
+
   // Filtering
   const filtered = useMemo(() => {
     const now = new Date();
@@ -237,9 +251,12 @@ export default function Payables() {
         else if (filterDuePeriod === 'this_month') matchDue = p.due_date >= todayStr && p.due_date <= mEnd;
         else if (filterDuePeriod === 'next_month') matchDue = p.due_date >= nextMStart && p.due_date <= nextMEnd;
       }
-      return matchSearch && matchStatus && matchCategory && matchDue;
+      const wLabel = p.due_date && getISOWeek(p.due_date) !== '—' ? `W${getISOWeek(p.due_date)} '${String(new Date(p.due_date).getFullYear()).slice(2)}` : null;
+      const matchWeek = filterWeek === 'all' || wLabel === filterWeek;
+      const matchMonth = filterMonth === 'all' || getDueMonth(p.due_date) === filterMonth;
+      return matchSearch && matchStatus && matchCategory && matchDue && matchWeek && matchMonth;
     });
-  }, [payables, search, filterStatus, filterCategory, filterDuePeriod]);
+  }, [payables, search, filterStatus, filterCategory, filterDuePeriod, filterWeek, filterMonth]);
 
   // Sort: urgency default, then custom sort
   const sortedFiltered = useMemo(() => {
@@ -338,6 +355,20 @@ export default function Payables() {
             <SelectItem value="this_week">Due This Week</SelectItem>
             <SelectItem value="this_month">Due This Month</SelectItem>
             <SelectItem value="next_month">Due Next Month</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterWeek} onValueChange={setFilterWeek}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Week" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Weeks</SelectItem>
+            {weekOptions.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Month" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {monthOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>

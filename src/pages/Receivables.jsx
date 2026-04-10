@@ -22,8 +22,23 @@ export default function Receivables() {
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [filterWeek, setFilterWeek] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
   const [selected, setSelected] = useState(new Set());
   const [expandedId, setExpandedId] = useState(null);
+
+  function getISOWeek(dateStr) {
+    if (!dateStr) return null;
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+    const w1 = new Date(d.getFullYear(), 0, 4);
+    const wn = 1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+    return `W${wn} '${String(d.getFullYear()).slice(2)}`;
+  }
+  function getMonthLabel(dateStr) {
+    if (!dateStr) return null;
+    return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+  }
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -105,19 +120,35 @@ export default function Receivables() {
     return Object.values(groups);
   }, [unpaidReceivables]);
 
+  const weekOptions = useMemo(() => {
+    const s = new Set();
+    unpaidReceivables.forEach(r => { const w = getISOWeek(r.due_date); if (w) s.add(w); });
+    return [...s].sort();
+  }, [unpaidReceivables]);
+
+  const monthOptions = useMemo(() => {
+    const s = new Set();
+    unpaidReceivables.forEach(r => { const m = getMonthLabel(r.due_date); if (m) s.add(m); });
+    return [...s];
+  }, [unpaidReceivables]);
+
   // Filter customer groups
   const filtered = useMemo(() => {
     return customerGroups.filter(group => {
       const matchSearch = !search ||
         group.customer_name.toLowerCase().includes(search.toLowerCase()) ||
-        group.invoices.some(inv => 
+        group.invoices.some(inv =>
           (inv.invoice_number || '').toLowerCase().includes(search.toLowerCase())
         );
-      const matchStatus = filterStatus === 'all' || 
+      const matchStatus = filterStatus === 'all' ||
         group.invoices.some(inv => inv.status === filterStatus);
-      return matchSearch && matchStatus;
+      const matchWeek = filterWeek === 'all' ||
+        group.invoices.some(inv => getISOWeek(inv.due_date) === filterWeek);
+      const matchMonth = filterMonth === 'all' ||
+        group.invoices.some(inv => getMonthLabel(inv.due_date) === filterMonth);
+      return matchSearch && matchStatus && matchWeek && matchMonth;
     });
-  }, [customerGroups, search, filterStatus]);
+  }, [customerGroups, search, filterStatus, filterWeek, filterMonth]);
 
   // Selection helpers - select all invoices in filtered groups
   const allFilteredInvoices = filtered.flatMap(g => g.invoices);
@@ -148,7 +179,7 @@ export default function Receivables() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by customer or invoice #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
@@ -164,6 +195,20 @@ export default function Receivables() {
             <SelectItem value="paid">Paid</SelectItem>
             <SelectItem value="overdue">Overdue</SelectItem>
             <SelectItem value="written_off">Written Off</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={filterWeek} onValueChange={setFilterWeek}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Week" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Weeks</SelectItem>
+            {weekOptions.map(w => <SelectItem key={w} value={w}>{w}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={filterMonth} onValueChange={setFilterMonth}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Month" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Months</SelectItem>
+            {monthOptions.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
