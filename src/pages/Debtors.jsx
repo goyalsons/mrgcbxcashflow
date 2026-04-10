@@ -566,49 +566,6 @@ export default function Debtors() {
            </div>
          )}
          </>
-         ) : (
-         <>
-         {/* Ageing view (default) */}
-         {sortedDebtors.overdue.length > 0 && (
-           <div>
-             <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide mb-3">
-               ⚠️ Overdue — {sortedDebtors.overdue.length} debtor{sortedDebtors.overdue.length !== 1 ? 's' : ''}
-             </h2>
-             {viewMode === 'card' ? renderCardView(sortedDebtors.overdue) : renderTableView(sortedDebtors.overdue)}
-           </div>
-         )}
-
-         {sortedDebtors.activeDebtors.length > sortedDebtors.overdue.length && (
-           <div className="mt-6">
-             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-               Other Outstanding — {sortedDebtors.activeDebtors.length - sortedDebtors.overdue.length} debtor{(sortedDebtors.activeDebtors.length - sortedDebtors.overdue.length) !== 1 ? 's' : ''}
-             </h2>
-             {viewMode === 'card' ? renderCardView(sortedDebtors.activeDebtors.filter(d => !sortedDebtors.overdue.find(o => o.id === d.id))) : renderTableView(sortedDebtors.activeDebtors.filter(d => !sortedDebtors.overdue.find(o => o.id === d.id)))}
-           </div>
-         )}
-
-         {sortedDebtors.overdue.length === 0 && sortedDebtors.activeDebtors.length === 0 && filtered.length > 0 && (
-           <div className="text-center py-8 text-muted-foreground text-sm">No outstanding debtors match your filters</div>
-         )}
-
-         {sortedDebtors.paidDebtors.length > 0 && (
-           <div className="mt-6">
-             <button
-               className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 hover:text-foreground transition-colors"
-               onClick={() => setShowPaid(p => !p)}
-             >
-               {showPaid ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-               Zero Payment — {sortedDebtors.paidDebtors.length} debtor{sortedDebtors.paidDebtors.length !== 1 ? 's' : ''}
-               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 ml-1">
-                 {formatINR(sortedDebtors.paidDebtors.reduce((s, d) => s + (d.total_received || 0), 0))} collected
-               </Badge>
-             </button>
-             {showPaid && (
-               viewMode === 'card' ? renderCardView(sortedDebtors.paidDebtors) : renderTableView(sortedDebtors.paidDebtors)
-             )}
-           </div>
-         )}
-         </>
          )}
 
          <DebtorForm
