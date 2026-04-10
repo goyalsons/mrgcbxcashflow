@@ -17,7 +17,9 @@ const today = new Date(); today.setHours(0,0,0,0);
 const isOverdue = (d) => d && new Date(d) < today;
 const daysDiff = (a, b) => Math.round((new Date(a) - new Date(b)) / 86400000);
 
-export default function SimSectionB({ payables, adjustments, setAdjustments, expenses = [], recurringExpenses = [], expAdj, setExpAdj }) {
+export default function SimSectionB({ payables = [], adjustments, setAdjustments, expenses = [], recurringExpenses = [], expAdj, setExpAdj }) {
+  adjustments = adjustments instanceof Map ? adjustments : new Map();
+  expAdj = expAdj instanceof Map ? expAdj : new Map();
   const [filter, setFilter]       = useState('all');
   const [expanded, setExpanded]   = useState(new Set());
   const [splitMode, setSplitMode] = useState(new Map());
