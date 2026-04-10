@@ -33,6 +33,14 @@
     "contact_person": {
       "type": "string",
       "description": "Primary contact person"
+    },
+    "account_manager": {
+      "type": "string",
+      "description": "Account manager email"
+    },
+    "account_manager_name": {
+      "type": "string",
+      "description": "Account manager display name"
     }
   },
   "required": [

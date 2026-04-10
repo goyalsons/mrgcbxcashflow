@@ -6,7 +6,11 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, UserCheck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
@@ -18,12 +22,21 @@ export default function Customers() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState(new Set());
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [assigningManager, setAssigningManager] = useState('');
+  const [assigning, setAssigning] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const { data: customers = [], isLoading } = useQuery({
     queryKey: ['customers'],
     queryFn: () => base44.entities.Customer.list('-created_date'),
+  });
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => base44.entities.User.list(),
   });
 
   const createMut = useMutation({
@@ -42,6 +55,28 @@ export default function Customers() {
   const handleSave = async (formData) => {
     if (editing) await updateMut.mutateAsync({ id: editing.id, data: formData });
     else await createMut.mutateAsync(formData);
+  };
+
+  const handleBulkAssign = async () => {
+    if (!assigningManager || selected.size === 0) return;
+    setAssigning(true);
+    const mgr = users.find(u => u.email === assigningManager);
+    const mgrName = mgr ? mgr.full_name : assigningManager;
+    await Promise.all([...selected].map(id =>
+      base44.entities.Customer.update(id, { account_manager: assigningManager, account_manager_name: mgrName })
+    ));
+    queryClient.invalidateQueries({ queryKey: ['customers'] });
+    toast({ title: `Account manager assigned to ${selected.size} customer(s)` });
+    setSelected(new Set());
+    setAssigningManager('');
+    setShowAssignModal(false);
+    setAssigning(false);
+  };
+
+  const toggleOne = (id) => setSelected(prev => { const next = new Set(prev); next.has(id) ? next.delete(id) : next.add(id); return next; });
+  const toggleAll = () => {
+    if (selected.size === filtered.length) setSelected(new Set());
+    else setSelected(new Set(filtered.map(c => c.id)));
   };
 
   const filtered = useMemo(() => {
@@ -63,6 +98,16 @@ export default function Customers() {
         </Button>
       </PageHeader>
 
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
+          <span className="text-sm font-medium text-primary">{selected.size} customer{selected.size > 1 ? 's' : ''} selected</span>
+          <Button size="sm" variant="outline" className="gap-1.5 ml-auto" onClick={() => setShowAssignModal(true)}>
+            <UserCheck className="w-4 h-4" /> Assign Account Manager
+          </Button>
+          <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
+        </div>
+      )}
+
       {/* Search */}
       <div className="relative max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -81,6 +126,12 @@ export default function Customers() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={filtered.length > 0 && selected.size === filtered.length}
+                      onCheckedChange={toggleAll}
+                    />
+                  </TableHead>
                   <TableHead>Company</TableHead>
                   <TableHead>Contact Person</TableHead>
                   <TableHead>Email</TableHead>
@@ -89,12 +140,16 @@ export default function Customers() {
                   <TableHead>State</TableHead>
                   <TableHead>Country</TableHead>
                   <TableHead>GSTIN</TableHead>
+                  <TableHead>Account Manager</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((c) => (
                   <TableRow key={c.id} className="group">
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggleOne(c.id)} />
+                    </TableCell>
                     <TableCell className="font-medium">{c.name}</TableCell>
                     <TableCell>{c.contact_person || '-'}</TableCell>
                     <TableCell className="text-muted-foreground">{c.email || '-'}</TableCell>
@@ -103,6 +158,11 @@ export default function Customers() {
                     <TableCell>{c.state || '-'}</TableCell>
                     <TableCell>{c.country || '-'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">{c.gstin || '-'}</TableCell>
+                    <TableCell>
+                      {c.account_manager_name
+                        ? <Badge variant="secondary" className="text-xs">{c.account_manager_name}</Badge>
+                        : <span className="text-muted-foreground text-xs">—</span>}
+                    </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -124,6 +184,36 @@ export default function Customers() {
       </Card>
 
       <ContactForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} type="Customer" />
+
+      {/* Bulk Assign Account Manager Modal */}
+      <Dialog open={showAssignModal} onOpenChange={setShowAssignModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Account Manager</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Assign an account manager to <strong>{selected.size}</strong> selected customer(s).
+          </p>
+          <Select value={assigningManager} onValueChange={setAssigningManager}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select account manager..." />
+            </SelectTrigger>
+            <SelectContent>
+              {users.map(u => (
+                <SelectItem key={u.id} value={u.email}>
+                  {u.full_name} <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignModal(false)}>Cancel</Button>
+            <Button onClick={handleBulkAssign} disabled={!assigningManager || assigning}>
+              {assigning ? 'Assigning...' : 'Assign'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

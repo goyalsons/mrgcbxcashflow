@@ -37,6 +37,21 @@ export default function Receivables() {
     queryFn: () => base44.entities.Invoice.list('-created_date'),
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
+  // Build a map: customer_id or customer_name -> account_manager_name
+  const accountManagerMap = useMemo(() => {
+    const map = {};
+    customers.forEach(c => {
+      if (c.id) map[c.id] = c.account_manager_name || null;
+      if (c.name) map[c.name] = c.account_manager_name || null;
+    });
+    return map;
+  }, [customers]);
+
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.Receivable.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['receivables'] }); setShowForm(false); toast({ title: 'Receivable created' }); },
@@ -191,6 +206,7 @@ export default function Receivables() {
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead>Invoices</TableHead>
+                  <TableHead>Account Manager</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -229,6 +245,7 @@ export default function Receivables() {
                         <TableCell className="text-right text-emerald-600">{formatINR(group.total_received)}</TableCell>
                         <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{group.invoices.length} invoice{group.invoices.length !== 1 ? 's' : ''}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{accountManagerMap[group.customer_id] || accountManagerMap[group.customer_name] || <span className="text-xs">—</span>}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
                           <Button 
                             variant="ghost" 
