@@ -13,6 +13,19 @@ import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 
+function getISOWeekLabel(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr); d.setHours(0,0,0,0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  const wn = 1 + Math.round(((d - w1) / 86400000 - 3 + (w1.getDay() + 6) % 7) / 7);
+  return `W${wn} '${String(d.getFullYear()).slice(2)}`;
+}
+function getMonthLabel(dateStr) {
+  if (!dateStr) return null;
+  return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+}
+
 const RECURRENCE_LABELS = {
   daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', custom: 'Custom',
 };
@@ -193,6 +206,8 @@ export default function RecurringExpenses() {
                       <TableHead>Category</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Frequency</TableHead>
+                      <TableHead>Start Week</TableHead>
+                      <TableHead>Start Month</TableHead>
                       <TableHead>End Date</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
@@ -209,6 +224,8 @@ export default function RecurringExpenses() {
                             {t.recurrence_type === 'custom' && t.recurrence_interval ? ` (every ${t.recurrence_interval} ${t.recurrence_unit}s)` : ''}
                           </Badge>
                         </TableCell>
+                        <TableCell><span className="text-xs font-medium text-muted-foreground">{getISOWeekLabel(t.recurrence_start_date || t.expense_date) || '—'}</span></TableCell>
+                        <TableCell><span className="text-xs text-muted-foreground">{getMonthLabel(t.recurrence_start_date || t.expense_date) || '—'}</span></TableCell>
                         <TableCell className="text-sm text-muted-foreground">{t.recurrence_end_date ? formatDateIN(t.recurrence_end_date) : 'No end'}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
@@ -258,6 +275,8 @@ export default function RecurringExpenses() {
                       <TableHead>Category</TableHead>
                       <TableHead>Amount</TableHead>
                       <TableHead>Date</TableHead>
+                      <TableHead>Week</TableHead>
+                      <TableHead>Month</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -277,6 +296,8 @@ export default function RecurringExpenses() {
                               {formatDateIN(e.expense_date)}
                             </span>
                           </TableCell>
+                          <TableCell><span className="text-xs font-medium text-muted-foreground">{getISOWeekLabel(e.expense_date) || '—'}</span></TableCell>
+                          <TableCell><span className="text-xs text-muted-foreground">{getMonthLabel(e.expense_date) || '—'}</span></TableCell>
                           <TableCell>
                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive" onClick={async () => {
                               if (confirm('Delete this entry?')) { await deleteMut.mutateAsync(e.id); toast({ title: 'Deleted' }); }

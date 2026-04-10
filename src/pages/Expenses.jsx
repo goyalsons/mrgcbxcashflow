@@ -188,6 +188,8 @@ export default function Expenses() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Payment Mode</TableHead>
                   <TableHead>Date</TableHead>
+                  <TableHead>Week</TableHead>
+                  <TableHead>Month</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -201,6 +203,8 @@ export default function Expenses() {
                     <TableCell className="font-semibold">{formatINR(expense.amount)}</TableCell>
                     <TableCell className="capitalize text-sm text-muted-foreground">{expense.payment_mode?.replace('_', ' ') || '—'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{formatDateIN(expense.expense_date)}</TableCell>
+                    <TableCell><span className="text-xs font-medium text-muted-foreground">{getISOWeekLabel(expense.expense_date) || '—'}</span></TableCell>
+                    <TableCell><span className="text-xs text-muted-foreground">{getMonthLabel(expense.expense_date) || '—'}</span></TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
