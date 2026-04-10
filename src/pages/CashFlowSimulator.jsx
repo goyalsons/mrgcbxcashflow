@@ -10,9 +10,7 @@ import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSection
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 import SimWeekHealthBar from '@/components/simulator/SimWeekHealthBar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
-import { Settings } from 'lucide-react';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
@@ -253,9 +251,6 @@ export default function CashFlowSimulator() {
   const [taxItems, setTaxItems]        = useState([]);
   const [currentScenarioId, setCurrentScenarioId] = useState(null);
   const [activeScenarioName, setActiveScenarioName] = useState(null);
-  const [minAmount, setMinAmount]      = useState(0);
-  const [minAmountInput, setMinAmountInput] = useState(0);
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [boardHistory, setBoardHistory] = useState([]);
 
   const expByGroup = useMemo(() => {
@@ -278,9 +273,9 @@ export default function CashFlowSimulator() {
       baselineInputs.payables, baselineInputs.expenses, baselineInputs.bankAccounts,
       debouncedAdj.recAdj, debouncedAdj.payAdj, debouncedAdj.hypotheticals,
       debouncedAdj.fundingSources, debouncedAdj.levers, debouncedAdj.taxItems,
-      baselineInputs.collectionTargets, debouncedAdj.expAdj, minAmount
+      baselineInputs.collectionTargets, debouncedAdj.expAdj, 0
     ),
-    [baselineInputs, debouncedAdj, minAmount]
+    [baselineInputs, debouncedAdj]
   );
 
   const baseNet12W = weeklyData.reduce((s, w) => s + w.baseNet, 0);
@@ -329,31 +324,7 @@ export default function CashFlowSimulator() {
           {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
-          <Popover open={settingsOpen} onOpenChange={setSettingsOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="icon" className="h-8 w-8" title="Simulator Settings">
-                <Settings className="w-4 h-4" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-64 p-3" align="end">
-              <p className="text-sm font-semibold mb-3">Simulator Settings</p>
-              <div>
-                <label className="text-xs text-muted-foreground">Ignore amounts less than (₹)</label>
-                <div className="flex items-center gap-2 mt-1">
-                  <input
-                    type="number"
-                    className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    value={minAmountInput}
-                    min={0}
-                    placeholder="0"
-                    onChange={e => setMinAmountInput(Number(e.target.value) || 0)}
-                  />
-                  <Button size="sm" className="h-8 px-3 text-xs" onClick={() => { setMinAmount(minAmountInput); setSettingsOpen(false); }}>Apply</Button>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-1">Receivables and payables below this amount will be excluded from the simulation.</p>
-              </div>
-            </PopoverContent>
-          </Popover>
+
           <ScenarioManager
             currentState={currentState}
             onLoad={(state) => loadScenario(state)}
@@ -404,7 +375,6 @@ export default function CashFlowSimulator() {
           payAdj={payAdj}
           setPayAdj={setPayAdj}
           weeklyData={weeklyData}
-          minAmount={minAmount}
           history={boardHistory}
           setHistory={setBoardHistory}
         />
