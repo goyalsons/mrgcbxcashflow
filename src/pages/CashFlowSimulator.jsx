@@ -9,7 +9,7 @@ import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
-import SimWeekHealthBar from '@/components/simulator/SimWeekHealthBar';
+
 import { Button } from '@/components/ui/button';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
@@ -258,6 +258,13 @@ export default function CashFlowSimulator() {
   const [currentScenarioId, setCurrentScenarioId] = useState(null);
   const [activeScenarioName, setActiveScenarioName] = useState(null);
   const [boardHistory, setBoardHistory] = useState([]);
+  const [redoHistory, setRedoHistory] = useState([]);
+
+  // Wrap setBoardHistory to clear redo on new drag action
+  const pushHistory = useCallback((entry) => {
+    setBoardHistory(h => [...h, entry]);
+    setRedoHistory([]);
+  }, []);
 
   const expByGroup = useMemo(() => {
     const g = {};
@@ -305,10 +312,24 @@ export default function CashFlowSimulator() {
   const undoBoard = useCallback(() => {
     if (!boardHistory.length) return;
     const last = boardHistory[boardHistory.length - 1];
+    setRedoHistory(r => [...r, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
     setRecAdj(last.prevRecAdj);
     setPayAdj(last.prevPayAdj);
+    if (last.prevHypo) setHypo(last.prevHypo);
+    if (last.prevFunding) setFunding(last.prevFunding);
     setBoardHistory(h => h.slice(0, -1));
-  }, [boardHistory, setRecAdj, setPayAdj]);
+  }, [boardHistory, recAdj, payAdj, hypotheticals, fundingSources]);
+
+  const redoBoard = useCallback(() => {
+    if (!redoHistory.length) return;
+    const last = redoHistory[redoHistory.length - 1];
+    setBoardHistory(h => [...h, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
+    setRecAdj(last.prevRecAdj);
+    setPayAdj(last.prevPayAdj);
+    if (last.prevHypo) setHypo(last.prevHypo);
+    if (last.prevFunding) setFunding(last.prevFunding);
+    setRedoHistory(r => r.slice(0, -1));
+  }, [redoHistory, recAdj, payAdj, hypotheticals, fundingSources]);
 
   const totalAdjCount = recAdj.size + payAdj.size + expAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
   const hasAdjustments = totalAdjCount > 0;
@@ -319,7 +340,7 @@ export default function CashFlowSimulator() {
   const [secDOpen, setSecDOpen] = useState(false);
 
   return (
-    <div className="flex flex-col" style={{ paddingBottom: 64 }}>
+    <div className="flex flex-col">
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
         <div>
@@ -383,6 +404,9 @@ export default function CashFlowSimulator() {
             <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={undoBoard} disabled={!boardHistory.length}>
               ↩ Undo
             </Button>
+            <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={redoBoard} disabled={!redoHistory.length}>
+              ↪ Redo
+            </Button>
           </div>
           <p className="text-xs text-muted-foreground">Drag cards between weeks to reschedule payments</p>
         </div>
@@ -394,13 +418,15 @@ export default function CashFlowSimulator() {
           recurringExpenses={recurringExpenses}
           hypotheticals={hypotheticals}
           fundingSources={fundingSources}
+          setHypotheticals={setHypo}
+          setFundingSources={setFunding}
           recAdj={recAdj}
           setRecAdj={setRecAdj}
           payAdj={payAdj}
           setPayAdj={setPayAdj}
           weeklyData={weeklyData}
           history={boardHistory}
-          setHistory={setBoardHistory}
+          setHistory={pushHistory}
           onReset={resetAll}
         />
       </div>
@@ -420,8 +446,7 @@ export default function CashFlowSimulator() {
         </p>
       </div>
 
-      {/* Zone 3: Sticky week health bar */}
-      <SimWeekHealthBar weeklyData={weeklyData} />
+
     </div>
   );
 }
