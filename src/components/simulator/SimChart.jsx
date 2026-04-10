@@ -21,10 +21,10 @@ const SimTooltip = ({ active, payload, label }) => {
   return (
     <div className="bg-card border rounded-lg shadow-lg p-3 text-xs space-y-1 min-w-[200px]">
       <p className="font-semibold border-b pb-1">{label}</p>
-      <p className="text-emerald-600">Sim Inflow: {INR(d.simInflow)}</p>
-      <p className="text-red-600">Sim Outflow: {INR(d.simOutflow)}</p>
-      <p className="text-indigo-700 font-semibold">Sim Net: {INR(d.simNet)}</p>
-      <p className="text-teal-600">Sim Closing: {INR(d.simClosing)}</p>
+      <p className="text-emerald-600">Inflow: {INR(d.simInflow)}</p>
+      <p className="text-red-600">Outflow: {INR(d.simOutflow)}</p>
+      <p className="text-indigo-700 font-semibold">Weekly Cashflow: {INR(d.simNet)}</p>
+      <p className="text-teal-600">Closing: {INR(d.simClosing)}</p>
       {fundingImpact !== 0 && <p className="text-purple-600">Funding net: {fundingImpact >= 0 ? '+' : ''}{INR(fundingImpact)}</p>}
       {d.simItems?.length > 0 && (
         <div className="border-t pt-1 space-y-0.5">
@@ -65,10 +65,10 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Simulated Cash Flow</CardTitle>
         <div className="flex items-center gap-5 mt-1 flex-wrap">
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-400" /><span className="text-[11px] text-muted-foreground">Sim Inflow</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-400" /><span className="text-[11px] text-muted-foreground">Sim Outflow</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #10b981' }} /><span className="text-[11px] text-muted-foreground">Sim Net</span></div>
-          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #0d9488' }} /><span className="text-[11px] text-muted-foreground">Sim Closing</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-emerald-400" /><span className="text-[11px] text-muted-foreground">Inflow</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded bg-red-400" /><span className="text-[11px] text-muted-foreground">Outflow</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #10b981' }} /><span className="text-[11px] text-muted-foreground">Weekly Cashflow</span></div>
+          <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 2, borderTop: '2px dashed #0d9488' }} /><span className="text-[11px] text-muted-foreground">Closing</span></div>
           {hasFunding && <div className="flex items-center gap-1.5"><div className="w-4 rounded" style={{ height: 3, background: '#9333ea' }} /><span className="text-[11px] text-muted-foreground">With funding</span></div>}
         </div>
       </CardHeader>
@@ -111,10 +111,10 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
               ))}
               <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5}
                 label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
-              <Bar dataKey="simInflow" name="Sim Inflow" fill="#10b981" opacity={0.65} radius={[3,3,0,0]} />
-              <Bar dataKey="simOutflow" name="Sim Outflow" fill="#ef4444" opacity={0.65} radius={[3,3,0,0]} />
+              <Bar dataKey="simInflow" name="Inflow" fill="#10b981" opacity={0.65} radius={[3,3,0,0]} />
+              <Bar dataKey="simOutflow" name="Outflow" fill="#ef4444" opacity={0.65} radius={[3,3,0,0]} />
               <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />
-              <Line type="monotone" dataKey="simNet" name="Sim Net" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" isAnimationActive={true} animationDuration={400}
+              <Line type="monotone" dataKey="simNet" name="Weekly Cashflow" stroke="#10b981" strokeWidth={2} strokeDasharray="6 3" isAnimationActive={true} animationDuration={400}
                 dot={(props) => {
                   const { cx, cy, payload } = props;
                   if (payload.simNet < 0) return <circle key={`sd-${cx}`} cx={cx} cy={cy} r={5} fill="#f97316" stroke="#fff" strokeWidth={1.5} />;
@@ -131,7 +131,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
                   }}
                 />
               )}
-              <Line type="monotone" dataKey="simClosing" name="Sim Closing" stroke="#0d9488" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
+              <Line type="monotone" dataKey="simClosing" name="Closing" stroke="#0d9488" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
