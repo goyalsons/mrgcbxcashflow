@@ -14,7 +14,12 @@ const INR = (v) => {
 
 const today = new Date(); today.setHours(0, 0, 0, 0);
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
-const toDateStr = (d) => d ? new Date(d).toISOString().split('T')[0] : '';
+// Use local date to avoid UTC/IST timezone offset causing off-by-one week placement
+const toDateStr = (d) => {
+  if (!d) return '';
+  const dt = new Date(d);
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+};
 const weekStart = (i) => addDays(today, i * 7);
 const weekLabel = (i) => {
   const d = weekStart(i);
@@ -451,156 +456,157 @@ export default function SimTimelineBoard({
                         )}
                       </div>
 
-                      {/* Droppable content */}
+                      {/* Droppable content — placeholder MUST be last inside ref'd div */}
                       <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className="flex-1 overflow-y-auto p-1 space-y-0.5"
-                        style={{ minHeight: 60 }}
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className="flex-1 overflow-y-auto p-1 space-y-0.5"
+                      style={{ minHeight: 60 }}
                       >
-                        {/* Receivables */}
-                        {recs.length > 0 && (
-                          <>
-                            <SectionSep label="Receivables" color="text-emerald-600" />
-                            {recs.map(item => {
-                              const origWeek = dueDateToWeek(item.due_date);
-                              const idx = draggableIndex++;
-                              return (
-                                <DraggableCard
-                                  key={`rec-${item.id}`}
-                                  draggableId={`rec-${item.id}`}
-                                  index={idx}
-                                  item={item}
-                                  cardType="receivable"
-                                  isAdjusted={recAdj.has(item.id)}
-                                  origWeek={origWeek}
-                                  curWeek={i}
-                                  nameField={r => r.customer_name || r.debtor_name || '—'}
-                                  subField={r => r.invoice_number || '—'}
-                                  amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
-                                />
-                              );
-                            })}
-                          </>
-                        )}
-
-                        {/* Payables */}
-                        {pays.length > 0 && (
-                          <>
-                            <SectionSep label="Payables" color="text-red-600" />
-                            {pays.map(item => {
-                              const origWeek = dueDateToWeek(item.due_date);
-                              const idx = draggableIndex++;
-                              return (
-                                <DraggableCard
-                                  key={`pay-${item.id}`}
-                                  draggableId={`pay-${item.id}`}
-                                  index={idx}
-                                  item={item}
-                                  cardType="payable"
-                                  isAdjusted={payAdj.has(item.id)}
-                                  origWeek={origWeek}
-                                  curWeek={i}
-                                  nameField={p => p.vendor_name || '—'}
-                                  subField={p => p.bill_number || '—'}
-                                  amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
-                                />
-                              );
-                            })}
-                          </>
-                        )}
-
-                        {provided.placeholder}
-
-                        {/* Expenses */}
-                        {exps.length > 0 && (
-                          <>
-                            <SectionSep label="Expenses" color="text-orange-500" />
-                            {exps.map(item => {
-                              const origWeek = dueDateToWeek(item.expense_date);
-                              const idx = draggableIndex++;
-                              return (
-                                <DraggableCard
-                                  key={`exp-${item.id}`}
-                                  draggableId={`exp-${item.id}`}
-                                  index={idx}
-                                  item={item}
-                                  cardType="expense"
-                                  isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
-                                  origWeek={origWeek}
-                                  curWeek={i}
-                                  nameField={e => e.description || '—'}
-                                  subField={e => e.category || 'Expense'}
-                                  amtFn={e => e.amount || 0}
-                                />
-                              );
-                            })}
-                          </>
-                        )}
-
-                        {/* Recurring */}
-                        {recur.length > 0 && (
-                          <>
-                            <SectionSep label="Recurring" color="text-yellow-600" />
-                            {recur.map(item => {
-                              const origWeek = dueDateToWeek(item.expense_date);
-                              const idx = draggableIndex++;
-                              return (
-                                <DraggableCard
-                                  key={`recur-${item.id}`}
-                                  draggableId={`recur-${item.id}`}
-                                  index={idx}
-                                  item={item}
-                                  cardType="recurring"
-                                  isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
-                                  origWeek={origWeek}
-                                  curWeek={i}
-                                  nameField={e => e.description || '—'}
-                                  subField={e => e.category || 'Recurring'}
-                                  amtFn={e => e.amount || 0}
-                                />
-                              );
-                            })}
-                          </>
-                        )}
-
-                        {/* Hypothetical entries (static) */}
-                        {hypos.length > 0 && (
-                          <>
-                            <SectionSep label="Hypothetical" color="text-blue-600" />
-                            {hypos.map((h, hi) => (
-                              <StaticCard
-                                key={`hypo-${i}-${hi}`}
-                                cardType={h.type === 'inflow' ? 'hypo_in' : 'hypo_out'}
-                                label={h.label}
-                                sublabel={h.type === 'inflow' ? 'Expected inflow' : 'Expected outflow'}
-                                amount={h.amount}
+                      {/* Receivables */}
+                      {recs.length > 0 && (
+                        <>
+                          <SectionSep label="Receivables" color="text-emerald-600" />
+                          {recs.map(item => {
+                            const origWeek = dueDateToWeek(item.due_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`rec-${item.id}`}
+                                draggableId={`rec-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="receivable"
+                                isAdjusted={recAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={r => r.customer_name || r.debtor_name || '—'}
+                                subField={r => r.invoice_number || '—'}
+                                amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
                               />
-                            ))}
-                          </>
-                        )}
+                            );
+                          })}
+                        </>
+                      )}
 
-                        {/* Funding & repayment (static) */}
-                        {funding.length > 0 && (
-                          <>
-                            <SectionSep label="Funding" color="text-teal-600" />
-                            {funding.map((f, fi) => (
-                              <StaticCard
-                                key={`fund-${i}-${fi}`}
-                                cardType={f.type === 'inflow' ? 'funding' : 'repayment'}
-                                label={f.label}
-                                sublabel={f.type === 'inflow' ? 'Funding inflow' : 'Repayment'}
-                                amount={f.amount}
+                      {/* Payables */}
+                      {pays.length > 0 && (
+                        <>
+                          <SectionSep label="Payables" color="text-red-600" />
+                          {pays.map(item => {
+                            const origWeek = dueDateToWeek(item.due_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`pay-${item.id}`}
+                                draggableId={`pay-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="payable"
+                                isAdjusted={payAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={p => p.vendor_name || '—'}
+                                subField={p => p.bill_number || '—'}
+                                amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
                               />
-                            ))}
-                          </>
-                        )}
+                            );
+                          })}
+                        </>
+                      )}
 
-                        {recs.length === 0 && pays.length === 0 && exps.length === 0 && recur.length === 0 && hypos.length === 0 && funding.length === 0 && !snapshot.isDraggingOver && (
-                          <div className="flex items-center justify-center text-[10px] text-muted-foreground border border-dashed rounded mx-1 my-2 py-3">
-                            Drop here
-                          </div>
-                        )}
+                      {/* Expenses */}
+                      {exps.length > 0 && (
+                        <>
+                          <SectionSep label="Expenses" color="text-orange-500" />
+                          {exps.map(item => {
+                            const origWeek = dueDateToWeek(item.expense_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`exp-${item.id}`}
+                                draggableId={`exp-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="expense"
+                                isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Expense'}
+                                amtFn={e => e.amount || 0}
+                              />
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* Recurring */}
+                      {recur.length > 0 && (
+                        <>
+                          <SectionSep label="Recurring" color="text-yellow-600" />
+                          {recur.map(item => {
+                            const origWeek = dueDateToWeek(item.expense_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`recur-${item.id}`}
+                                draggableId={`recur-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="recurring"
+                                isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Recurring'}
+                                amtFn={e => e.amount || 0}
+                              />
+                            );
+                          })}
+                        </>
+                      )}
+
+                      {/* placeholder MUST come after all Draggables and before static items */}
+                      {provided.placeholder}
+
+                      {/* Hypothetical entries (static, not draggable) */}
+                      {hypos.length > 0 && (
+                        <>
+                          <SectionSep label="Hypothetical" color="text-blue-600" />
+                          {hypos.map((h, hi) => (
+                            <StaticCard
+                              key={`hypo-${i}-${hi}`}
+                              cardType={h.type === 'inflow' ? 'hypo_in' : 'hypo_out'}
+                              label={h.label}
+                              sublabel={h.type === 'inflow' ? 'Expected inflow' : 'Expected outflow'}
+                              amount={h.amount}
+                            />
+                          ))}
+                        </>
+                      )}
+
+                      {/* Funding & repayment (static, not draggable) */}
+                      {funding.length > 0 && (
+                        <>
+                          <SectionSep label="Funding" color="text-teal-600" />
+                          {funding.map((f, fi) => (
+                            <StaticCard
+                              key={`fund-${i}-${fi}`}
+                              cardType={f.type === 'inflow' ? 'funding' : 'repayment'}
+                              label={f.label}
+                              sublabel={f.type === 'inflow' ? 'Funding inflow' : 'Repayment'}
+                              amount={f.amount}
+                            />
+                          ))}
+                        </>
+                      )}
+
+                      {recs.length === 0 && pays.length === 0 && exps.length === 0 && recur.length === 0 && hypos.length === 0 && funding.length === 0 && !snapshot.isDraggingOver && (
+                        <div className="flex items-center justify-center text-[10px] text-muted-foreground border border-dashed rounded mx-1 my-2 py-3">
+                          Drop here
+                        </div>
+                      )}
                       </div>
                     </div>
                   )}

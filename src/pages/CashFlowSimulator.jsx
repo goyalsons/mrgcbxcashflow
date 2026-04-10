@@ -65,7 +65,13 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     };
   });
 
-  const inWeek = (dateStr, w) => { const d = new Date(dateStr); return d >= w.start && d <= w.end; };
+  // Normalize to noon to avoid UTC parse vs local midnight timezone mismatches (critical for IST)
+  const inWeek = (dateStr, w) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    d.setHours(12, 0, 0, 0);
+    return d >= w.start && d <= w.end;
+  };
 
   const filterAmt = (amt) => amt < minAmount ? 0 : amt;
 
@@ -309,8 +315,8 @@ export default function CashFlowSimulator() {
 
   const currentState = { recAdj, payAdj, expAdj, hypotheticals, fundingSources, levers, taxItems };
 
-  const [secCOpen, setSecCOpen] = useState(true);
-  const [secDOpen, setSecDOpen] = useState(true);
+  const [secCOpen, setSecCOpen] = useState(false);
+  const [secDOpen, setSecDOpen] = useState(false);
 
   return (
     <div className="flex flex-col" style={{ paddingBottom: 64 }}>
@@ -351,21 +357,21 @@ export default function CashFlowSimulator() {
         <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} />
       </div>
 
-      {/* Hypothetical Entries & Funding — above the board so they feed into it */}
-      <div className="mt-4 space-y-2">
-        <div className="border rounded-lg overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
-            <span>Hypothetical Entries {hypotheticals.length > 0 && <span className="ml-1.5 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{hypotheticals.length}</span>}</span>
-            <span>{secCOpen ? '▲' : '▼'}</span>
+      {/* Hypothetical Entries & Funding — side by side, above the board */}
+      <div className="mt-4 flex gap-2">
+        <div className="flex-1 border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
+            <span className="flex items-center gap-1.5">Hypothetical Entries {hypotheticals.length > 0 && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{hypotheticals.length}</span>}</span>
+            <span className="text-xs">{secCOpen ? '▲' : '▼'}</span>
           </button>
-          {secCOpen && <div className="p-4"><SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} /></div>}
+          {secCOpen && <div className="p-3"><SimSectionC hypotheticals={hypotheticals} setHypotheticals={setHypo} /></div>}
         </div>
-        <div className="border rounded-lg overflow-hidden">
-          <button className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecDOpen(v => !v)}>
-            <span>External Funding Sources {fundingSources.length > 0 && <span className="ml-1.5 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{fundingSources.length}</span>}</span>
-            <span>{secDOpen ? '▲' : '▼'}</span>
+        <div className="flex-1 border rounded-lg overflow-hidden">
+          <button className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecDOpen(v => !v)}>
+            <span className="flex items-center gap-1.5">External Funding Sources {fundingSources.length > 0 && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{fundingSources.length}</span>}</span>
+            <span className="text-xs">{secDOpen ? '▲' : '▼'}</span>
           </button>
-          {secDOpen && <div className="p-4"><SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} /></div>}
+          {secDOpen && <div className="p-3"><SimSectionD sources={fundingSources} setSources={setFunding} receivables={[...receivables, ...invoices]} /></div>}
         </div>
       </div>
 
