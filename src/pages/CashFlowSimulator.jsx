@@ -254,7 +254,9 @@ export default function CashFlowSimulator() {
   const [currentScenarioId, setCurrentScenarioId] = useState(null);
   const [activeScenarioName, setActiveScenarioName] = useState(null);
   const [minAmount, setMinAmount]      = useState(0);
+  const [minAmountInput, setMinAmountInput] = useState(0);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [boardHistory, setBoardHistory] = useState([]);
 
   const expByGroup = useMemo(() => {
     const g = {};
@@ -301,6 +303,14 @@ export default function CashFlowSimulator() {
     setTaxItems(state.taxItems || []);
   }, []);
 
+  const undoBoard = useCallback(() => {
+    if (!boardHistory.length) return;
+    const last = boardHistory[boardHistory.length - 1];
+    setRecAdj(last.prevRecAdj);
+    setPayAdj(last.prevPayAdj);
+    setBoardHistory(h => h.slice(0, -1));
+  }, [boardHistory, setRecAdj, setPayAdj]);
+
   const totalAdjCount = recAdj.size + payAdj.size + expAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
   const hasAdjustments = totalAdjCount > 0;
 
@@ -333,11 +343,12 @@ export default function CashFlowSimulator() {
                   <input
                     type="number"
                     className="flex h-8 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
-                    value={minAmount}
+                    value={minAmountInput}
                     min={0}
                     placeholder="0"
-                    onChange={e => setMinAmount(Number(e.target.value) || 0)}
+                    onChange={e => setMinAmountInput(Number(e.target.value) || 0)}
                   />
+                  <Button size="sm" className="h-8 px-3 text-xs" onClick={() => { setMinAmount(minAmountInput); setSettingsOpen(false); }}>Apply</Button>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-1">Receivables and payables below this amount will be excluded from the simulation.</p>
               </div>
@@ -374,18 +385,28 @@ export default function CashFlowSimulator() {
       {/* Zone 2: Drag-and-drop board */}
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-sm font-semibold">Timeline Board</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold">Timeline Board</h2>
+            <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={undoBoard} disabled={!boardHistory.length}>
+              ↩ Undo
+            </Button>
+          </div>
           <p className="text-xs text-muted-foreground">Drag cards between weeks to reschedule payments</p>
         </div>
         <SimTimelineBoard
           receivables={receivables}
           invoices={invoices}
           payables={payables}
+          expenses={expenses}
+          recurringExpenses={recurringExpenses}
           recAdj={recAdj}
           setRecAdj={setRecAdj}
           payAdj={payAdj}
           setPayAdj={setPayAdj}
           weeklyData={weeklyData}
+          minAmount={minAmount}
+          history={boardHistory}
+          setHistory={setBoardHistory}
         />
       </div>
 

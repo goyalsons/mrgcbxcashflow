@@ -1,8 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
-import { GripVertical, Search, ChevronDown, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { GripVertical, ChevronDown, ChevronRight } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 const INR = (v) => {
@@ -38,6 +36,14 @@ function getWeekNetColor(w) {
   return { dot: 'bg-amber-500', text: 'text-amber-700', header: 'bg-amber-50' };
 }
 
+// card border colors by type
+const CARD_BORDER = {
+  receivable: 'border-l-emerald-500',
+  payable: 'border-l-red-500',
+  expense: 'border-l-orange-500',
+  recurring: 'border-l-yellow-600',
+};
+
 function ItemCard({ item, isReceivable, isAdjusted, weekIndex, provided, isDragging }) {
   const amt = isReceivable
     ? (item.amount || 0) - (item.amount_received || item.amount_paid || 0)
@@ -53,7 +59,7 @@ function ItemCard({ item, isReceivable, isAdjusted, weekIndex, provided, isDragg
   const moved = isAdjusted && weekIndex !== originalWeek;
   const movedEarlier = moved && weekIndex < originalWeek;
   const movedLater = moved && weekIndex > originalWeek;
-  const borderColor = isReceivable ? 'border-l-emerald-500' : 'border-l-amber-500';
+  const borderColor = isReceivable ? CARD_BORDER.receivable : CARD_BORDER.payable;
 
   return (
     <div
@@ -78,6 +84,25 @@ function ItemCard({ item, isReceivable, isAdjusted, weekIndex, provided, isDragg
         <p className="font-bold text-[11px]">{INR(amt)}</p>
         {movedEarlier && <span className="text-emerald-600 text-[9px]">▲ earlier</span>}
         {movedLater && <span className="text-amber-600 text-[9px]">▼ later</span>}
+      </div>
+    </div>
+  );
+}
+
+function ExpenseCard({ item, cardType }) {
+  const amt = item.amount || 0;
+  const borderColor = CARD_BORDER[cardType] || 'border-l-gray-400';
+  return (
+    <div
+      className={`border border-l-4 ${borderColor} rounded bg-card text-xs p-1.5 flex items-center gap-1.5`}
+      style={{ height: 40 }}
+    >
+      <div className="flex-1 min-w-0">
+        <p className="font-medium truncate text-[11px] leading-tight">{item.description || '—'}</p>
+        <p className="text-[9px] text-muted-foreground truncate">{cardType === 'recurring' ? 'Recurring Expense' : 'Expense'}</p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="font-bold text-[11px]">{INR(amt)}</p>
       </div>
     </div>
   );
@@ -117,37 +142,47 @@ function SourceSection({ title, items, isReceivable, recAdj, payAdj, color }) {
   );
 }
 
-export default function SimTimelineBoard({ receivables, invoices, payables, recAdj, setRecAdj, payAdj, setPayAdj, weeklyData }) {
-  const [search, setSearch] = useState('');
-  const [history, setHistory] = useState([]);
+export default function SimTimelineBoard({ receivables, invoices, payables, expenses, recurringExpenses, recAdj, setRecAdj, payAdj, setPayAdj, weeklyData, minAmount, history, setHistory }) {
   const weekColumnRefs = useRef([]);
   const boardScrollRef = useRef(null);
 
   const allReceivables = useMemo(() =>
-    [...receivables, ...invoices].filter(r => ['pending','overdue','partially_paid','partial'].includes(r.status)),
-    [receivables, invoices]
+    [...receivables, ...invoices].filter(r =>
+      ['pending','overdue','partially_paid','partial'].includes(r.status) &&
+      (r.amount || 0) - (r.amount_received || r.amount_paid || 0) >= (minAmount || 0)
+    ),
+    [receivables, invoices, minAmount]
   );
   const allPayables = useMemo(() =>
-    payables.filter(p => ['pending','partially_paid','overdue'].includes(p.status)),
-    [payables]
+    payables.filter(p =>
+      ['pending','partially_paid','overdue'].includes(p.status) &&
+      (p.amount || 0) - (p.amount_paid || 0) >= (minAmount || 0)
+    ),
+    [payables, minAmount]
   );
 
-  const filteredRec = useMemo(() =>
-    allReceivables.filter(r => !search || (r.customer_name || r.debtor_name || '').toLowerCase().includes(search.toLowerCase()) || (r.invoice_number || '').includes(search)),
-    [allReceivables, search]
-  );
-  const filteredPay = useMemo(() =>
-    allPayables.filter(p => !search || (p.vendor_name || '').toLowerCase().includes(search.toLowerCase()) || (p.bill_number || '').includes(search)),
-    [allPayables, search]
-  );
+  const weekBoundary = useMemo(() => Array.from({ length: 12 }, (_, i) => ({
+    start: addDays(today, i * 7),
+    end: addDays(today, (i + 1) * 7 - 1),
+  })), []);
+
+  const inWeek = (dateStr, wb) => {
+    if (!dateStr) return false;
+    const d = new Date(dateStr); d.setHours(0,0,0,0);
+    return d >= wb.start && d <= wb.end;
+  };
 
   const weekItems = useMemo(() => {
+    const nonRecurring = (expenses || []).filter(e => !e.recurrence_type || e.recurrence_type === 'none');
     return Array.from({ length: 12 }, (_, i) => {
+      const wb = weekBoundary[i];
       const recs = allReceivables.filter(r => getItemWeekIndex(r, recAdj, payAdj, true) === i);
       const pays = allPayables.filter(p => getItemWeekIndex(p, recAdj, payAdj, false) === i);
-      return { recs, pays };
+      const exps = nonRecurring.filter(e => inWeek(e.expense_date, wb) && (e.amount || 0) >= (minAmount || 0));
+      const recs2 = (recurringExpenses || []).filter(e => inWeek(e.expense_date, wb) && (e.amount || 0) >= (minAmount || 0));
+      return { recs, pays, exps, recurring: recs2 };
     });
-  }, [allReceivables, allPayables, recAdj, payAdj]);
+  }, [allReceivables, allPayables, recAdj, payAdj, expenses, recurringExpenses, weekBoundary, minAmount]);
 
   const onDragEnd = useCallback((result) => {
     const { destination, draggableId } = result;
@@ -190,16 +225,7 @@ export default function SimTimelineBoard({ receivables, invoices, payables, recA
     const name = isRec ? (item.customer_name || item.debtor_name) : item.vendor_name;
     toast({ title: `Moved ${name} → W${weekIdx + 1}`, duration: 3000 });
     setHistory(h => [...h, { prevRecAdj, prevPayAdj }]);
-  }, [allReceivables, allPayables, recAdj, payAdj, setRecAdj, setPayAdj]);
-
-  const undo = useCallback(() => {
-    if (!history.length) return;
-    const last = history[history.length - 1];
-    setRecAdj(last.prevRecAdj);
-    setPayAdj(last.prevPayAdj);
-    setHistory(h => h.slice(0, -1));
-    toast({ title: 'Undone', duration: 2000 });
-  }, [history, setRecAdj, setPayAdj]);
+  }, [allReceivables, allPayables, recAdj, payAdj, setRecAdj, setPayAdj, setHistory]);
 
   const scrollToWeek = useCallback((i) => {
     const el = weekColumnRefs.current[i];
@@ -216,19 +242,13 @@ export default function SimTimelineBoard({ receivables, invoices, payables, recA
               ref={provided.innerRef}
               {...provided.droppableProps}
               className={`border-r flex flex-col shrink-0 overflow-y-auto ${snapshot.isDraggingOver ? 'bg-blue-50' : 'bg-muted/10'}`}
-              style={{ width: 260 }}
+              style={{ width: 240 }}
             >
-              <div className="sticky top-0 z-10 bg-card border-b p-2 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold">All Items</span>
-                  <Button variant="ghost" size="sm" className="h-6 text-xs gap-1 px-2" onClick={undo} disabled={!history.length}>
-                    ↩ Undo
-                  </Button>
-                </div>
-                <Input placeholder="Search..." className="h-6 text-xs" value={search} onChange={e => setSearch(e.target.value)} />
+              <div className="sticky top-0 z-10 bg-card border-b p-2">
+                <span className="text-xs font-bold">All Items</span>
               </div>
-              <SourceSection title="Receivables" items={filteredRec} isReceivable={true} recAdj={recAdj} payAdj={payAdj} color="text-emerald-700 bg-emerald-50" />
-              <SourceSection title="Payables" items={filteredPay} isReceivable={false} recAdj={recAdj} payAdj={payAdj} color="text-amber-700 bg-amber-50" />
+              <SourceSection title="Receivables" items={allReceivables} isReceivable={true} recAdj={recAdj} payAdj={payAdj} color="text-emerald-700 bg-emerald-50" />
+              <SourceSection title="Payables" items={allPayables} isReceivable={false} recAdj={recAdj} payAdj={payAdj} color="text-red-700 bg-red-50" />
               {provided.placeholder}
             </div>
           )}
@@ -254,7 +274,7 @@ export default function SimTimelineBoard({ receivables, invoices, payables, recA
             {Array.from({ length: 12 }, (_, i) => {
               const w = weeklyData[i] || { simNet: 0 };
               const { dot, text, header } = getWeekNetColor(w);
-              const { recs, pays } = weekItems[i] || { recs: [], pays: [] };
+              const { recs, pays, exps, recurring } = weekItems[i] || { recs: [], pays: [], exps: [], recurring: [] };
 
               return (
                 <Droppable key={i} droppableId={`week-${i}`}>
@@ -294,8 +314,14 @@ export default function SimTimelineBoard({ receivables, invoices, payables, recA
                             )}
                           </Draggable>
                         ))}
+                        {exps.map((item) => (
+                          <ExpenseCard key={item.id} item={item} cardType="expense" />
+                        ))}
+                        {recurring.map((item) => (
+                          <ExpenseCard key={item.id} item={item} cardType="recurring" />
+                        ))}
                         {provided.placeholder}
-                        {recs.length === 0 && pays.length === 0 && !snapshot.isDraggingOver && (
+                        {recs.length === 0 && pays.length === 0 && exps.length === 0 && recurring.length === 0 && !snapshot.isDraggingOver && (
                           <div className="flex items-center justify-center h-10 text-[10px] text-muted-foreground border border-dashed rounded m-1">
                             Drop here
                           </div>
