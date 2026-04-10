@@ -221,6 +221,22 @@ export default function Debtors() {
 
   const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
+  // Group debtors by company
+  const debtorsByCompany = useMemo(() => {
+    const grouped = {};
+    filtered.forEach(d => {
+      if (!grouped[d.name]) grouped[d.name] = [];
+      grouped[d.name].push(d);
+    });
+    return Object.entries(grouped)
+      .map(([name, debtors]) => ({
+        name,
+        debtors: debtors.sort((a, b) => (b.total_outstanding || 0) - (a.total_outstanding || 0)),
+        total: debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filtered]);
+
   const totalOutstanding = mergedDebtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
   const totalInvoiced = mergedDebtors.reduce((s, d) => s + (d.total_invoiced || 0), 0);
   const unpaidCount = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0 && (d.total_received || 0) === 0).length;
@@ -287,10 +303,9 @@ export default function Debtors() {
                   />
                 </TableHead>
                 <SortHead col="name" label="Name" />
-                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Contact</TableHead>
-                <SortHead col="total_invoiced" label="Invoiced" className="text-right" />
-                <SortHead col="total_received" label="Received" className="text-right" />
-                <SortHead col="total_outstanding" label="Outstanding" className="text-right" />
+                <SortHead col="total_invoiced" label="Invoiced (L)" className="text-right" />
+                <SortHead col="total_received" label="Received (L)" className="text-right" />
+                <SortHead col="total_outstanding" label="Outstanding (L)" className="text-right" />
                 <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Progress</TableHead>
                 <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Status</TableHead>
                 <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Credit</TableHead>
@@ -320,22 +335,6 @@ export default function Debtors() {
   };
 
   const overdueDebtors = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0);
-
-  // Group debtors by company
-  const debtorsByCompany = useMemo(() => {
-    const grouped = {};
-    filtered.forEach(d => {
-      if (!grouped[d.name]) grouped[d.name] = [];
-      grouped[d.name].push(d);
-    });
-    return Object.entries(grouped)
-      .map(([name, debtors]) => ({
-        name,
-        debtors: debtors.sort((a, b) => (b.total_outstanding || 0) - (a.total_outstanding || 0)),
-        total: debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0),
-      }))
-      .sort((a, b) => b.total - a.total);
-  }, [filtered]);
 
   return (
     <div className="space-y-5">
@@ -379,17 +378,8 @@ export default function Debtors() {
         </button>
         <div className="ml-auto flex items-center gap-3">
         <span className="text-sm text-muted-foreground hidden sm:block">
-          Total invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
+         Total invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
         </span>
-        <Select value={groupBy} onValueChange={setGroupBy}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ageing">Group by Ageing</SelectItem>
-            <SelectItem value="company">Group by Company</SelectItem>
-          </SelectContent>
-        </Select>
         <div className="flex items-center border rounded-lg p-0.5 bg-muted gap-0.5">
             {[{ key: 'card', icon: LayoutGrid, label: 'Card' }, { key: 'table', icon: List, label: 'Table' }].map(({ key, icon: Icon, label }) => (
               <button
@@ -452,17 +442,26 @@ export default function Debtors() {
             </SelectContent>
           </Select>
           <Select value={filterDaysOverdue} onValueChange={setFilterDaysOverdue}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Days Overdue" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Days Overdue</SelectItem>
-              <SelectItem value="0-30">0–30 days overdue</SelectItem>
-              <SelectItem value="30-60">30–60 days overdue</SelectItem>
-              <SelectItem value="60+">60+ days overdue</SelectItem>
-            </SelectContent>
+           <SelectTrigger className="w-48">
+             <SelectValue placeholder="Days Overdue" />
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="all">All Days Overdue</SelectItem>
+             <SelectItem value="0-30">0–30 days overdue</SelectItem>
+             <SelectItem value="30-60">30–60 days overdue</SelectItem>
+             <SelectItem value="60+">60+ days overdue</SelectItem>
+           </SelectContent>
           </Select>
-        </div>
+          <Select value={groupBy} onValueChange={setGroupBy}>
+           <SelectTrigger className="w-48">
+             <SelectValue placeholder="Group by" />
+           </SelectTrigger>
+           <SelectContent>
+             <SelectItem value="ageing">Group by Ageing</SelectItem>
+             <SelectItem value="company">Group by Company</SelectItem>
+           </SelectContent>
+          </Select>
+          </div>
         {(search || filterManager !== 'all' || filterAmount !== 'all' || filterDebtorStatus !== 'all' || filterDaysOverdue !== 'all') && (
           <button
             onClick={() => {
