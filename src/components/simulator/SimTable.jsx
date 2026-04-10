@@ -36,6 +36,7 @@ export default function SimTable({ weeklyData, bankAccounts }) {
             <TableHeader>
               <TableRow>
                 <TableHead className="whitespace-nowrap text-xs">Week</TableHead>
+                <TableHead className="text-right text-xs font-bold text-slate-600">Opening Bal</TableHead>
                 <TableHead className="text-right text-emerald-700 text-xs">Base In</TableHead>
                 <TableHead className="text-right text-emerald-600 text-xs">Sim In</TableHead>
                 <TableHead className="text-right text-red-700 text-xs">Base Out</TableHead>
@@ -75,6 +76,9 @@ export default function SimTable({ weeklyData, bankAccounts }) {
                           )}
                         </span>
                       </TableCell>
+                      <TableCell className={`text-right font-semibold text-xs ${(w.simClosing - w.simNet) >= 0 ? 'text-slate-700' : 'text-red-600'}`}>
+                        {INR(w.simClosing - w.simNet)}
+                      </TableCell>
                       <TableCell className="text-right text-emerald-700 text-xs">{INR(w.baseInflow)}</TableCell>
                       <TableCell className="text-right text-emerald-600 text-xs">
                         {w.simItems.some(s => s.type === 'inflow' && s.split) ? '⑂ ' : ''}
@@ -101,6 +105,7 @@ export default function SimTable({ weeklyData, bankAccounts }) {
             <tfoot>
               <tr className="border-t bg-secondary font-semibold text-xs">
                 <td className="p-2 pl-4">Totals</td>
+                <td className="p-2" />
                 <td className="p-2 text-right text-emerald-700">{INR(totals.baseInflow)}</td>
                 <td className="p-2 text-right text-emerald-600">{INR(totals.simInflow)}</td>
                 <td className="p-2 text-right text-red-700">{INR(totals.baseOutflow)}</td>
