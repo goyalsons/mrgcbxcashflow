@@ -55,7 +55,7 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   const weeks = Array.from({ length: 12 }, (_, i) => {
     const start = addDays(today, i * 7);
     const end   = addDays(today, (i + 1) * 7 - 1);
-    return {
+    const row = {
       start, end,
       label: `W${i+1} (${String(start.getDate()).padStart(2,'0')}/${String(start.getMonth()+1).padStart(2,'0')})`,
       isCurrentWeek: i === 0,
@@ -63,7 +63,11 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
       simInflow: 0, simOutflow: 0,
       fundingInflow: 0, repaymentOutflow: 0,
       simItems: [],
+      // Per-category breakdown for stacked chart
+      inflowReceivables: 0, inflowInvoices: 0, inflowTargets: 0, payablesOut: 0,
     };
+    EXPENSE_GROUPS.forEach(g => row[g] = 0);
+    return row;
   });
 
   // Normalize to noon to avoid UTC parse vs local midnight timezone mismatches (critical for IST)
@@ -76,11 +80,17 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
 
   const filterAmt = (amt) => amt < minAmount ? 0 : amt;
 
-  [...receivables, ...invoices].forEach(r => {
+  receivables.forEach(r => {
     if (['paid','written_off'].includes(r.status)) return;
     const amt = filterAmt((r.amount || 0) - (r.amount_received || r.amount_paid || 0));
     const w = weeks.find(w => inWeek(r.due_date, w));
-    if (w) w.baseInflow += amt;
+    if (w) { w.baseInflow += amt; w.inflowReceivables += amt; }
+  });
+  invoices.forEach(r => {
+    if (['paid','written_off'].includes(r.status)) return;
+    const amt = filterAmt((r.amount || 0) - (r.amount_received || r.amount_paid || 0));
+    const w = weeks.find(w => inWeek(r.due_date, w));
+    if (w) { w.baseInflow += amt; w.inflowInvoices += amt; }
   });
 
   collectionTargets.forEach(ct => {
@@ -89,16 +99,16 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     const matchingWeeks = weeks.filter(w => w.start.getMonth() + 1 === ct.period_month && w.start.getFullYear() === ct.period_year);
     if (matchingWeeks.length > 0) {
       const perWeek = remaining / matchingWeeks.length;
-      matchingWeeks.forEach(w => w.baseInflow += perWeek);
+      matchingWeeks.forEach(w => { w.baseInflow += perWeek; w.inflowTargets += perWeek; });
     }
   });
 
   payables.filter(p => p.status !== 'paid').forEach(p => {
     const amt = filterAmt((p.amount || 0) - (p.amount_paid || 0));
     const w = weeks.find(w => inWeek(p.due_date, w));
-    if (w) w.baseOutflow += amt;
+    if (w) { w.baseOutflow += amt; w.payablesOut += amt; }
   });
-  weeks.forEach(w => { EXPENSE_GROUPS.forEach(g => { w.baseOutflow += Math.round(expByGroup[g] || 0); }); });
+  weeks.forEach(w => { EXPENSE_GROUPS.forEach(g => { const v = Math.round(expByGroup[g] || 0); w.baseOutflow += v; w[g] += v; }); });
 
   // Add individually-deferred expenses at their original dates for baseline
   expAdj.forEach((adj, id) => {
