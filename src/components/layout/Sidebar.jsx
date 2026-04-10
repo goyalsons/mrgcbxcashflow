@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -75,7 +75,7 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobileClose }) {
+export default function Sidebar({ user, collapsed, onToggle }) {
   const location = useLocation();
   const role = user?.role || 'user';
   
@@ -88,11 +88,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
   return (
-    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 overflow-hidden
-      ${mobileOpen ? 'w-72 translate-x-0' : 'w-0 -translate-x-full'}
-      md:${collapsed ? 'w-[68px]' : 'w-60'}
-      md:translate-x-0
-    `}>
+    <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50 ${collapsed ? 'w-[68px]' : 'w-60'}`}>
       {/* Logo */}
       <div className={`flex items-center gap-3 h-14 border-b border-sidebar-border shrink-0 ${collapsed ? 'px-4 justify-center' : 'px-5'}`}>
         <div className="w-7 h-7 rounded-lg bg-sidebar-primary flex items-center justify-center flex-shrink-0">
@@ -122,35 +118,35 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
               {collapsed && <div className="mx-3 my-1.5 border-t border-sidebar-border/40" />}
               <div className="px-2 space-y-0.5">
                 {visibleItems.map((item) => {
-                  const Icon = iconMap[item.icon];
-                  const isActive = item.path === '/'
-                    ? location.pathname === '/'
-                    : location.pathname.startsWith(item.path);
-                  const showBadge = item.key === 'notifications' && unreadCount > 0;
+                   const Icon = iconMap[item.icon];
+                   const isActive = item.path === '/'
+                     ? location.pathname === '/'
+                     : location.pathname.startsWith(item.path);
 
-                  return (
-                    <Link
-                      key={item.key}
-                      to={item.path}
-                      title={collapsed ? item.label : undefined}
-                      onClick={onMobileClose}
-                      className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
-                        ${isActive
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                          : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
-                        } ${collapsed ? 'justify-center' : ''}
-                      `}
-                    >
-                      {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
-                      {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
-                      {showBadge && (
-                        <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                          {unreadCount > 99 ? '99+' : unreadCount}
-                        </span>
-                      )}
-                    </Link>
-                  );
-                })}
+                   const showBadge = item.key === 'notifications' && unreadCount > 0;
+
+                   return (
+                     <Link
+                       key={item.key}
+                       to={item.path}
+                       title={collapsed ? item.label : undefined}
+                       className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-150 relative
+                         ${isActive
+                           ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                           : 'text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent'
+                         } ${collapsed ? 'justify-center' : ''}
+                       `}
+                     >
+                       {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
+                       {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
+                       {showBadge && (
+                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                           {unreadCount > 99 ? '99+' : unreadCount}
+                         </span>
+                       )}
+                     </Link>
+                   );
+                 })}
               </div>
             </div>
           );
@@ -178,7 +174,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
           <Button
             variant="ghost"
             size="icon"
-            className="hidden md:flex text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 shrink-0"
+            className="text-sidebar-foreground/50 hover:text-sidebar-foreground hover:bg-sidebar-accent h-8 w-8 shrink-0"
             onClick={onToggle}
           >
             {collapsed ? <ChevronRight className="w-3.5 h-3.5" /> : <ChevronLeft className="w-3.5 h-3.5" />}
