@@ -47,6 +47,7 @@ export default function Debtors() {
   const [viewMode, setViewMode] = useState('table');
   const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [groupBy, setGroupBy] = useState('ageing');
 
   const { data: debtors = [], isLoading } = useQuery({
     queryKey: ['debtors'],
@@ -320,6 +321,22 @@ export default function Debtors() {
 
   const overdueDebtors = mergedDebtors.filter(d => (d.total_outstanding || 0) > 0);
 
+  // Group debtors by company
+  const debtorsByCompany = useMemo(() => {
+    const grouped = {};
+    filtered.forEach(d => {
+      if (!grouped[d.name]) grouped[d.name] = [];
+      grouped[d.name].push(d);
+    });
+    return Object.entries(grouped)
+      .map(([name, debtors]) => ({
+        name,
+        debtors: debtors.sort((a, b) => (b.total_outstanding || 0) - (a.total_outstanding || 0)),
+        total: debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0),
+      }))
+      .sort((a, b) => b.total - a.total);
+  }, [filtered]);
+
   return (
     <div className="space-y-5">
       <OverdueAlertBanner overdueDebtors={overdueDebtors} />
@@ -361,10 +378,19 @@ export default function Debtors() {
           {paidCount} Collected
         </button>
         <div className="ml-auto flex items-center gap-3">
-          <span className="text-sm text-muted-foreground hidden sm:block">
-            Total invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
-          </span>
-          <div className="flex items-center border rounded-lg p-0.5 bg-muted gap-0.5">
+        <span className="text-sm text-muted-foreground hidden sm:block">
+          Total invoiced: <span className="font-semibold text-foreground">{formatINR(totalInvoiced)}</span>
+        </span>
+        <Select value={groupBy} onValueChange={setGroupBy}>
+          <SelectTrigger className="w-40">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ageing">Group by Ageing</SelectItem>
+            <SelectItem value="company">Group by Company</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="flex items-center border rounded-lg p-0.5 bg-muted gap-0.5">
             {[{ key: 'card', icon: LayoutGrid, label: 'Card' }, { key: 'table', icon: List, label: 'Table' }].map(({ key, icon: Icon, label }) => (
               <button
                 key={key}
@@ -483,7 +509,19 @@ export default function Debtors() {
           onAction={() => setShowForm(true)}
           icon={Users}
         />
-      ) : (
+       ) : groupBy === 'company' ? (
+        <>
+          {debtorsByCompany.map(company => (
+            <div key={company.name} className="mt-6 first:mt-0">
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">
+                {company.name} — {company.debtors.length} debtor{company.debtors.length !== 1 ? 's' : ''}
+                <Badge variant="outline" className="ml-2">{formatINR(company.total)} outstanding</Badge>
+              </h2>
+              {viewMode === 'card' ? renderCardView(company.debtors) : renderTableView(company.debtors)}
+            </div>
+          ))}
+        </>
+       ) : (
        <>
          {/* Overdue debtors */}
          {sortedDebtors.overdue.length > 0 && (
@@ -527,10 +565,53 @@ export default function Debtors() {
              )}
            </div>
          )}
-       </>
-      )}
+         </>
+         ) : (
+         <>
+         {/* Ageing view (default) */}
+         {sortedDebtors.overdue.length > 0 && (
+           <div>
+             <h2 className="text-sm font-semibold text-destructive uppercase tracking-wide mb-3">
+               ⚠️ Overdue — {sortedDebtors.overdue.length} debtor{sortedDebtors.overdue.length !== 1 ? 's' : ''}
+             </h2>
+             {viewMode === 'card' ? renderCardView(sortedDebtors.overdue) : renderTableView(sortedDebtors.overdue)}
+           </div>
+         )}
 
-      <DebtorForm
+         {sortedDebtors.activeDebtors.length > sortedDebtors.overdue.length && (
+           <div className="mt-6">
+             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+               Other Outstanding — {sortedDebtors.activeDebtors.length - sortedDebtors.overdue.length} debtor{(sortedDebtors.activeDebtors.length - sortedDebtors.overdue.length) !== 1 ? 's' : ''}
+             </h2>
+             {viewMode === 'card' ? renderCardView(sortedDebtors.activeDebtors.filter(d => !sortedDebtors.overdue.find(o => o.id === d.id))) : renderTableView(sortedDebtors.activeDebtors.filter(d => !sortedDebtors.overdue.find(o => o.id === d.id)))}
+           </div>
+         )}
+
+         {sortedDebtors.overdue.length === 0 && sortedDebtors.activeDebtors.length === 0 && filtered.length > 0 && (
+           <div className="text-center py-8 text-muted-foreground text-sm">No outstanding debtors match your filters</div>
+         )}
+
+         {sortedDebtors.paidDebtors.length > 0 && (
+           <div className="mt-6">
+             <button
+               className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3 hover:text-foreground transition-colors"
+               onClick={() => setShowPaid(p => !p)}
+             >
+               {showPaid ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+               Zero Payment — {sortedDebtors.paidDebtors.length} debtor{sortedDebtors.paidDebtors.length !== 1 ? 's' : ''}
+               <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 ml-1">
+                 {formatINR(sortedDebtors.paidDebtors.reduce((s, d) => s + (d.total_received || 0), 0))} collected
+               </Badge>
+             </button>
+             {showPaid && (
+               viewMode === 'card' ? renderCardView(sortedDebtors.paidDebtors) : renderTableView(sortedDebtors.paidDebtors)
+             )}
+           </div>
+         )}
+         </>
+         )}
+
+         <DebtorForm
         open={showForm}
         onClose={() => { setShowForm(false); setEditingDebtor(null); }}
         onSave={handleSave}
