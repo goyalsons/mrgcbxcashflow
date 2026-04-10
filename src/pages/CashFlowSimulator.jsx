@@ -8,6 +8,7 @@ import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
+import SimForecastChart from '@/components/simulator/SimForecastChart';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 
 import { Button } from '@/components/ui/button';
@@ -372,6 +373,11 @@ export default function CashFlowSimulator() {
       </div>
 
       <SimImpactBar baseNet={baseNet12W} simNet={simNet12W} improvement={improvement} onReset={resetAll} />
+
+      {/* Forecast-style chart: Weekly Inflow / Outflow / Net */}
+      <div className="mt-4">
+        <SimForecastChart weeklyData={weeklyData} />
+      </div>
 
       {/* Zone 1: Collapsible chart (Simulated Cash Flow) */}
       <div className="mt-4">
