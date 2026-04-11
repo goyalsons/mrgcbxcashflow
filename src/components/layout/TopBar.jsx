@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Bell, ChevronRight, Home } from 'lucide-react';
+import { ChevronRight, Home, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ROUTE_LABELS = {
@@ -25,15 +25,19 @@ const ROUTE_LABELS = {
   '/settings': 'Settings',
 };
 
-export default function TopBar({ user }) {
+export default function TopBar({ user, onMenuOpen }) {
   const location = useLocation();
   const currentLabel = ROUTE_LABELS[location.pathname] || '';
   const isHome = location.pathname === '/';
 
   return (
     <header className="h-14 border-b border-border bg-card/60 backdrop-blur-sm flex items-center justify-between px-5 md:px-7 shrink-0 sticky top-0 z-10">
+      {/* Mobile hamburger */}
+      <button className="md:hidden mr-2 p-1.5 rounded-md hover:bg-muted transition-colors" onClick={onMenuOpen}>
+        <Menu className="w-5 h-5 text-foreground" />
+      </button>
       {/* Breadcrumb */}
-      <nav className="flex items-center gap-1.5 text-sm">
+      <nav className="flex items-center gap-1.5 text-sm flex-1">
         {!isHome ? (
           <>
             <Link to="/" className="text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
