@@ -70,8 +70,6 @@ export default function SimForecastChart({ weeklyData }) {
     isCurrentWeek: w.isCurrentWeek,
     // stacked breakdown
     inflowReceivables: Math.round(w.inflowReceivables || 0),
-    inflowInvoices: Math.round(w.inflowInvoices || 0),
-    inflowTargets: Math.round(w.inflowTargets || 0),
     payablesOut: Math.round(w.payablesOut || 0),
     ...Object.fromEntries(EXPENSE_GROUPS.map(g => [g, Math.round(w[g] || 0)])),
   }));
@@ -85,7 +83,7 @@ export default function SimForecastChart({ weeklyData }) {
         onClick={() => setCollapsed(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
       >
-        <span className="text-sm font-semibold">Weekly Inflow, Outflow &amp; Net Cash Flow</span>
+        <span className="text-sm font-semibold">Projected Cash Flow</span>
         {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
       </button>
 
@@ -105,9 +103,7 @@ export default function SimForecastChart({ weeklyData }) {
                 <Tooltip content={<WeeklyTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {/* Inflow stacked */}
-                <Bar dataKey="inflowReceivables" name="↑ Receivables" stackId="in" fill="#10b981" />
-                <Bar dataKey="inflowInvoices"    name="↑ Invoices"    stackId="in" fill="#34d399" />
-                <Bar dataKey="inflowTargets"     name="↑ Coll. Targets" stackId="in" fill="#6ee7b7" radius={[3,3,0,0]} />
+                <Bar dataKey="inflowReceivables" name="↑ Inflow" stackId="in" fill="#10b981" radius={[3,3,0,0]} />
                 {/* Outflow stacked */}
                 <Bar dataKey="payablesOut"       name="Payables"       stackId="out" fill="#ef4444" />
                 <Bar dataKey="Salary"            name="Salary"         stackId="out" fill="#f97316" />
@@ -117,7 +113,8 @@ export default function SimForecastChart({ weeklyData }) {
                 <Bar dataKey="Software"          name="Software"       stackId="out" fill="#14b8a6" />
                 <Bar dataKey="Maintenance"       name="Maintenance"    stackId="out" fill="#84cc16" />
                 <Bar dataKey="Office & Other"    name="Office & Other" stackId="out" fill="#94a3b8" radius={[3,3,0,0]} />
-                <Line type="monotone" dataKey="net" name="Net Cash Flow" stroke="#1d4ed8" strokeWidth={2.5} dot={<NetDotWithLabel />} />
+                <Line type="monotone" dataKey="net" name="Weekly Cash Flow" stroke="#1d4ed8" strokeWidth={2.5} dot={<NetDotWithLabel />} />
+                <Line type="monotone" dataKey="closing" name="Closing Balance" stroke="#15803d" strokeWidth={2.5} dot={false} isAnimationActive={false} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
