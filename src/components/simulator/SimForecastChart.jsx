@@ -92,7 +92,7 @@ export default function SimForecastChart({ weeklyData }) {
           {/* Chart */}
           <div className="p-4">
             <p className="text-xs text-muted-foreground mb-3">Stacked bars show breakdown by type. Line shows net cash flow.</p>
-            <ResponsiveContainer width="100%" height={380}>
+            <ResponsiveContainer width="100%" height={380} minWidth={0}>
               <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <ReferenceArea y1={-9999999999} y2={0} fill="#ef4444" fillOpacity={0.07} />

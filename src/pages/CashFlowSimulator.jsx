@@ -422,8 +422,9 @@ export default function CashFlowSimulator() {
               {' → '}Sim: <span className={`font-semibold ${simNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>{simNet12W < 0 ? '-' : ''}{(() => { const abs = Math.abs(simNet12W); return abs >= 10000000 ? `₹${(abs/10000000).toFixed(1)}Cr` : abs >= 100000 ? `₹${(abs/100000).toFixed(1)}L` : `₹${Math.round(abs).toLocaleString('en-IN')}`; })()}</span>)
             </span>
           </div>
-          <p className="text-xs text-muted-foreground">Drag cards between weeks to reschedule payments</p>
+          <p className="text-xs text-muted-foreground hidden sm:block">Drag cards between weeks to reschedule payments</p>
         </div>
+        <div className="overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0">
         <SimTimelineBoard
           receivables={receivables}
           invoices={invoices}
@@ -445,6 +446,7 @@ export default function CashFlowSimulator() {
           onUndo={undoBoard}
           onRedo={redoBoard}
         />
+        </div>
       </div>
 
 

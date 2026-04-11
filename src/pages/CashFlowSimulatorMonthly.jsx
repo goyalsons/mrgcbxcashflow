@@ -369,6 +369,7 @@ export default function CashFlowSimulatorMonthly() {
           </div>
           <p className="text-xs text-muted-foreground">Drag cards between months to reschedule</p>
         </div>
+        <div className="overflow-x-auto -mx-5 md:mx-0 px-5 md:px-0">
         <MonthlyTimelineBoard
           receivables={receivables}
           invoices={invoices}
@@ -387,6 +388,7 @@ export default function CashFlowSimulatorMonthly() {
           onUndo={undoBoard}
           onRedo={redoBoard}
         />
+        </div>
       </div>
 
       <FundingSummaryCard weeklyData={monthlyData} />
