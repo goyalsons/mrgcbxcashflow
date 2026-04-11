@@ -351,7 +351,7 @@ export default function CashFlowSimulator() {
   const [secDOpen, setSecDOpen] = useState(false);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
         <div>

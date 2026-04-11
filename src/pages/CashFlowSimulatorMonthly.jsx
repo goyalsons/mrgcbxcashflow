@@ -304,7 +304,7 @@ export default function CashFlowSimulatorMonthly() {
   const INR = (v) => { const a = Math.abs(v); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 overflow-x-hidden">
       {/* Header */}
       <div className="flex items-start justify-between gap-4 pb-4 border-b">
         <div>
@@ -338,23 +338,6 @@ export default function CashFlowSimulatorMonthly() {
 
       <SimZone1Chart weeklyData={monthlyData} />
 
-      {/* Adjustments: receivables */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <SimSectionA
-            receivables={receivables} invoices={invoices}
-            recAdj={recAdj} setRecAdj={setRecAdj}
-          />
-        </div>
-        <div>
-          <SimSectionB
-            payables={payables} expenses={expenses}
-            payAdj={payAdj} setPayAdj={setPayAdj}
-            expAdj={expAdj} setExpAdj={setExpAdj}
-            weeklyData={monthlyData}
-          />
-        </div>
-      </div>
 
       {/* Hypothetical entries & Funding */}
       <div className="flex gap-2">

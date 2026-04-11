@@ -327,7 +327,7 @@ export default function SimTimelineBoard({
         <ConfirmResetDialog onConfirm={handleReset} onCancel={() => setShowResetConfirm(false)} />
       )}
 
-      <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ height: 'calc(100vh - 380px)', minHeight: 480 }}>
+      <div className="border rounded-lg overflow-hidden bg-background flex flex-col" style={{ height: 'calc(100vh - 160px)', minHeight: 720 }}>
 
         {/* ── Board toolbar ── */}
         <div className="border-b bg-card px-3 py-2 flex flex-col gap-2 shrink-0">
