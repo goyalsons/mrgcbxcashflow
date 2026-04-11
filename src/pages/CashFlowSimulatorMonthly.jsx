@@ -6,9 +6,8 @@ import SimSectionA from '@/components/simulator/SimSectionA';
 import SimSectionB from '@/components/simulator/SimSectionB';
 import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
-import SimSectionE from '@/components/simulator/SimSectionE';
-import SimSectionF from '@/components/simulator/SimSectionF';
-import MonthlyForecastChart from '@/components/simulator/MonthlyForecastChart';
+
+import SimZone1Chart from '@/components/simulator/SimZone1Chart';
 import MonthlyTimelineBoard from '@/components/simulator/MonthlyTimelineBoard';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
@@ -305,11 +304,11 @@ export default function CashFlowSimulatorMonthly() {
   const INR = (v) => { const a = Math.abs(v); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
 
   return (
-    <div className="flex flex-col">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
+      <div className="flex items-start justify-between gap-4 pb-4 border-b">
         <div>
-          <h1 className="text-xl font-bold tracking-tight">CF Simulator (Monthly)</h1>
+          <h1 className="text-xl font-bold tracking-tight">Cash Flow Simulator (Monthly)</h1>
           <p className="text-sm text-muted-foreground mt-0.5">6-month monthly view — model what-if scenarios, drag entries between months, add funding and hypothetical cash flows.</p>
           {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
         </div>
@@ -337,13 +336,10 @@ export default function CashFlowSimulatorMonthly() {
 
       <SimImpactBar baseNet={baseNet6M} simNet={simNet6M} improvement={improvement} onReset={resetAll} />
 
-      {/* Monthly forecast chart */}
-      <div className="mt-4">
-        <MonthlyForecastChart monthlyData={monthlyData} />
-      </div>
+      <SimZone1Chart weeklyData={monthlyData} />
 
       {/* Adjustments: receivables */}
-      <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <SimSectionA
             receivables={receivables} invoices={invoices}
@@ -361,7 +357,7 @@ export default function CashFlowSimulatorMonthly() {
       </div>
 
       {/* Hypothetical entries & Funding */}
-      <div className="mt-4 flex gap-2">
+      <div className="flex gap-2">
         <div className="flex-1 border rounded-lg overflow-hidden">
           <button className="w-full flex items-center justify-between px-3 py-2.5 text-sm font-semibold hover:bg-muted/30 bg-card" onClick={() => setSecCOpen(v => !v)}>
             <span className="flex items-center gap-1.5">Hypothetical Entries {hypotheticals.length > 0 && <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">{hypotheticals.length}</span>}</span>
@@ -379,7 +375,7 @@ export default function CashFlowSimulatorMonthly() {
       </div>
 
       {/* Monthly timeline board */}
-      <div className="mt-4">
+      <div>
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3 flex-wrap">
             <h2 className="text-sm font-semibold">Monthly Timeline Board</h2>
@@ -412,7 +408,7 @@ export default function CashFlowSimulatorMonthly() {
 
       <FundingSummaryCard weeklyData={monthlyData} />
 
-      <div className="mt-6 pt-4 border-t">
+      <div className="pt-4 border-t">
         <p className="text-[11px] text-muted-foreground text-center leading-relaxed max-w-4xl mx-auto">
           All simulations are for planning purposes only. This tool does not modify any actual records in your system.
         </p>
