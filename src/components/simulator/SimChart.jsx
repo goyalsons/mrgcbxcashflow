@@ -61,7 +61,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
   }));
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Simulated Cash Flow</CardTitle>
         <div className="flex items-center gap-5 mt-1 flex-wrap">
@@ -96,7 +96,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
             </div>
           )}
           <ResponsiveContainer width="100%" height={280}>
-            <ComposedChart data={chartData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
               <defs>
                 <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="0%" stopColor="#10b981" stopOpacity={0.15} /><stop offset="100%" stopColor="#10b981" stopOpacity={0.02} />
@@ -110,7 +110,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
                 <ReferenceArea key={`sim-neg-${i}`} x1={d.name} x2={d.name} fill="#ef444415" />
               ))}
               <ReferenceLine y={0} stroke="#ef4444" strokeDasharray="4 3" strokeWidth={1.5}
-                label={{ value: 'Break-even', position: 'right', fontSize: 10, fill: '#ef4444' }} />
+                label={{ value: 'Break-even', position: 'insideRight', fontSize: 10, fill: '#ef4444' }} />
               <Bar dataKey="simInflow" name="Inflow" fill="#10b981" opacity={0.65} radius={[3,3,0,0]} />
               <Bar dataKey="simOutflow" name="Outflow" fill="#ef4444" opacity={0.65} radius={[3,3,0,0]} />
               <Area type="monotone" dataKey="simNet" fill="url(#posGrad)" stroke="none" />

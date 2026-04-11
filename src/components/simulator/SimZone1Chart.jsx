@@ -39,7 +39,7 @@ export default function SimZone1Chart({ weeklyData, hasAdjustments, bankAccounts
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="border-b bg-card transition-all duration-300">
+    <div className="border-b bg-card transition-all duration-300 overflow-hidden">
       {collapsed ? (
         <div className="flex items-center gap-4 px-4 h-12">
           <span className="text-sm font-medium text-muted-foreground whitespace-nowrap">Net Cash Flow</span>
