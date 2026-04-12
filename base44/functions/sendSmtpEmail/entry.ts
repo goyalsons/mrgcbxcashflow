@@ -1,56 +1,70 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
-import nodemailer from 'npm:nodemailer@6.9.9';
+
+// Encode email as base64url per Gmail API requirements
+function makeRFC2822(to, from_name, from_email, subject, body) {
+  const msg = [
+    `From: "${from_name}" <${from_email}>`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    `MIME-Version: 1.0`,
+    `Content-Type: text/html; charset=UTF-8`,
+    ``,
+    body.replace(/\n/g, '<br>'),
+  ].join('\r\n');
+
+  return btoa(unescape(encodeURIComponent(msg)))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
 
 Deno.serve(async (req) => {
-  let smtp, to, subject, body, from_name;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    ({ smtp, to, subject, body, from_name } = await req.json());
+    const { to, subject, body, from_name } = await req.json();
 
-    if (!smtp?.host || !smtp?.port || !smtp?.user || !smtp?.password) {
+    if (!to) return Response.json({ success: false, error: 'Recipient email is required.' });
+
+    // Get Gmail OAuth access token (shared connector)
+    let accessToken, senderEmail;
+    try {
+      const conn = await base44.asServiceRole.connectors.getConnection('gmail');
+      accessToken = conn.accessToken;
+      // Fetch sender's email address
+      const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const profile = await profileRes.json();
+      senderEmail = profile.emailAddress;
+    } catch {
       return Response.json({
         success: false,
-        error: 'SMTP configuration is incomplete. Please fill in Host, Port, Username, and Password in Email settings.'
-      }, { status: 400 });
+        error: 'Gmail is not connected. Please connect your Gmail account in Settings → Email.'
+      });
     }
 
-    if (!to) {
-      return Response.json({ success: false, error: 'Recipient email is required.' }, { status: 400 });
-    }
+    const raw = makeRFC2822(to, from_name || 'CashFlow Pro', senderEmail, subject, body);
 
-    const transporter = nodemailer.createTransport({
-      host: smtp.host,
-      port: Number(smtp.port) || 587,
-      secure: Number(smtp.port) === 465,
-      auth: {
-        user: smtp.user,
-        pass: smtp.password,
+    const sendRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
       },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
+      body: JSON.stringify({ raw }),
     });
 
-    await transporter.sendMail({
-      from: `"${from_name || 'CashFlow Pro'}" <${smtp.user}>`,
-      to,
-      subject: subject || 'CashFlow Pro — Test Email',
-      text: body || `This is a test email from CashFlow Pro sent at ${new Date().toLocaleString('en-IN')}. If you received this, your SMTP settings are working correctly.`,
-      html: body ? body.replace(/\n/g, '<br>') : undefined,
-    });
+    if (!sendRes.ok) {
+      const err = await sendRes.json();
+      return Response.json({ success: false, error: err.error?.message || 'Failed to send email via Gmail.' });
+    }
 
-    return Response.json({ success: true, message: `Email sent successfully to ${to}` });
+    return Response.json({ success: true, message: `Email sent successfully to ${to} via Gmail.` });
   } catch (error) {
-    let message = error.message || 'Failed to send email';
-    console.error('[sendSmtpEmail] Error:', message);
-    if (message.includes('ECONNREFUSED')) message = `Cannot connect to SMTP server. Check Host (${smtp?.host}) and Port (${smtp?.port}). Raw: ${message}`;
-    else if (message.includes('EAUTH') || message.includes('535') || message.includes('534')) message = 'Authentication failed — check your Username and Password. For Gmail, use an App Password (not your main password).';
-    else if (message.includes('ETIMEDOUT') || message.includes('timeout')) message = `Connection timed out to ${smtp?.host}:${smtp?.port}. Check SMTP Host and Port settings.`;
-    else if (message.includes('certificate') || message.includes('SSL') || message.includes('TLS')) message = `SSL/TLS error on port ${smtp?.port}. Try port 587 with STARTTLS or 465 for SSL. Raw: ${message}`;
-    else if (message.includes('ENOTFOUND')) message = `SMTP host not found: "${smtp?.host}". Check the hostname spelling.`;
-    // Always return 200 so frontend can read the error detail (non-2xx causes axios to throw before reading body)
-    return Response.json({ success: false, error: message });
+    console.error('[sendSmtpEmail] Error:', error.message);
+    return Response.json({ success: false, error: error.message });
   }
 });

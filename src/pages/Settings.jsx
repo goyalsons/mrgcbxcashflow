@@ -85,7 +85,10 @@ export default function Settings() {
   const [editingTemplate, setEditingTemplate] = useState(null);
 
   const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '' });
-  const [smtp, setSmtp] = useState({ host: '', port: '587', user: '', password: '', from_name: '' });
+  const [gmailFromName, setGmailFromName] = useState('');
+  const [gmailConnected, setGmailConnected] = useState(null); // null=loading, false=no, {email}=yes
+  const [gmailChecking, setGmailChecking] = useState(false);
+  const [gmailConnecting, setGmailConnecting] = useState(false);
   const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_id: '', phone_number_id: '', from_number: '', language: 'en', template_names: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
   const [paymentGateway, setPaymentGateway] = useState({ provider: 'razorpay', razorpay_key_id: '', razorpay_key_secret: '', razorpay_webhook_secret: '', upi_id: '', upi_name: '' });
@@ -145,7 +148,7 @@ export default function Settings() {
   useEffect(() => {
     const s = loadSettings();
     if (s.company) setCompany(s.company);
-    if (s.smtp) setSmtp(s.smtp);
+    if (s.gmailFromName) setGmailFromName(s.gmailFromName);
     if (s.whatsapp) setWhatsapp(s.whatsapp);
     if (s.cloudinary) setCloudinary(s.cloudinary);
     if (s.paymentGateway) setPaymentGateway(s.paymentGateway);
@@ -154,15 +157,27 @@ export default function Settings() {
     if (s.approvalThreshold !== undefined) setApprovalThreshold(Number(s.approvalThreshold) || 0);
   }, []);
 
+  const checkGmailStatus = async () => {
+    setGmailChecking(true);
+    try {
+      const res = await base44.functions.invoke('checkGmailConnection', {});
+      setGmailConnected(res.data.connected ? { email: res.data.email } : false);
+    } catch {
+      setGmailConnected(false);
+    }
+    setGmailChecking(false);
+  };
+
+  useEffect(() => { checkGmailStatus(); }, []);
+
   const handleSave = () => {
-    saveSettings({ company, smtp, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold });
+    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
   };
 
   const setC = (k, v) => setCompany(f => ({ ...f, [k]: v }));
-  const setS = (k, v) => setSmtp(f => ({ ...f, [k]: v }));
   const setW = (k, v) => setWhatsapp(f => ({ ...f, [k]: v }));
   const setCl = (k, v) => setCloudinary(f => ({ ...f, [k]: v }));
   const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
@@ -195,18 +210,13 @@ export default function Settings() {
   };
 
   const handleTemplateTest = async (template, recipientEmail) => {
-    if (!smtp.host || !smtp.user || !smtp.password) {
-      setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: false, message: '❌ SMTP not configured. Please fill in Email settings first.' } } }));
-      return;
-    }
     setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: true, result: null } }));
     try {
       const res = await base44.functions.invoke('sendSmtpEmail', {
-        smtp,
         to: recipientEmail,
         subject: template.subject || `Test: ${template.name}`,
         body: template.body,
-        from_name: smtp.from_name || 'CashFlow Pro',
+        from_name: gmailFromName || 'CashFlow Pro',
       });
       if (res.data.success) {
         setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: true, message: `✅ Test sent to ${recipientEmail}` } } }));
@@ -220,19 +230,14 @@ export default function Settings() {
 
   const handleTestEmail = async () => {
     if (!testEmail) return;
-    if (!smtp.host || !smtp.port || !smtp.user || !smtp.password) {
-      setTestEmailResult({ success: false, message: '❌ SMTP configuration is incomplete. Please fill in Host, Port, Username, and Password above before testing.' });
-      return;
-    }
     setTestEmailSending(true);
     setTestEmailResult(null);
     try {
       const res = await base44.functions.invoke('sendSmtpEmail', {
-        smtp,
         to: testEmail,
-        subject: 'CashFlow Pro — SMTP Test Email',
-        body: `This is a test email from CashFlow Pro sent at ${new Date().toLocaleString('en-IN')}. If you received this, your SMTP settings are working correctly.`,
-        from_name: smtp.from_name || 'CashFlow Pro',
+        subject: 'CashFlow Pro — Gmail Test Email',
+        body: `This is a test email from CashFlow Pro sent at ${new Date().toLocaleString('en-IN')}. If you received this, your Gmail connection is working correctly.`,
+        from_name: gmailFromName || 'CashFlow Pro',
       });
       if (res.data.success) {
         setTestEmailResult({ success: true, message: `✅ Test email sent successfully to ${testEmail}` });
@@ -340,67 +345,90 @@ export default function Settings() {
           </Card>
         </TabsContent>
 
-        {/* SMTP */}
+        {/* Gmail OAuth */}
         <TabsContent value="smtp" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">SMTP Email Configuration</CardTitle>
-              <p className="text-sm text-muted-foreground">Configure your outgoing email server for sending payment reminders and reports.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label>SMTP Host</Label>
-                  <Input value={smtp.host} onChange={e => setS('host', e.target.value)} placeholder="smtp.gmail.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Port</Label>
-                  <Input value={smtp.port} onChange={e => setS('port', e.target.value)} placeholder="587" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Username / Email</Label>
-                  <Input value={smtp.user} onChange={e => setS('user', e.target.value)} placeholder="your@email.com" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Password / App Password</Label>
-                  <Input type="password" value={smtp.password} onChange={e => setS('password', e.target.value)} placeholder="••••••••" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>From Name</Label>
-                  <Input value={smtp.from_name} onChange={e => setS('from_name', e.target.value)} placeholder="CashFlow Pro" />
-                </div>
-              </div>
-              <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
-                <strong>Note:</strong> For Gmail, use an App Password (not your main password). Enable 2FA and generate at myaccount.google.com/apppasswords.
-              </div>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2"><Mail className="w-4 h-4" />Gmail — Send Emails via OAuth</CardTitle>
+                <p className="text-sm text-muted-foreground">Connect your Gmail account to send payment reminders, reports, and test emails. No SMTP passwords needed.</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
 
-              <div className="border-t pt-4 space-y-3">
-                <p className="text-sm font-medium">Send Test Email</p>
-                <div className="flex gap-3">
-                  <Input
-                    type="email"
-                    value={testEmail}
-                    onChange={e => setTestEmail(e.target.value)}
-                    placeholder="recipient@example.com"
-                    className="flex-1"
-                  />
+                {/* Connection Status */}
+                <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/40">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${gmailConnected?.email ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    <div>
+                      <p className="font-medium text-sm">{gmailConnected?.email ? `Connected as ${gmailConnected.email}` : 'Not connected'}</p>
+                      <p className="text-xs text-muted-foreground">{gmailConnected?.email ? 'Emails will be sent from this Gmail account.' : 'Connect your Gmail account to enable email sending.'}</p>
+                    </div>
+                  </div>
                   <Button
                     variant="outline"
-                    onClick={handleTestEmail}
-                    disabled={testEmailSending || !testEmail}
-                    className="gap-2 shrink-0"
+                    size="sm"
+                    onClick={checkGmailStatus}
+                    disabled={gmailChecking}
                   >
-                    {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
+                    {gmailChecking ? '⏳ Checking...' : '🔄 Refresh'}
                   </Button>
                 </div>
-                {testEmailResult && (
-                  <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                    {testEmailResult.message}
+
+                {!gmailConnected?.email && (
+                  <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 space-y-3">
+                    <p className="text-sm font-medium text-blue-800">How to connect Gmail:</p>
+                    <ol className="text-sm text-blue-700 space-y-1 list-decimal ml-4">
+                      <li>In the Base44 platform, go to <strong>App Settings → Connectors</strong></li>
+                      <li>Find <strong>Gmail</strong> and click <strong>Connect</strong></li>
+                      <li>Sign in with your Google account and grant permission to send emails</li>
+                      <li>Come back here and click <strong>Refresh Status</strong> to confirm</li>
+                    </ol>
+                    <div className="p-3 rounded-lg bg-white border border-blue-200 text-xs text-blue-600">
+                      Once connected, all emails (reminders, digests, test emails) will be sent from your Gmail account via the secure Gmail API — no SMTP ports needed.
+                    </div>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+
+                {gmailConnected?.email && (
+                  <div className="space-y-1.5 max-w-xs">
+                    <Label>From Name</Label>
+                    <Input value={gmailFromName} onChange={e => setGmailFromName(e.target.value)} placeholder="CashFlow Pro" />
+                    <p className="text-xs text-muted-foreground">Display name shown to email recipients.</p>
+                  </div>
+                )}
+
+                {/* Test Email */}
+                {gmailConnected?.email && (
+                  <div className="border-t pt-4 space-y-3">
+                    <p className="text-sm font-medium">Send Test Email</p>
+                    <div className="flex gap-3">
+                      <Input
+                        type="email"
+                        value={testEmail}
+                        onChange={e => setTestEmail(e.target.value)}
+                        placeholder="recipient@example.com"
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="outline"
+                        onClick={handleTestEmail}
+                        disabled={testEmailSending || !testEmail}
+                        className="gap-2 shrink-0"
+                      >
+                        {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
+                      </Button>
+                    </div>
+                    {testEmailResult && (
+                      <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                        {testEmailResult.message}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
         {/* WhatsApp */}
