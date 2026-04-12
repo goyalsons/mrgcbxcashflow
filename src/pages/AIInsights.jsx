@@ -102,19 +102,37 @@ Financial Snapshot:
 Return ONLY valid JSON (no markdown): { "insights": [ { "title": "...", "description": "...", "type": "success|warning|info|action", "category": "collections|cash_flow|risk|optimization", "action": "suggested next step (optional)" } ] }`;
 
     try {
-      const res = await base44.functions.invoke('testLLM', {
-        provider: activeLLM.provider,
-        api_key: apiKey,
-        model,
-        prompt,
-      });
-      if (!res.data.success) {
-        throw new Error(res.data.error || 'LLM call failed');
+      let responseText = '';
+      if (activeLLM.provider === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model || 'gemini-2.0-flash'}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || 'Gemini API error');
+        responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      } else if (activeLLM.provider === 'claude') {
+        const res = await fetch('https://api.anthropic.com/v1/messages', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey,
+            'anthropic-version': '2023-06-01',
+          },
+          body: JSON.stringify({
+            model: model || 'claude-sonnet-4-5',
+            max_tokens: 2048,
+            messages: [{ role: 'user', content: prompt }],
+          }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error?.message || 'Claude API error');
+        responseText = data.content?.[0]?.text || '';
       }
-      // Parse JSON from response text
-      let text = res.data.response || '';
-      const match = text.match(/\{[\s\S]*\}/);
-      const parsed = JSON.parse(match ? match[0] : text);
+      const match = responseText.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : responseText);
       setInsights(parsed.insights || []);
     } catch (e) {
       toast({ title: 'Failed to generate insights', description: e.message, variant: 'destructive' });
