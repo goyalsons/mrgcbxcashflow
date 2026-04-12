@@ -9,14 +9,13 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Phone, Mail } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import StatusBadge from '@/components/shared/StatusBadge';
 import EmptyState from '@/components/shared/EmptyState';
 import ReceivableForm from '@/components/receivables/ReceivableForm';
 import QuickActionBar from '@/components/receivables/QuickActionPanel';
 import { useToast } from '@/components/ui/use-toast';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export default function Receivables() {
   const [showForm, setShowForm] = useState(false);
@@ -27,8 +26,6 @@ export default function Receivables() {
   const [filterMonth, setFilterMonth] = useState('all');
   const [selected, setSelected] = useState(new Set());
   const [expandedId, setExpandedId] = useState(null);
-  const [groupBy, setGroupBy] = useState('company');
-  const [sortBy, setSortBy] = useState('outstanding');
 
   function getISOWeek(dateStr) {
     if (!dateStr) return null;
@@ -100,28 +97,17 @@ export default function Receivables() {
   const totalOutstanding = unpaidReceivables
     .reduce((sum, r) => sum + ((r.amount || 0) - (r.amount_received || 0)), 0);
 
-  // Group by customer or aging
+  // Group by customer
   const customerGroups = useMemo(() => {
     const groups = {};
     unpaidReceivables.forEach(r => {
-      let key;
-      if (groupBy === 'company') {
-        key = r.customer_name || 'Unknown';
-      } else {
-        const days = daysUntilDue(r.due_date);
-        if (days === null) key = 'No due date';
-        else if (days < 0) key = `${Math.abs(days)} days overdue`;
-        else if (days === 0) key = 'Due today';
-        else if (days <= 30) key = `${days} days due`;
-        else if (days <= 60) key = '31-60 days due';
-        else key = '60+ days due';
-      }
+      const key = r.customer_name || 'Unknown';
       if (!groups[key]) {
         groups[key] = {
           customer_name: key,
-          customer_email: groupBy === 'company' ? r.customer_email : null,
-          customer_phone: groupBy === 'company' ? r.customer_phone : null,
-          customer_id: groupBy === 'company' ? r.customer_id : null,
+          customer_email: r.customer_email,
+          customer_phone: r.customer_phone,
+          customer_id: r.customer_id,
           invoices: [],
           total_amount: 0,
           total_received: 0,
@@ -131,15 +117,8 @@ export default function Receivables() {
       groups[key].total_amount += r.amount || 0;
       groups[key].total_received += r.amount_received || 0;
     });
-    let arr = Object.values(groups);
-    if (sortBy === 'outstanding') arr.sort((a, b) => (b.total_amount - b.total_received) - (a.total_amount - a.total_received));
-    else if (sortBy === 'due') arr.sort((a, b) => {
-      const daysA = a.invoices.length ? Math.min(...a.invoices.map(inv => daysUntilDue(inv.due_date) ?? Infinity)) : Infinity;
-      const daysB = b.invoices.length ? Math.min(...b.invoices.map(inv => daysUntilDue(inv.due_date) ?? Infinity)) : Infinity;
-      return daysA - daysB;
-    });
-    return arr;
-  }, [unpaidReceivables, groupBy, sortBy]);
+    return Object.values(groups);
+  }, [unpaidReceivables]);
 
   const weekOptions = useMemo(() => {
     const s = new Set();
@@ -200,25 +179,11 @@ export default function Receivables() {
       />
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3 flex-wrap items-center">
+      <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input placeholder="Search by customer or invoice #..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <div className="flex gap-2 items-center">
-          <span className="text-sm text-muted-foreground">Group by:</span>
-          <div className="flex gap-1.5 bg-muted p-1 rounded-lg">
-            <Button variant={groupBy === 'company' ? 'default' : 'ghost'} size="sm" className="h-7 text-xs" onClick={() => setGroupBy('company')}>Company</Button>
-            <Button variant={groupBy === 'aging' ? 'default' : 'ghost'} size="sm" className="h-7 text-xs" onClick={() => setGroupBy('aging')}>Aging</Button>
-          </div>
-        </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="Sort" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="outstanding">Outstanding Amount</SelectItem>
-            <SelectItem value="due">Due Date</SelectItem>
-          </SelectContent>
-        </Select>
         <Select value={filterStatus} onValueChange={setFilterStatus}>
           <SelectTrigger className="w-44">
             <SelectValue placeholder="All Statuses" />
@@ -281,13 +246,13 @@ export default function Receivables() {
                       className="translate-y-0.5"
                     />
                   </TableHead>
-                  <TableHead>{groupBy === 'company' ? 'Customer' : 'Aging'}</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead className="text-right">Total Amount</TableHead>
                   <TableHead className="text-right">Received</TableHead>
                   <TableHead className="text-right">Outstanding</TableHead>
                   <TableHead>Invoices</TableHead>
                   <TableHead>Account Manager</TableHead>
-                  <TableHead className="w-12">Actions</TableHead>
+                  <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -326,40 +291,16 @@ export default function Receivables() {
                         <TableCell className="text-right font-semibold">{formatINR(balance)}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{group.invoices.length} invoice{group.invoices.length !== 1 ? 's' : ''}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{accountManagerMap[group.customer_id] || accountManagerMap[group.customer_name] || <span className="text-xs">—</span>}</TableCell>
-                         <TableCell onClick={e => e.stopPropagation()} className="flex items-center gap-2">
-                           {groupBy === 'company' && group.customer_phone && (
-                             <TooltipProvider>
-                               <Tooltip>
-                                 <TooltipTrigger asChild>
-                                   <a href={`tel:${group.customer_phone}`} className="text-muted-foreground hover:text-primary transition-colors">
-                                     <Phone className="w-4 h-4" />
-                                   </a>
-                                 </TooltipTrigger>
-                                 <TooltipContent side="left">{group.customer_phone}</TooltipContent>
-                               </Tooltip>
-                             </TooltipProvider>
-                           )}
-                           {groupBy === 'company' && group.customer_email && (
-                             <TooltipProvider>
-                               <Tooltip>
-                                 <TooltipTrigger asChild>
-                                   <a href={`mailto:${group.customer_email}`} className="text-muted-foreground hover:text-primary transition-colors">
-                                     <Mail className="w-4 h-4" />
-                                   </a>
-                                 </TooltipTrigger>
-                                 <TooltipContent side="left">{group.customer_email}</TooltipContent>
-                               </Tooltip>
-                             </TooltipProvider>
-                           )}
-                           <Button 
-                             variant="ghost" 
-                             size="sm" 
-                             className="text-xs"
-                             onClick={() => setExpandedId(isExpanded ? null : group.customer_name)}
-                           >
-                             {isExpanded ? '−' : '+'}
-                           </Button>
-                         </TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-xs"
+                            onClick={() => setExpandedId(isExpanded ? null : group.customer_name)}
+                          >
+                            {isExpanded ? '−' : '+'}
+                          </Button>
+                        </TableCell>
                       </TableRow>
                       {isExpanded && (
                         <TableRow className="bg-muted/30">
