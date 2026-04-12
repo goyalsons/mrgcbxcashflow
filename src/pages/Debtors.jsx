@@ -47,7 +47,8 @@ export default function Debtors() {
   const [viewMode, setViewMode] = useState('table');
   const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [groupBy, setGroupBy] = useState('ageing');
+  const [groupBy, setGroupBy] = useState('company');
+  const [sortBy, setSortBy] = useState('outstanding');
 
   const { data: debtors = [], isLoading } = useQuery({
     queryKey: ['debtors'],
@@ -452,13 +453,36 @@ export default function Debtors() {
              <SelectItem value="60+">60+ days overdue</SelectItem>
            </SelectContent>
           </Select>
-          <Select value={groupBy} onValueChange={setGroupBy}>
+          <div className="flex items-center border rounded-lg p-0.5 bg-muted gap-0.5">
+            <button
+              onClick={() => setGroupBy('company')}
+              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                groupBy === 'company'
+                  ? 'bg-background shadow text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              By Company
+            </button>
+            <button
+              onClick={() => setGroupBy('ageing')}
+              className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
+                groupBy === 'ageing'
+                  ? 'bg-background shadow text-foreground font-medium'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              By Ageing
+            </button>
+          </div>
+          <Select value={sortBy} onValueChange={setSortBy}>
            <SelectTrigger className="w-48">
-             <SelectValue placeholder="Group by" />
+             <SelectValue placeholder="Sort by" />
            </SelectTrigger>
            <SelectContent>
-             <SelectItem value="ageing">Group by Ageing</SelectItem>
-             <SelectItem value="company">Group by Company</SelectItem>
+             <SelectItem value="outstanding">Outstanding (Due)</SelectItem>
+             <SelectItem value="duedate">Due Date</SelectItem>
+             <SelectItem value="start">Start (Latest)</SelectItem>
            </SelectContent>
           </Select>
           </div>

@@ -61,11 +61,29 @@ export default function DebtorTableRow({ debtor, onClick, checked, onCheck, next
           <div className="font-medium text-foreground">{debtor.name}</div>
           {debtor.contact_person && <div className="text-xs text-muted-foreground">{debtor.contact_person}</div>}
         </TableCell>
-        <TableCell>
-          <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
-            {debtor.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{debtor.phone}</span>}
-            {debtor.email && <span className="flex items-center gap-1"><Mail className="w-3 h-3" />{debtor.email}</span>}
-          </div>
+        <TableCell onClick={e => e.stopPropagation()} className="gap-1 flex items-center">
+          {debtor.phone && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-blue-600 hover:bg-blue-50"
+              title={debtor.phone}
+              onClick={() => window.open(`tel:${debtor.phone}`)}
+            >
+              <Phone className="w-3.5 h-3.5" />
+            </Button>
+          )}
+          {debtor.email && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-orange-600 hover:bg-orange-50"
+              title={debtor.email}
+              onClick={() => window.open(`mailto:${debtor.email}`)}
+            >
+              <Mail className="w-3.5 h-3.5" />
+            </Button>
+          )}
         </TableCell>
         <TableCell className="text-right font-medium">{formatINR(invoiced)}</TableCell>
         <TableCell className="text-right text-emerald-600 font-medium">{formatINR(received)}</TableCell>
