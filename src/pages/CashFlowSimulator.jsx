@@ -12,6 +12,8 @@ import SimForecastChart from '@/components/simulator/SimForecastChart';
 import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import CashFlowSimulatorMonthly from '@/pages/CashFlowSimulatorMonthly';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
@@ -351,6 +353,14 @@ export default function CashFlowSimulator() {
   const [secDOpen, setSecDOpen] = useState(false);
 
   return (
+    <Tabs defaultValue="weekly" className="space-y-4">
+      <div className="flex items-center gap-4">
+        <TabsList>
+          <TabsTrigger value="weekly">Weekly (12W)</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly (6M)</TabsTrigger>
+        </TabsList>
+      </div>
+      <TabsContent value="weekly" className="mt-0">
     <div className="space-y-4 overflow-x-hidden">
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
@@ -461,7 +471,11 @@ export default function CashFlowSimulator() {
         </p>
       </div>
 
-
     </div>
+      </TabsContent>
+      <TabsContent value="monthly" className="mt-0">
+        <CashFlowSimulatorMonthly />
+      </TabsContent>
+    </Tabs>
   );
 }
