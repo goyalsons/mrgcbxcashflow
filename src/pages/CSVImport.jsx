@@ -267,7 +267,7 @@ const PAGE_MAP = {
   bank_account: '/bank-accounts',
   customer: '/customers',
   vendor: '/vendors',
-  tally_receivable: '/receivables',
+  tally_receivable: '/receivables2',
   tally_payable: '/payables',
 };
 
