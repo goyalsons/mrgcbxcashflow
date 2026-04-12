@@ -1,0 +1,71 @@
+{
+  "name": "ScheduledReminder",
+  "type": "object",
+  "properties": {
+    "campaign_id": {
+      "type": "string",
+      "description": "Reference to ReminderCampaign"
+    },
+    "debtor_id": {
+      "type": "string",
+      "description": "Reference to Debtor"
+    },
+    "debtor_email": {
+      "type": "string",
+      "description": "Debtor email address"
+    },
+    "debtor_phone": {
+      "type": "string",
+      "description": "Debtor phone number for WhatsApp"
+    },
+    "message_subject": {
+      "type": "string",
+      "description": "Email subject line"
+    },
+    "message_body": {
+      "type": "string",
+      "description": "Message content (populated from template)"
+    },
+    "scheduled_send_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Scheduled send date"
+    },
+    "sent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Actual sent date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "default": "pending",
+      "description": "Status of scheduled message"
+    },
+    "send_type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "whatsapp"
+      ],
+      "description": "Type of message"
+    },
+    "reminder_number": {
+      "type": "number",
+      "description": "Sequence number in campaign (1-10)"
+    }
+  },
+  "required": [
+    "campaign_id",
+    "debtor_id",
+    "message_body",
+    "scheduled_send_date",
+    "send_type",
+    "reminder_number"
+  ]
+}

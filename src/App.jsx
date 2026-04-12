@@ -35,6 +35,7 @@ import RecurringExpenses from '@/pages/RecurringExpenses';
 import CashFlowSimulator from '@/pages/CashFlowSimulator';
 
 import VendorProfile from '@/pages/VendorProfile';
+import PaymentReminders from '@/pages/PaymentReminders';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -66,6 +67,7 @@ const AuthenticatedApp = () => {
         <Route path="/debtors" element={<ProtectedRoute user={user} featureKey="debtors"><Debtors /></ProtectedRoute>} />
         <Route path="/my-collections" element={<ProtectedRoute user={user} featureKey="my_collections"><MyCollections /></ProtectedRoute>} />
         <Route path="/collection-targets" element={<ProtectedRoute user={user} featureKey="collection_targets"><CollectionTargets /></ProtectedRoute>} />
+        <Route path="/payment-reminders" element={<ProtectedRoute user={user} featureKey="payment_reminders"><PaymentReminders /></ProtectedRoute>} />
         <Route path="/aging-analysis" element={<ProtectedRoute user={user} featureKey="aging_analysis"><AgingAnalysis /></ProtectedRoute>} />
 
         <Route path="/ai-insights" element={<ProtectedRoute user={user} featureKey="ai_insights"><AIInsights /></ProtectedRoute>} />

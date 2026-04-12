@@ -1,0 +1,83 @@
+{
+  "name": "ReminderCampaign",
+  "type": "object",
+  "properties": {
+    "debtor_id": {
+      "type": "string",
+      "description": "Reference to Debtor"
+    },
+    "debtor_name": {
+      "type": "string",
+      "description": "Debtor name for display"
+    },
+    "campaign_name": {
+      "type": "string",
+      "description": "User-defined campaign name"
+    },
+    "template_id": {
+      "type": "string",
+      "description": "Reference to MessageTemplate"
+    },
+    "reminder_type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "whatsapp"
+      ],
+      "description": "Type of reminder"
+    },
+    "frequency": {
+      "type": "string",
+      "enum": [
+        "daily",
+        "weekly",
+        "monthly"
+      ],
+      "description": "Frequency of reminders"
+    },
+    "start_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Campaign start date"
+    },
+    "number_of_reminders": {
+      "type": "number",
+      "default": 5,
+      "description": "Total reminders in series (1-10)"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "paused",
+        "completed"
+      ],
+      "default": "active",
+      "description": "Campaign status"
+    },
+    "last_sent_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of last sent reminder"
+    },
+    "next_send_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Date of next scheduled reminder"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "Email of user who created campaign"
+    }
+  },
+  "required": [
+    "debtor_id",
+    "debtor_name",
+    "campaign_name",
+    "template_id",
+    "reminder_type",
+    "frequency",
+    "start_date",
+    "number_of_reminders"
+  ]
+}
