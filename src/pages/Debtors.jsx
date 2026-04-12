@@ -10,6 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronDown, ChevronUp, Search, Users, LayoutGrid, List, X, Trash2 } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import DebtorCard from '@/components/debtors/DebtorCard';
@@ -264,6 +265,13 @@ export default function Debtors() {
   const renderTableView = (list) => {
     const getSortVal = (d) => {
       if (sortConfig.key === 'nextDueDate') return nextDueDateMap[d.id] || 'zzzz';
+      if (sortConfig.key === 'dueWeek' || sortConfig.key === 'dueMonth') {
+        const dueDate = nextDueDateMap[d.id];
+        if (!dueDate) return sortConfig.key === 'dueWeek' ? 'zzzz' : 'zzzz';
+        const date = new Date(dueDate);
+        if (sortConfig.key === 'dueWeek') return Math.ceil((date.getDate() - date.getDay()) / 7);
+        if (sortConfig.key === 'dueMonth') return date.getMonth() * 100 + date.getFullYear();
+      }
       return d[sortConfig.key];
     };
     const sorted = sortConfig.key
@@ -314,8 +322,8 @@ export default function Debtors() {
                 <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Credit</TableHead>
                 <SortHead col="assigned_manager" label="Manager" />
                 <SortHead col="nextDueDate" label="Due Date" />
-                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Due Week</TableHead>
-                <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Due Month</TableHead>
+                <SortHead col="dueWeek" label="Due Week" />
+                <SortHead col="dueMonth" label="Due Month" />
                 <TableHead className="sticky top-0 bg-card z-10 shadow-sm">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -536,15 +544,33 @@ export default function Debtors() {
         />
        ) : groupBy === 'company' ? (
         <>
-          {debtorsByCompany.map(company => (
+          {debtorsByCompany.map(company => {
+            const firstDebtor = company.debtors[0];
+            const hasContact = firstDebtor?.contact_person || firstDebtor?.email || firstDebtor?.phone;
+            return (
             <div key={company.name} className="mt-6 first:mt-0">
               <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide mb-3">
-                {company.name} — {company.debtors.length} debtor{company.debtors.length !== 1 ? 's' : ''}
+                <HoverCard>
+                  <HoverCardTrigger asChild>
+                    <span className="cursor-help border-b border-dashed border-foreground/30 hover:border-foreground/60 transition-colors">
+                      {company.name}
+                    </span>
+                  </HoverCardTrigger>
+                  {hasContact && (
+                    <HoverCardContent className="w-56 text-sm">
+                      {firstDebtor.contact_person && <div className="font-medium mb-2">{firstDebtor.contact_person}</div>}
+                      {firstDebtor.email && <div className="text-muted-foreground break-all">{firstDebtor.email}</div>}
+                      {firstDebtor.phone && <div className="text-muted-foreground">{firstDebtor.phone}</div>}
+                    </HoverCardContent>
+                  )}
+                </HoverCard>
+                — {company.debtors.length} debtor{company.debtors.length !== 1 ? 's' : ''}
                 <Badge variant="outline" className="ml-2">{formatINR(company.total)} outstanding</Badge>
               </h2>
               {viewMode === 'card' ? renderCardView(company.debtors) : renderTableView(company.debtors)}
             </div>
-          ))}
+            );
+          })}
         </>
        ) : (
        <>
