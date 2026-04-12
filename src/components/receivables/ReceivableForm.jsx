@@ -67,16 +67,12 @@ export default function ReceivableForm({ open, onClose, onSave, editData }) {
             </div>
             <div className="space-y-1.5">
               <Label>Customer *</Label>
-              {customers.length > 0 ? (
-                <Select value={form.customer_id} onValueChange={handleCustomerChange}>
-                  <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
-                  <SelectContent>
-                    {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input value={form.customer_name} onChange={e => setForm(f => ({...f, customer_name: e.target.value}))} placeholder="Customer name" required />
-              )}
+              <Select value={form.customer_id} onValueChange={handleCustomerChange} required>
+                <SelectTrigger><SelectValue placeholder="Select customer" /></SelectTrigger>
+                <SelectContent>
+                  {customers.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           {(form.customer_email || form.customer_phone) && (

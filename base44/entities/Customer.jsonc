@@ -34,6 +34,11 @@
       "type": "string",
       "description": "Primary contact person"
     },
+    "credit_limit": {
+      "type": "number",
+      "default": 0,
+      "description": "Credit limit in INR (0 = no limit)"
+    },
     "account_manager": {
       "type": "string",
       "description": "Account manager email"

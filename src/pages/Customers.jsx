@@ -140,6 +140,7 @@ export default function Customers() {
                   <TableHead>State</TableHead>
                   <TableHead>Country</TableHead>
                   <TableHead>GSTIN</TableHead>
+                  <TableHead>Credit Limit</TableHead>
                   <TableHead>Account Manager</TableHead>
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
@@ -158,6 +159,7 @@ export default function Customers() {
                     <TableCell>{c.state || '-'}</TableCell>
                     <TableCell>{c.country || '-'}</TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">{c.gstin || '-'}</TableCell>
+                    <TableCell className="text-sm">{c.credit_limit ? `₹${Number(c.credit_limit).toLocaleString('en-IN')}` : <span className="text-muted-foreground text-xs">No limit</span>}</TableCell>
                     <TableCell>
                       {c.account_manager_name
                         ? <Badge variant="secondary" className="text-xs">{c.account_manager_name}</Badge>
