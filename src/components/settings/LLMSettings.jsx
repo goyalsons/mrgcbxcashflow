@@ -147,7 +147,7 @@ export default function LLMSettings() {
                 </div>
                 <p className="font-semibold">Google Gemini</p>
               </button>
-              <div className="mt-2 space-y-1" onClick={e => e.stopPropagation()}>
+              <div className="mt-2 space-y-2" onClick={e => e.stopPropagation()}>
                 <Select value={settings.gemini_model} onValueChange={v => set('gemini_model', v)}>
                   <SelectTrigger className="h-7 text-xs w-full bg-white">
                     <SelectValue />
@@ -159,6 +159,19 @@ export default function LLMSettings() {
                 {settings.gemini_model === '__custom__' && (
                   <Input className="h-7 text-xs" placeholder="e.g. gemini-2.5-ultra" value={settings.gemini_custom_model} onChange={e => set('gemini_custom_model', e.target.value)} />
                 )}
+                <div className="relative flex items-center">
+                  <Input
+                    type={showGeminiKey ? 'text' : 'password'}
+                    value={settings.gemini_api_key}
+                    onChange={e => set('gemini_api_key', e.target.value)}
+                    placeholder="API Key (AIza...)"
+                    className="h-7 text-xs pr-8 font-mono bg-white"
+                  />
+                  <button type="button" onClick={() => setShowGeminiKey(v => !v)} className="absolute right-2 text-muted-foreground hover:text-foreground">
+                    {showGeminiKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
+                </div>
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">Get API Key →</a>
               </div>
             </div>
 
@@ -175,7 +188,7 @@ export default function LLMSettings() {
                 </div>
                 <p className="font-semibold">Anthropic Claude</p>
               </button>
-              <div className="mt-2 space-y-1" onClick={e => e.stopPropagation()}>
+              <div className="mt-2 space-y-2" onClick={e => e.stopPropagation()}>
                 <Select value={settings.claude_model} onValueChange={v => set('claude_model', v)}>
                   <SelectTrigger className="h-7 text-xs w-full bg-white">
                     <SelectValue />
@@ -187,6 +200,19 @@ export default function LLMSettings() {
                 {settings.claude_model === '__custom__' && (
                   <Input className="h-7 text-xs" placeholder="e.g. claude-opus-5" value={settings.claude_custom_model} onChange={e => set('claude_custom_model', e.target.value)} />
                 )}
+                <div className="relative flex items-center">
+                  <Input
+                    type={showClaudeKey ? 'text' : 'password'}
+                    value={settings.claude_api_key}
+                    onChange={e => set('claude_api_key', e.target.value)}
+                    placeholder="API Key (sk-ant-...)"
+                    className="h-7 text-xs pr-8 font-mono bg-white"
+                  />
+                  <button type="button" onClick={() => setShowClaudeKey(v => !v)} className="absolute right-2 text-muted-foreground hover:text-foreground">
+                    {showClaudeKey ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                  </button>
+                </div>
+                <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="text-[10px] text-primary underline">Get API Key →</a>
               </div>
             </div>
           </div>
@@ -194,100 +220,6 @@ export default function LLMSettings() {
           {!settings.active_provider && (
             <p className="text-sm text-muted-foreground mt-3 text-center">No LLM active — click a provider above to activate it.</p>
           )}
-        </CardContent>
-      </Card>
-
-      {/* Gemini Config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            🌟 Google Gemini Configuration
-            {settings.active_provider === 'gemini' && <Badge className="bg-blue-500 text-white text-xs ml-auto">Active</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Gemini API Key</Label>
-            <div className="relative flex items-center">
-              <Input
-                type={showGeminiKey ? 'text' : 'password'}
-                value={settings.gemini_api_key}
-                onChange={e => set('gemini_api_key', e.target.value)}
-                placeholder="AIza..."
-                className="pr-10 font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowGeminiKey(v => !v)}
-                className="absolute right-2 text-muted-foreground hover:text-foreground"
-              >
-                {showGeminiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">Get your key from <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline text-primary">Google AI Studio</a></p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Model</Label>
-            <Select value={settings.gemini_model} onValueChange={v => set('gemini_model', v)}>
-              <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {GEMINI_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {settings.gemini_model === '__custom__' && (
-              <Input className="w-72" placeholder="Enter custom model name" value={settings.gemini_custom_model} onChange={e => set('gemini_custom_model', e.target.value)} />
-            )}
-            {settings.gemini_model !== '__custom__' && settings.gemini_model && (
-              <p className="text-xs text-muted-foreground font-mono">{settings.gemini_model}</p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Claude Config */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            🤖 Anthropic Claude Configuration
-            {settings.active_provider === 'claude' && <Badge className="bg-orange-500 text-white text-xs ml-auto">Active</Badge>}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-1.5">
-            <Label>Claude API Key</Label>
-            <div className="relative flex items-center">
-              <Input
-                type={showClaudeKey ? 'text' : 'password'}
-                value={settings.claude_api_key}
-                onChange={e => set('claude_api_key', e.target.value)}
-                placeholder="sk-ant-..."
-                className="pr-10 font-mono"
-              />
-              <button
-                type="button"
-                onClick={() => setShowClaudeKey(v => !v)}
-                className="absolute right-2 text-muted-foreground hover:text-foreground"
-              >
-                {showClaudeKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </button>
-            </div>
-            <p className="text-xs text-muted-foreground">Get your key from <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer" className="underline text-primary">Anthropic Console</a></p>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Model</Label>
-            <Select value={settings.claude_model} onValueChange={v => set('claude_model', v)}>
-              <SelectTrigger className="w-72"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {CLAUDE_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-              </SelectContent>
-            </Select>
-            {settings.claude_model === '__custom__' && (
-              <Input className="w-72" placeholder="Enter custom model name" value={settings.claude_custom_model} onChange={e => set('claude_custom_model', e.target.value)} />
-            )}
-            {settings.claude_model !== '__custom__' && settings.claude_model && (
-              <p className="text-xs text-muted-foreground font-mono">{settings.claude_model}</p>
-            )}
-          </div>
         </CardContent>
       </Card>
 
