@@ -2,12 +2,13 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
 import nodemailer from 'npm:nodemailer@6.9.9';
 
 Deno.serve(async (req) => {
+  let smtp, to, subject, body, from_name;
   try {
     const base44 = createClientFromRequest(req);
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { smtp, to, subject, body, from_name } = await req.json();
+    ({ smtp, to, subject, body, from_name } = await req.json());
 
     if (!smtp?.host || !smtp?.port || !smtp?.user || !smtp?.password) {
       return Response.json({

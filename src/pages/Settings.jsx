@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, ShieldCheck, BrainCircuit, Eye, EyeOff } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, BrainCircuit, Eye, EyeOff } from 'lucide-react';
 import LLMSettings from '@/components/settings/LLMSettings';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
@@ -290,7 +290,7 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Configure company profile, integrations, and system settings" />
 
       <Tabs defaultValue="company">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
           <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email</TabsTrigger>
           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
@@ -298,7 +298,6 @@ export default function Settings() {
           <TabsTrigger value="payment"><CreditCard className="w-4 h-4 mr-1.5" />Payments</TabsTrigger>
           <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates</TabsTrigger>
           <TabsTrigger value="reminders"><Clock className="w-4 h-4 mr-1.5" />Reminders</TabsTrigger>
-          <TabsTrigger value="financial"><ShieldCheck className="w-4 h-4 mr-1.5" />Finance</TabsTrigger>
           <TabsTrigger value="llm"><BrainCircuit className="w-4 h-4 mr-1.5" />AI / LLM</TabsTrigger>
         </TabsList>
 
@@ -882,42 +881,6 @@ export default function Settings() {
             )}
           </div>
         </TabsContent>
-        {/* Financial Management */}
-        <TabsContent value="financial" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><ShieldCheck className="w-4 h-4" />Expense Approval Workflow</CardTitle>
-              <p className="text-sm text-muted-foreground">Require admin sign-off for expenses above a threshold before they are recorded.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-1.5 max-w-xs">
-                <Label>Approval Threshold (₹)</Label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="100"
-                  value={approvalThreshold}
-                  onChange={e => setApprovalThreshold(Number(e.target.value))}
-                  placeholder="e.g. 5000"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Expenses above this amount will require admin approval. Set to 0 to disable.
-                </p>
-              </div>
-              {approvalThreshold > 0 && (
-                <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
-                  <strong>Active:</strong> Expenses over <strong>₹{Number(approvalThreshold).toLocaleString('en-IN')}</strong> will be sent for admin approval before being recorded.
-                </div>
-              )}
-              {approvalThreshold === 0 && (
-                <div className="p-3 rounded-lg bg-muted border text-sm text-muted-foreground">
-                  Approval workflow is currently <strong>disabled</strong>. All expenses are recorded immediately.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
         {/* LLM Settings */}
         <TabsContent value="llm" className="mt-4">
           <LLMSettings />
