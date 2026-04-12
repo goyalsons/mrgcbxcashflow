@@ -474,49 +474,80 @@ export default function Settings() {
               Get your API Key and Phone ID from your <a href="https://wa.redlava.in" target="_blank" rel="noreferrer" className="underline font-medium">RedLava dashboard</a> → API Credentials.
             </div>
 
-              <div className="space-y-3">
+              {/* WhatsApp Templates */}
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">WhatsApp Templates</Label>
-                  <Button size="sm" variant="outline" className="gap-1.5 h-7 text-xs" onClick={() => setW('wa_templates', [...(whatsapp.wa_templates || []), { name: '', body: '' }])}>
-                    <Plus className="w-3.5 h-3.5" /> Add Template
+                  <div>
+                    <p className="text-sm font-semibold">WhatsApp Templates</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Add your approved templates from WhatsApp Business Manager. The template name must match exactly.</p>
+                  </div>
+                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setW('wa_templates', [...(whatsapp.wa_templates || []), { name: '', body: '', variables: '' }])}>
+                    <Plus className="w-4 h-4" /> Add Template
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">Enter the exact template name (as approved in WhatsApp Business Manager) and its message text.</p>
-                {(whatsapp.wa_templates || []).length === 0 && (
-                  <div className="text-center py-6 border-2 border-dashed rounded-lg text-muted-foreground text-sm">No templates yet. Click "Add Template" to add one.</div>
-                )}
-                {(whatsapp.wa_templates || []).map((tpl, idx) => (
-                  <div key={idx} className="border rounded-lg p-3 space-y-2 bg-muted/30">
-                    <div className="flex items-center gap-2">
-                      <Input
-                        value={tpl.name}
-                        onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], name: e.target.value }; setW('wa_templates', updated); }}
-                        placeholder="Template name (e.g. payment_reminder)"
-                        className="font-mono text-sm h-8 flex-1"
-                      />
-                      <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setW('wa_templates', whatsapp.wa_templates.filter((_, i) => i !== idx))}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                    <Textarea
-                      value={tpl.body}
-                      onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], body: e.target.value }; setW('wa_templates', updated); }}
-                      placeholder="Template message body..."
-                      rows={3}
-                      className="text-sm resize-none"
-                    />
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Variables (comma-separated)</p>
-                      <Input
-                        value={tpl.variables || ''}
-                        onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], variables: e.target.value }; setW('wa_templates', updated); }}
-                        placeholder="e.g. John Doe, ₹5000, 31 March 2026"
-                        className="text-sm h-8"
-                      />
-                      <p className="text-xs text-muted-foreground">Values for &#123;&#123;1&#125;&#125;, &#123;&#123;2&#125;&#125;, ... in order</p>
-                    </div>
+
+                {(whatsapp.wa_templates || []).length === 0 ? (
+                  <div className="text-center py-8 border-2 border-dashed rounded-xl text-muted-foreground text-sm">
+                    <span className="text-2xl block mb-2">💬</span>
+                    No templates yet. Click <strong>Add Template</strong> to get started.
                   </div>
-                ))}
+                ) : (
+                  <div className="space-y-4">
+                    {(whatsapp.wa_templates || []).map((tpl, idx) => (
+                      <div key={idx} className="border rounded-xl bg-card shadow-sm overflow-hidden">
+                        {/* Template Header */}
+                        <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">💬</span>
+                            <span className="text-sm font-semibold text-foreground">Template #{idx + 1}</span>
+                          </div>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setW('wa_templates', whatsapp.wa_templates.filter((_, i) => i !== idx))}>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+
+                        {/* Template Fields */}
+                        <div className="p-4 space-y-4">
+                          {/* Template Name */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Template Name *</Label>
+                            <Input
+                              value={tpl.name}
+                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], name: e.target.value }; setW('wa_templates', updated); }}
+                              placeholder="e.g. payment_reminder_v1"
+                              className="font-mono"
+                            />
+                            <p className="text-xs text-muted-foreground">Must match the exact name approved in WhatsApp Business Manager (lowercase, underscores).</p>
+                          </div>
+
+                          {/* Template Body */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Message Body</Label>
+                            <Textarea
+                              value={tpl.body}
+                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], body: e.target.value }; setW('wa_templates', updated); }}
+                              placeholder={'Dear {{1}}, your payment of ₹{{2}} is due on {{3}}. Please pay at your earliest convenience.'}
+                              rows={4}
+                              className="resize-none font-mono text-sm"
+                            />
+                            <p className="text-xs text-muted-foreground">Paste the approved template text. Use {'{{1}}'}, {'{{2}}'}, {'{{3}}'} for dynamic values.</p>
+                          </div>
+
+                          {/* Default Variable Values */}
+                          <div className="space-y-1.5">
+                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default Variable Values</Label>
+                            <Input
+                              value={tpl.variables || ''}
+                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], variables: e.target.value }; setW('wa_templates', updated); }}
+                              placeholder="e.g. John Doe, ₹5000, 31 March 2026"
+                            />
+                            <p className="text-xs text-muted-foreground">Comma-separated values for {'{{1}}'}, {'{{2}}'}, {'{{3}}'} in order. Used as defaults when testing.</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="space-y-1.5">
