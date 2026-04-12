@@ -113,6 +113,8 @@ export default function Debtors() {
       setEditingDebtor(null);
       if (viewingDebtor?.id === updated.id) setViewingDebtor(updated);
       toast({ title: 'Debtor updated' });
+      // Force UI refresh by toggling sort config
+      setSortConfig(s => ({ ...s }));
     },
   });
 
@@ -135,7 +137,7 @@ export default function Debtors() {
   const managers = useMemo(() => {
     const set = new Set(mergedDebtors.map(d => d.assigned_manager).filter(Boolean));
     return Array.from(set);
-  }, [debtors]);
+  }, [mergedDebtors]);
 
   const filtered = useMemo(() => {
     return mergedDebtors.filter(d => {
