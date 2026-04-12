@@ -47,9 +47,16 @@ function InsightCard({ insight }) {
   );
 }
 
+const STORAGE_KEY = 'ai_insights_cache';
+
 export default function AIInsights() {
   const { toast } = useToast();
-  const [insights, setInsights] = useState(null);
+  const [insights, setInsights] = useState(() => {
+    try { const c = JSON.parse(localStorage.getItem(STORAGE_KEY)); return c?.insights || null; } catch { return null; }
+  });
+  const [generatedAt, setGeneratedAt] = useState(() => {
+    try { const c = JSON.parse(localStorage.getItem(STORAGE_KEY)); return c?.generatedAt || null; } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
 
   const { data: debtors = [] } = useQuery({ queryKey: ['debtors'], queryFn: () => base44.entities.Debtor.list() });
@@ -133,7 +140,11 @@ Return ONLY valid JSON (no markdown): { "insights": [ { "title": "...", "descrip
       }
       const match = responseText.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(match ? match[0] : responseText);
-      setInsights(parsed.insights || []);
+      const result = parsed.insights || [];
+      const ts = new Date().toISOString();
+      setInsights(result);
+      setGeneratedAt(ts);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ insights: result, generatedAt: ts }));
     } catch (e) {
       toast({ title: 'Failed to generate insights', description: e.message, variant: 'destructive' });
     }
@@ -157,6 +168,11 @@ Return ONLY valid JSON (no markdown): { "insights": [ { "title": "...", "descrip
               <p className="text-sm text-muted-foreground">AI analyzes your debtors, cash flow, and overdue risks to provide tailored recommendations</p>
             </div>
           </div>
+          {generatedAt && (
+            <p className="text-xs text-muted-foreground shrink-0 text-right">
+              Last generated<br />{new Date(generatedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+            </p>
+          )}
           <Button onClick={generateInsights} disabled={loading} className="gap-2 shrink-0">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             {loading ? 'Analyzing...' : insights ? 'Refresh' : 'Generate Insights'}

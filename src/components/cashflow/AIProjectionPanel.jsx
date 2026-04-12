@@ -142,9 +142,13 @@ function RiskPill({ label }) {
   return <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${map[label] || 'bg-muted text-muted-foreground'}`}>{label}</span>;
 }
 
+const PROJ_STORAGE_KEY = 'ai_projection_cache';
+
 // ─── Main Component ─────────────────────────────────────────────────────────
 export default function AIProjectionPanel() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(() => {
+    try { const c = JSON.parse(localStorage.getItem(PROJ_STORAGE_KEY)); return c?.data || null; } catch { return null; }
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [dismissedRecs, setDismissedRecs] = useState(new Set());
@@ -165,8 +169,11 @@ export default function AIProjectionPanel() {
         api_key: llm.provider === 'gemini' ? llm.gemini_api_key : llm.claude_api_key,
         model: llm.provider === 'gemini' ? llm.gemini_model : llm.claude_model,
       });
-      if (res.data?.projection) setData(res.data);
-      else setError(res.data?.error || 'Failed to generate projection.');
+      if (res.data?.projection) {
+        const result = { ...res.data, cachedAt: new Date().toISOString() };
+        setData(result);
+        localStorage.setItem(PROJ_STORAGE_KEY, JSON.stringify({ data: result }));
+      } else setError(res.data?.error || 'Failed to generate projection.');
     } catch (e) {
       setError(e?.response?.data?.error || e.message || 'Failed to generate projection.');
     }
@@ -324,7 +331,7 @@ export default function AIProjectionPanel() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Activity className="w-4 h-4" />
-          <span>Generated {new Date(meta.generated_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+          <span>Generated {new Date(data.cachedAt || meta.generated_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
           <span className="text-xs bg-muted px-2 py-0.5 rounded-full">{meta.data_points.payments} payments analyzed</span>
         </div>
         <Button variant="outline" size="sm" onClick={run} className="gap-1.5 h-8 text-xs">
