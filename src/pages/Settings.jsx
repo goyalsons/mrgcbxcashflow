@@ -89,7 +89,7 @@ export default function Settings() {
   const [gmailConnected, setGmailConnected] = useState(null); // null=loading, false=no, {email}=yes
   const [gmailChecking, setGmailChecking] = useState(false);
   const [gmailConnecting, setGmailConnecting] = useState(false);
-  const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_id: '', phone_number_id: '', from_number: '', language: 'en', template_names: '', template_name: '' });
+  const [whatsapp, setWhatsapp] = useState({ api_url: '', api_key: '', phone_id: '', phone_number_id: '', from_number: '', language: 'en', template_names: '' });
   const [cloudinary, setCloudinary] = useState({ cloud_name: '', api_key: '', api_secret: '' });
   const [paymentGateway, setPaymentGateway] = useState({ provider: 'razorpay', razorpay_key_id: '', razorpay_key_secret: '', razorpay_webhook_secret: '', upi_id: '', upi_name: '' });
   const [reminderSchedule, setReminderSchedule] = useState({
@@ -468,16 +468,6 @@ export default function Settings() {
                   placeholder="Enter your RedLava Phone ID"
                   className="font-mono"
                 />
-              </div>
-              <div className="space-y-1.5">
-                <Label>WhatsApp Template Name *</Label>
-                <Input
-                  value={whatsapp.template_name || ''}
-                  onChange={e => setW('template_name', e.target.value)}
-                  placeholder="e.g. payment_reminder"
-                  className="font-mono"
-                />
-                <p className="text-xs text-muted-foreground">Exact template name as approved in your WhatsApp Business account.</p>
               </div>
             </div>
             <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-700">
