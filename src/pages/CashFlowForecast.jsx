@@ -10,9 +10,9 @@ import {
   ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, Line, ReferenceArea, ReferenceLine, Area
 } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet, Brain, ChevronLeft, ChevronRight, AlertTriangle, Flame } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, ChevronLeft, ChevronRight, AlertTriangle, Flame } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
-import AIProjectionPanel from '@/components/cashflow/AIProjectionPanel';
+
 
 function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 function weekLabel(date) { const d = new Date(date); return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`; }
@@ -312,7 +312,6 @@ export default function CashFlowForecast() {
         <TabsList>
           <TabsTrigger value="weekly">12-Week View</TabsTrigger>
           <TabsTrigger value="monthly">Monthly View</TabsTrigger>
-          <TabsTrigger value="ai" className="gap-1.5"><Brain className="w-3.5 h-3.5" />AI Projection</TabsTrigger>
         </TabsList>
 
         {/* ─── WEEKLY TAB ─── */}
@@ -552,9 +551,7 @@ export default function CashFlowForecast() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="ai" className="mt-4">
-          <AIProjectionPanel />
-        </TabsContent>
+
       </Tabs>
     </div>
   );

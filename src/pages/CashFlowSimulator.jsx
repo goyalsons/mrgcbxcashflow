@@ -13,6 +13,9 @@ import SimTimelineBoard from '@/components/simulator/SimTimelineBoard';
 
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, TrendingDown, Wallet, AlertTriangle, ArrowUpRight, ArrowDownRight, Brain } from 'lucide-react';
+import AIProjectionPanel from '@/components/cashflow/AIProjectionPanel';
 import CashFlowSimulatorMonthly from '@/pages/CashFlowSimulatorMonthly';
 import SimTable from '@/components/simulator/SimTable';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
@@ -352,16 +355,86 @@ export default function CashFlowSimulator() {
   const [secCOpen, setSecCOpen] = useState(false);
   const [secDOpen, setSecDOpen] = useState(false);
 
+  const INR = (v) => { const a = Math.abs(v||0); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
+  const totalInflow12W = weeklyData.reduce((s, w) => s + w.simInflow, 0);
+  const totalOutflow12W = weeklyData.reduce((s, w) => s + w.simOutflow, 0);
+  const negativeWeeks = weeklyData.filter(w => w.simNet < 0).length;
+  const latestClosing = weeklyData[weeklyData.length - 1]?.simClosing || 0;
+
   return (
     <Tabs defaultValue="weekly" className="space-y-4">
       <div className="flex items-center gap-4">
         <TabsList>
           <TabsTrigger value="weekly">Weekly (12W)</TabsTrigger>
           <TabsTrigger value="monthly">Monthly (6M)</TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5"><Brain className="w-3.5 h-3.5" />AI Projection</TabsTrigger>
         </TabsList>
       </div>
       <TabsContent value="weekly" className="mt-0">
     <div className="space-y-4 overflow-x-hidden">
+      {/* Weekly Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-blue-50 border-blue-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1"><Wallet className="w-3 h-3" />Opening Balance</div>
+            <div className="text-lg font-bold text-blue-700 mt-0.5">{INR(weeklyData[0]?.simClosing - weeklyData[0]?.simNet || 0)}</div>
+            <div className="text-[11px] text-blue-400">bank balance</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-emerald-50 border-emerald-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1"><TrendingUp className="w-3 h-3" />12W Sim Inflow</div>
+            <div className="text-lg font-bold text-emerald-700 mt-0.5">{INR(totalInflow12W)}</div>
+            <div className="text-[11px] text-emerald-400">vs base: {INR(weeklyData.reduce((s,w)=>s+w.baseInflow,0))}</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-red-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-red-600 font-medium flex items-center gap-1"><TrendingDown className="w-3 h-3" />12W Sim Outflow</div>
+            <div className="text-lg font-bold text-red-700 mt-0.5">{INR(totalOutflow12W)}</div>
+            <div className="text-[11px] text-red-400">vs base: {INR(weeklyData.reduce((s,w)=>s+w.baseOutflow,0))}</div>
+          </CardContent>
+        </Card>
+        <Card className={simNet12W >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}>
+          <CardContent className="p-3">
+            <div className={`text-[11px] font-medium flex items-center gap-1 ${simNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {simNet12W >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}Net 12W
+            </div>
+            <div className={`text-lg font-bold mt-0.5 ${simNet12W >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{INR(simNet12W)}</div>
+            <div className="text-[11px] text-muted-foreground">{negativeWeeks > 0 ? `${negativeWeeks} weeks negative` : 'All weeks positive'}</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-purple-50 border-purple-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-purple-600 font-medium">Sim Improvement</div>
+            <div className={`text-lg font-bold mt-0.5 ${improvement >= 0 ? 'text-purple-700' : 'text-red-700'}`}>{improvement >= 0 ? '+' : ''}{INR(improvement)}</div>
+            <div className="text-[11px] text-purple-400">vs baseline</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-slate-50 border-slate-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-slate-600 font-medium">Projected Closing</div>
+            <div className={`text-lg font-bold mt-0.5 ${latestClosing >= 0 ? 'text-slate-700' : 'text-red-700'}`}>{INR(latestClosing)}</div>
+            <div className="text-[11px] text-slate-400">end of W12</div>
+          </CardContent>
+        </Card>
+        <Card className={negativeWeeks > 4 ? 'bg-red-50 border-red-200' : negativeWeeks > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}>
+          <CardContent className="p-3">
+            <div className={`text-[11px] font-medium flex items-center gap-1 ${negativeWeeks > 4 ? 'text-red-600' : negativeWeeks > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <AlertTriangle className="w-3 h-3" />Cash Gap Weeks
+            </div>
+            <div className={`text-lg font-bold mt-0.5 ${negativeWeeks > 4 ? 'text-red-700' : negativeWeeks > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{negativeWeeks} / 12</div>
+            <div className="text-[11px] text-muted-foreground">weeks with negative net</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-indigo-50 border-indigo-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-indigo-600 font-medium">Avg Weekly Net</div>
+            <div className={`text-lg font-bold mt-0.5 ${(simNet12W/12) >= 0 ? 'text-indigo-700' : 'text-red-700'}`}>{INR(Math.round(simNet12W/12))}</div>
+            <div className="text-[11px] text-indigo-400">per week (simulated)</div>
+          </CardContent>
+        </Card>
+      </div>
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 mb-4 pb-4 border-b">
         <div>
@@ -475,6 +548,9 @@ export default function CashFlowSimulator() {
       </TabsContent>
       <TabsContent value="monthly" className="mt-0">
         <CashFlowSimulatorMonthly />
+      </TabsContent>
+      <TabsContent value="ai" className="mt-0">
+        <AIProjectionPanel />
       </TabsContent>
     </Tabs>
   );

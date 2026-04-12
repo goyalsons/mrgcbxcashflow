@@ -8,6 +8,8 @@ import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
+import { Card, CardContent } from '@/components/ui/card';
+import { TrendingUp, TrendingDown, Wallet, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import MonthlyTimelineBoard from '@/components/simulator/MonthlyTimelineBoard';
 import FundingSummaryCard from '@/components/simulator/FundingSummaryCard';
 import ScenarioManager from '@/components/simulator/ScenarioManager';
@@ -303,8 +305,78 @@ export default function CashFlowSimulatorMonthly() {
 
   const INR = (v) => { const a = Math.abs(v); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
 
+  const INR_S = (v) => { const a = Math.abs(v||0); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
+  const negativeMonths = monthlyData.filter(m => m.simNet < 0).length;
+  const totalSimInflow = monthlyData.reduce((s, m) => s + m.simInflow, 0);
+  const totalSimOutflow = monthlyData.reduce((s, m) => s + m.simOutflow, 0);
+  const lastClosing = monthlyData[monthlyData.length - 1]?.simClosing || 0;
+
   return (
     <div className="space-y-4 overflow-x-hidden">
+      {/* Monthly Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <Card className="bg-blue-50 border-blue-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1"><Wallet className="w-3 h-3" />Opening Balance</div>
+            <div className="text-lg font-bold text-blue-700 mt-0.5">{INR_S(monthlyData[0]?.simClosing - monthlyData[0]?.simNet || 0)}</div>
+            <div className="text-[11px] text-blue-400">bank balance</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-emerald-50 border-emerald-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1"><TrendingUp className="w-3 h-3" />6M Sim Inflow</div>
+            <div className="text-lg font-bold text-emerald-700 mt-0.5">{INR_S(totalSimInflow)}</div>
+            <div className="text-[11px] text-emerald-400">vs base: {INR_S(monthlyData.reduce((s,m)=>s+m.baseInflow,0))}</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-red-50 border-red-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-red-600 font-medium flex items-center gap-1"><TrendingDown className="w-3 h-3" />6M Sim Outflow</div>
+            <div className="text-lg font-bold text-red-700 mt-0.5">{INR_S(totalSimOutflow)}</div>
+            <div className="text-[11px] text-red-400">vs base: {INR_S(monthlyData.reduce((s,m)=>s+m.baseOutflow,0))}</div>
+          </CardContent>
+        </Card>
+        <Card className={simNet6M >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}>
+          <CardContent className="p-3">
+            <div className={`text-[11px] font-medium flex items-center gap-1 ${simNet6M >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {simNet6M >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}Net 6M
+            </div>
+            <div className={`text-lg font-bold mt-0.5 ${simNet6M >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{INR_S(simNet6M)}</div>
+            <div className="text-[11px] text-muted-foreground">{negativeMonths > 0 ? `${negativeMonths} months negative` : 'All months positive'}</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-purple-50 border-purple-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-purple-600 font-medium">Sim Improvement</div>
+            <div className={`text-lg font-bold mt-0.5 ${improvement >= 0 ? 'text-purple-700' : 'text-red-700'}`}>{improvement >= 0 ? '+' : ''}{INR_S(improvement)}</div>
+            <div className="text-[11px] text-purple-400">vs baseline</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-slate-50 border-slate-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-slate-600 font-medium">Projected Closing</div>
+            <div className={`text-lg font-bold mt-0.5 ${lastClosing >= 0 ? 'text-slate-700' : 'text-red-700'}`}>{INR_S(lastClosing)}</div>
+            <div className="text-[11px] text-slate-400">end of month 6</div>
+          </CardContent>
+        </Card>
+        <Card className={negativeMonths > 3 ? 'bg-red-50 border-red-200' : negativeMonths > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}>
+          <CardContent className="p-3">
+            <div className={`text-[11px] font-medium flex items-center gap-1 ${negativeMonths > 3 ? 'text-red-600' : negativeMonths > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <AlertTriangle className="w-3 h-3" />Cash Gap Months
+            </div>
+            <div className={`text-lg font-bold mt-0.5 ${negativeMonths > 3 ? 'text-red-700' : negativeMonths > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{negativeMonths} / 6</div>
+            <div className="text-[11px] text-muted-foreground">months with negative net</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-indigo-50 border-indigo-100">
+          <CardContent className="p-3">
+            <div className="text-[11px] text-indigo-600 font-medium">Avg Monthly Net</div>
+            <div className={`text-lg font-bold mt-0.5 ${(simNet6M/6) >= 0 ? 'text-indigo-700' : 'text-red-700'}`}>{INR_S(Math.round(simNet6M/6))}</div>
+            <div className="text-[11px] text-indigo-400">per month (simulated)</div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4 pb-4 border-b">
         <div>

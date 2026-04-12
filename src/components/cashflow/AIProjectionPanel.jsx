@@ -15,6 +15,7 @@ import {
   ArrowRight, XCircle, ChevronRight, ChevronDown, Flame, Zap
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { loadActiveLLM } from '@/components/settings/LLMSettings';
 
 // ─── Formatters ────────────────────────────────────────────────────────────
 const INR_CR = (v) => {
@@ -153,7 +154,17 @@ export default function AIProjectionPanel() {
   const run = async () => {
     setLoading(true); setError(null);
     try {
-      const res = await base44.functions.invoke('aiCashFlowProjection', {});
+      const llm = loadActiveLLM();
+      if (!llm.provider) {
+        setError('No LLM configured. Please go to Settings → AI / LLM and set up your API key.');
+        setLoading(false);
+        return;
+      }
+      const res = await base44.functions.invoke('aiCashFlowProjection', {
+        provider: llm.provider,
+        api_key: llm.provider === 'gemini' ? llm.gemini_api_key : llm.claude_api_key,
+        model: llm.provider === 'gemini' ? llm.gemini_model : llm.claude_model,
+      });
       if (res.data?.projection) setData(res.data);
       else setError(res.data?.error || 'Failed to generate projection.');
     } catch (e) {
