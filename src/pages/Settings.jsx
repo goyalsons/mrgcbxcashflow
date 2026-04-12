@@ -194,15 +194,24 @@ export default function Settings() {
   };
 
   const handleTemplateTest = async (template, recipientEmail) => {
+    if (!smtp.host || !smtp.user || !smtp.password) {
+      setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: false, message: '❌ SMTP not configured. Please fill in Email settings first.' } } }));
+      return;
+    }
     setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: true, result: null } }));
     try {
-      await base44.integrations.Core.SendEmail({
+      const res = await base44.functions.invoke('sendSmtpEmail', {
+        smtp,
         to: recipientEmail,
         subject: template.subject || `Test: ${template.name}`,
         body: template.body,
         from_name: smtp.from_name || 'CashFlow Pro',
       });
-      setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: true, message: `✅ Test sent to ${recipientEmail}` } } }));
+      if (res.data.success) {
+        setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: true, message: `✅ Test sent to ${recipientEmail}` } } }));
+      } else {
+        setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: false, message: `❌ ${res.data.error}` } } }));
+      }
     } catch (e) {
       setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: false, message: `❌ ${e.message}` } } }));
     }
@@ -210,16 +219,25 @@ export default function Settings() {
 
   const handleTestEmail = async () => {
     if (!testEmail) return;
+    if (!smtp.host || !smtp.port || !smtp.user || !smtp.password) {
+      setTestEmailResult({ success: false, message: '❌ SMTP configuration is incomplete. Please fill in Host, Port, Username, and Password above before testing.' });
+      return;
+    }
     setTestEmailSending(true);
     setTestEmailResult(null);
     try {
-      await base44.integrations.Core.SendEmail({
+      const res = await base44.functions.invoke('sendSmtpEmail', {
+        smtp,
         to: testEmail,
         subject: 'CashFlow Pro — SMTP Test Email',
         body: `This is a test email from CashFlow Pro sent at ${new Date().toLocaleString('en-IN')}. If you received this, your SMTP settings are working correctly.`,
         from_name: smtp.from_name || 'CashFlow Pro',
       });
-      setTestEmailResult({ success: true, message: `✅ Test email sent to ${testEmail}` });
+      if (res.data.success) {
+        setTestEmailResult({ success: true, message: `✅ Test email sent successfully to ${testEmail}` });
+      } else {
+        setTestEmailResult({ success: false, message: `❌ ${res.data.error}` });
+      }
     } catch (e) {
       setTestEmailResult({ success: false, message: `❌ ${e.message}` });
     }
