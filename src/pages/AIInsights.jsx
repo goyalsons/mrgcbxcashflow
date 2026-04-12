@@ -63,19 +63,18 @@ export default function AIInsights() {
     setLoading(true);
     const activeLLM = loadActiveLLM();
 
-    // Map user-configured model to Base44 InvokeLLM model param
-    const MODEL_MAP = {
-      'gemini-2.0-flash': 'gemini_3_flash',
-      'gemini-2.0-pro': 'gemini_3_1_pro',
-      'gemini-1.5-flash': 'gemini_3_flash',
-      'gemini-1.5-pro': 'gemini_3_1_pro',
-      'claude-opus-4-5': 'claude_opus_4_6',
-      'claude-sonnet-4-5': 'claude_sonnet_4_6',
-      'claude-haiku-3-5': 'claude_sonnet_4_6',
-    };
-    let selectedModel = undefined;
-    if (activeLLM.provider === 'gemini') selectedModel = MODEL_MAP[activeLLM.gemini_model];
-    else if (activeLLM.provider === 'claude') selectedModel = MODEL_MAP[activeLLM.claude_model];
+    if (!activeLLM.provider) {
+      toast({ title: 'No LLM configured', description: 'Please go to Settings → AI/LLM and activate a provider.', variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
+    const apiKey = activeLLM.provider === 'gemini' ? activeLLM.gemini_api_key : activeLLM.claude_api_key;
+    const model = activeLLM.provider === 'gemini' ? activeLLM.gemini_model : activeLLM.claude_model;
+    if (!apiKey) {
+      toast({ title: 'API key missing', description: `Enter your ${activeLLM.provider === 'gemini' ? 'Gemini' : 'Claude'} API key in Settings → AI/LLM.`, variant: 'destructive' });
+      setLoading(false);
+      return;
+    }
 
     const totalBankBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
     const totalOutstanding = debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
@@ -100,31 +99,26 @@ Financial Snapshot:
 - Recent payments count (last 100): ${payments.length}
 - Active debtors: ${debtors.filter(d=>(d.total_outstanding||0)>0).length}
 
-Return JSON: { "insights": [ { "title": "...", "description": "...", "type": "success|warning|info|action", "category": "collections|cash_flow|risk|optimization", "action": "suggested next step (optional)" } ] }`;
+Return ONLY valid JSON (no markdown): { "insights": [ { "title": "...", "description": "...", "type": "success|warning|info|action", "category": "collections|cash_flow|risk|optimization", "action": "suggested next step (optional)" } ] }`;
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt,
-      ...(selectedModel && { model: selectedModel }),
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          insights: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' },
-                description: { type: 'string' },
-                type: { type: 'string' },
-                category: { type: 'string' },
-                action: { type: 'string' },
-              },
-            },
-          },
-        },
-      },
-    });
-    setInsights(result.insights || []);
+    try {
+      const res = await base44.functions.invoke('testLLM', {
+        provider: activeLLM.provider,
+        api_key: apiKey,
+        model,
+        prompt,
+      });
+      if (!res.data.success) {
+        throw new Error(res.data.error || 'LLM call failed');
+      }
+      // Parse JSON from response text
+      let text = res.data.response || '';
+      const match = text.match(/\{[\s\S]*\}/);
+      const parsed = JSON.parse(match ? match[0] : text);
+      setInsights(parsed.insights || []);
+    } catch (e) {
+      toast({ title: 'Failed to generate insights', description: e.message, variant: 'destructive' });
+    }
     setLoading(false);
   };
 
