@@ -112,6 +112,9 @@ export default function Settings() {
   const [testResult, setTestResult] = useState(null);
   const [showCredsInfo, setShowCredsInfo] = useState(false);
   const [showRedlavaKey, setShowRedlavaKey] = useState(false);
+  const [testEmail, setTestEmail] = useState('');
+  const [testEmailSending, setTestEmailSending] = useState(false);
+  const [testEmailResult, setTestEmailResult] = useState(null);
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -162,6 +165,24 @@ export default function Settings() {
   const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
   const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
   const setD = (k, v) => setDigest(f => ({ ...f, [k]: v }));
+
+  const handleTestEmail = async () => {
+    if (!testEmail) return;
+    setTestEmailSending(true);
+    setTestEmailResult(null);
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: testEmail,
+        subject: 'CashFlow Pro — SMTP Test Email',
+        body: `This is a test email from CashFlow Pro sent at ${new Date().toLocaleString('en-IN')}. If you received this, your SMTP settings are working correctly.`,
+        from_name: smtp.from_name || 'CashFlow Pro',
+      });
+      setTestEmailResult({ success: true, message: `✅ Test email sent to ${testEmail}` });
+    } catch (e) {
+      setTestEmailResult({ success: false, message: `❌ ${e.message}` });
+    }
+    setTestEmailSending(false);
+  };
 
   const handleTestWhatsApp = async () => {
     if (!testMsg.phone || !testMsg.templateName) return;
@@ -291,6 +312,32 @@ export default function Settings() {
               </div>
               <div className="p-3 rounded-lg bg-amber-50 border border-amber-200 text-sm text-amber-700">
                 <strong>Note:</strong> For Gmail, use an App Password (not your main password). Enable 2FA and generate at myaccount.google.com/apppasswords.
+              </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-medium">Send Test Email</p>
+                <div className="flex gap-3">
+                  <Input
+                    type="email"
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                    placeholder="recipient@example.com"
+                    className="flex-1"
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={handleTestEmail}
+                    disabled={testEmailSending || !testEmail}
+                    className="gap-2 shrink-0"
+                  >
+                    {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
+                  </Button>
+                </div>
+                {testEmailResult && (
+                  <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    {testEmailResult.message}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
