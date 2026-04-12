@@ -13,6 +13,9 @@ import { format, parseISO } from 'date-fns';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
+import EditInvoiceModal from '@/components/receivables/EditInvoiceModal';
+import QuickReminderModal from '@/components/debtors/QuickReminderModal';
+import SetTargetModal from '@/components/debtors/SetTargetModal';
 
 export default function Receivables2() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -28,6 +31,9 @@ export default function Receivables2() {
   const [bulkAction, setBulkAction] = useState('delete');
   const [assigningManager, setAssigningManager] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [reminderDebtor, setReminderDebtor] = useState(null);
+  const [targetDebtor, setTargetDebtor] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -58,7 +64,8 @@ export default function Receivables2() {
   });
 
   const getDebtorInfo = (debtorId) => {
-    return debtors.find(d => d.id === debtorId);
+    const debtor = debtors.find(d => d.id === debtorId);
+    return debtor || {};
   };
 
   const getWeekNumber = (date) => {
@@ -441,13 +448,31 @@ export default function Receivables2() {
                             >
                               <Mail className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-600" title="Edit">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-slate-600"
+                              title="Edit"
+                              onClick={() => setEditingInvoice(invoice)}
+                            >
                               <Edit className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-purple-600" title="Set Target">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-purple-600"
+                              title="Set Target"
+                              onClick={() => setTargetDebtor(debtor)}
+                            >
                               <Target className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" title="Send Reminder">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-blue-600"
+                              title="Send Reminder"
+                              onClick={() => setReminderDebtor(debtor)}
+                            >
                               <Bell className="w-3.5 h-3.5" />
                             </Button>
                             <Button
@@ -469,6 +494,21 @@ export default function Receivables2() {
             </Card>
           </div>
         ))
+      )}
+
+      {/* Edit Invoice Modal */}
+      {editingInvoice && (
+        <EditInvoiceModal invoice={editingInvoice} onClose={() => setEditingInvoice(null)} />
+      )}
+
+      {/* Reminder Modal */}
+      {reminderDebtor && (
+        <QuickReminderModal debtor={reminderDebtor} onClose={() => setReminderDebtor(null)} />
+      )}
+
+      {/* Set Target Modal */}
+      {targetDebtor && (
+        <SetTargetModal debtor={targetDebtor} onClose={() => setTargetDebtor(null)} />
       )}
 
       {/* Bulk Action Modal */}
