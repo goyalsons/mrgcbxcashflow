@@ -10,16 +10,24 @@ import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 
 const GEMINI_MODELS = [
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash (Fast)' },
-  { value: 'gemini-2.0-pro', label: 'Gemini 2.0 Pro (Powerful)' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite Preview' },
+  { value: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+  { value: 'gemini-3.1-flash-image-preview', label: 'Gemini 3.1 Flash Image Preview' },
+  { value: 'gemini-3-pro-image-preview', label: 'Gemini 3 Pro Image Preview' },
+  { value: 'gemini-2.5-flash-image', label: 'Gemini 2.5 Flash Image' },
+  { value: '__custom__', label: 'Custom model...' },
 ];
 
 const CLAUDE_MODELS = [
-  { value: 'claude-opus-4-5', label: 'Claude Opus 4.5 (Most Capable)' },
-  { value: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5 (Balanced)' },
-  { value: 'claude-haiku-3-5', label: 'Claude Haiku 3.5 (Fast)' },
+  { value: 'claude-opus-4-6', label: 'Claude Opus 4.6' },
+  { value: 'claude-sonnet-4-6', label: 'Claude Sonnet 4.6' },
+  { value: 'claude-haiku-4-5-20251001', label: 'Claude Haiku 4.5 (2025-10-01)' },
+  { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
+  { value: '__custom__', label: 'Custom model...' },
 ];
 
 const LLM_SETTINGS_KEY = 'cashflow_pro_llm_settings';
@@ -48,9 +56,11 @@ export default function LLMSettings() {
   const [settings, setSettings] = useState({
     active_provider: '',
     gemini_api_key: '',
-    gemini_model: 'gemini-2.0-flash',
+    gemini_model: 'gemini-2.5-flash',
+    gemini_custom_model: '',
     claude_api_key: '',
-    claude_model: 'claude-sonnet-4-5',
+    claude_model: 'claude-sonnet-4-6',
+    claude_custom_model: '',
   });
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [showClaudeKey, setShowClaudeKey] = useState(false);
@@ -66,12 +76,20 @@ export default function LLMSettings() {
     }
   }, []);
 
+  // Auto-save whenever settings change (no separate save button needed)
+  useEffect(() => {
+    saveLLMSettings(settings);
+  }, [settings]);
+
   const set = (k, v) => setSettings(f => ({ ...f, [k]: v }));
+
+  const effectiveGeminiModel = settings.gemini_model === '__custom__' ? settings.gemini_custom_model : settings.gemini_model;
+  const effectiveClaudeModel = settings.claude_model === '__custom__' ? settings.claude_custom_model : settings.claude_model;
 
   const handleSave = () => {
     saveLLMSettings(settings);
     setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setTimeout(() => setSaved(false), 2000);
     toast({ title: 'LLM settings saved' });
   };
 
@@ -91,7 +109,7 @@ export default function LLMSettings() {
       const res = await base44.functions.invoke('testLLM', {
         provider: settings.active_provider,
         api_key: apiKey,
-        model: settings.active_provider === 'gemini' ? settings.gemini_model : settings.claude_model,
+        model: settings.active_provider === 'gemini' ? effectiveGeminiModel : effectiveClaudeModel,
         prompt: testPrompt,
       });
       setTestResult({ success: true, message: res.data.response });
@@ -129,7 +147,7 @@ export default function LLMSettings() {
                 </div>
                 <p className="font-semibold">Google Gemini</p>
               </button>
-              <div className="mt-2" onClick={e => e.stopPropagation()}>
+              <div className="mt-2 space-y-1" onClick={e => e.stopPropagation()}>
                 <Select value={settings.gemini_model} onValueChange={v => set('gemini_model', v)}>
                   <SelectTrigger className="h-7 text-xs w-full bg-white">
                     <SelectValue />
@@ -138,6 +156,9 @@ export default function LLMSettings() {
                     {GEMINI_MODELS.map(m => <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {settings.gemini_model === '__custom__' && (
+                  <Input className="h-7 text-xs" placeholder="e.g. gemini-2.5-ultra" value={settings.gemini_custom_model} onChange={e => set('gemini_custom_model', e.target.value)} />
+                )}
               </div>
             </div>
 
@@ -154,7 +175,7 @@ export default function LLMSettings() {
                 </div>
                 <p className="font-semibold">Anthropic Claude</p>
               </button>
-              <div className="mt-2" onClick={e => e.stopPropagation()}>
+              <div className="mt-2 space-y-1" onClick={e => e.stopPropagation()}>
                 <Select value={settings.claude_model} onValueChange={v => set('claude_model', v)}>
                   <SelectTrigger className="h-7 text-xs w-full bg-white">
                     <SelectValue />
@@ -163,6 +184,9 @@ export default function LLMSettings() {
                     {CLAUDE_MODELS.map(m => <SelectItem key={m.value} value={m.value} className="text-xs">{m.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {settings.claude_model === '__custom__' && (
+                  <Input className="h-7 text-xs" placeholder="e.g. claude-opus-5" value={settings.claude_custom_model} onChange={e => set('claude_custom_model', e.target.value)} />
+                )}
               </div>
             </div>
           </div>
@@ -210,6 +234,12 @@ export default function LLMSettings() {
                 {GEMINI_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {settings.gemini_model === '__custom__' && (
+              <Input className="w-72" placeholder="Enter custom model name" value={settings.gemini_custom_model} onChange={e => set('gemini_custom_model', e.target.value)} />
+            )}
+            {settings.gemini_model !== '__custom__' && settings.gemini_model && (
+              <p className="text-xs text-muted-foreground font-mono">{settings.gemini_model}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -251,6 +281,12 @@ export default function LLMSettings() {
                 {CLAUDE_MODELS.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
               </SelectContent>
             </Select>
+            {settings.claude_model === '__custom__' && (
+              <Input className="w-72" placeholder="Enter custom model name" value={settings.claude_custom_model} onChange={e => set('claude_custom_model', e.target.value)} />
+            )}
+            {settings.claude_model !== '__custom__' && settings.claude_model && (
+              <p className="text-xs text-muted-foreground font-mono">{settings.claude_model}</p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -291,12 +327,6 @@ export default function LLMSettings() {
         </CardContent>
       </Card>
 
-      {/* Save */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} className="gap-2">
-          {saved ? <><CheckCircle className="w-4 h-4" /> Saved!</> : 'Save LLM Settings'}
-        </Button>
-      </div>
     </div>
   );
 }
