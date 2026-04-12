@@ -61,7 +61,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
   }));
 
   return (
-    <Card className="overflow-hidden">
+    <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Simulated Cash Flow</CardTitle>
         <div className="flex items-center gap-5 mt-1 flex-wrap">
@@ -95,6 +95,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
               </div>
             </div>
           )}
+          <div className="overflow-x-auto"><div style={{ minWidth: 620 }}>
           <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
               <defs>
@@ -134,6 +135,7 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
               <Line type="monotone" dataKey="simClosing" name="Closing" stroke="#15803d" strokeWidth={2.5} dot={false} isAnimationActive={false} />
             </ComposedChart>
           </ResponsiveContainer>
+          </div></div>
         </div>
 
         {/* Collapsible Weekly Comparison Table */}
