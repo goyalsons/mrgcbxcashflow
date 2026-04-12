@@ -115,6 +115,9 @@ export default function Settings() {
   const [testEmail, setTestEmail] = useState('');
   const [testEmailSending, setTestEmailSending] = useState(false);
   const [testEmailResult, setTestEmailResult] = useState(null);
+  const [cloudinaryTesting, setCloudinaryTesting] = useState(false);
+  const [cloudinaryTestResult, setCloudinaryTestResult] = useState(null);
+  const [templateTestState, setTemplateTestState] = useState({}); // { [id]: { email, sending, result } }
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -165,6 +168,45 @@ export default function Settings() {
   const setPG = (k, v) => setPaymentGateway(f => ({ ...f, [k]: v }));
   const setReminder = (k, v) => setReminderSchedule(f => ({ ...f, [k]: v }));
   const setD = (k, v) => setDigest(f => ({ ...f, [k]: v }));
+
+  const handleCloudinaryTest = async () => {
+    if (!cloudinary.cloud_name || !cloudinary.api_key || !cloudinary.api_secret) {
+      setCloudinaryTestResult({ success: false, message: '❌ Please fill in all Cloudinary credentials first.' });
+      return;
+    }
+    setCloudinaryTesting(true);
+    setCloudinaryTestResult(null);
+    try {
+      // Create a tiny test text file as a Blob
+      const testBlob = new Blob(['cloudinary-test'], { type: 'text/plain' });
+      const file = new File([testBlob], 'connection-test.txt', { type: 'text/plain' });
+      const res = await base44.functions.invoke('uploadToCloudinary', {
+        cloud_name: cloudinary.cloud_name,
+        api_key: cloudinary.api_key,
+        api_secret: cloudinary.api_secret,
+        file_name: 'connection-test.txt',
+      });
+      setCloudinaryTestResult({ success: true, message: `✅ Cloudinary connection successful!` });
+    } catch (e) {
+      setCloudinaryTestResult({ success: false, message: `❌ ${e.message}` });
+    }
+    setCloudinaryTesting(false);
+  };
+
+  const handleTemplateTest = async (template, recipientEmail) => {
+    setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: true, result: null } }));
+    try {
+      await base44.integrations.Core.SendEmail({
+        to: recipientEmail,
+        subject: template.subject || `Test: ${template.name}`,
+        body: template.body,
+        from_name: smtp.from_name || 'CashFlow Pro',
+      });
+      setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: true, message: `✅ Test sent to ${recipientEmail}` } } }));
+    } catch (e) {
+      setTemplateTestState(prev => ({ ...prev, [template.id]: { ...prev[template.id], sending: false, result: { success: false, message: `❌ ${e.message}` } } }));
+    }
+  };
 
   const handleTestEmail = async () => {
     if (!testEmail) return;
@@ -514,6 +556,18 @@ export default function Settings() {
               <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
                 <strong>Setup:</strong> Sign up at <a href="https://cloudinary.com" target="_blank" rel="noreferrer" className="underline">Cloudinary</a>, then go to Settings &gt; API Keys to find your Cloud Name, API Key, and API Secret.
               </div>
+
+              <div className="border-t pt-4 space-y-3">
+                <p className="text-sm font-medium">Test Connection</p>
+                <Button variant="outline" onClick={handleCloudinaryTest} disabled={cloudinaryTesting} className="gap-2">
+                  {cloudinaryTesting ? '⏳ Testing...' : '🔗 Test Cloudinary Connection'}
+                </Button>
+                {cloudinaryTestResult && (
+                  <div className={`p-3 rounded-lg border text-sm ${cloudinaryTestResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                    {cloudinaryTestResult.message}
+                  </div>
+                )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -760,7 +814,9 @@ export default function Settings() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {templates.map(t => (
+                {templates.map(t => {
+                  const ts = templateTestState[t.id] || {};
+                  return (
                   <Card key={t.id}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
@@ -778,12 +834,31 @@ export default function Settings() {
                         </DropdownMenu>
                       </div>
                     </CardHeader>
-                    <CardContent>
-                      {t.subject && <p className="text-xs font-medium text-muted-foreground mb-1">Subject: {t.subject}</p>}
+                    <CardContent className="space-y-3">
+                      {t.subject && <p className="text-xs font-medium text-muted-foreground">Subject: {t.subject}</p>}
                       <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{t.body}</p>
+                      {t.type === 'email' && (
+                        <div className="border-t pt-3 space-y-2">
+                          <p className="text-xs font-medium">Send Test</p>
+                          <div className="flex gap-2">
+                            <Input type="email" placeholder="recipient@example.com" className="h-7 text-xs flex-1"
+                              value={ts.email || ''}
+                              onChange={e => setTemplateTestState(prev => ({ ...prev, [t.id]: { ...prev[t.id], email: e.target.value } }))} />
+                            <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
+                              disabled={ts.sending || !ts.email}
+                              onClick={() => handleTemplateTest(t, ts.email)}>
+                              {ts.sending ? '⏳' : '📤 Send'}
+                            </Button>
+                          </div>
+                          {ts.result && (
+                            <p className={`text-xs ${ts.result.success ? 'text-emerald-600' : 'text-red-600'}`}>{ts.result.message}</p>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
