@@ -43,10 +43,13 @@ Deno.serve(async (req) => {
     return Response.json({ success: true, message: `Email sent successfully to ${to}` });
   } catch (error) {
     let message = error.message || 'Failed to send email';
-    if (message.includes('ECONNREFUSED')) message = `Cannot connect to SMTP server (${message}). Check your Host and Port.`;
-    else if (message.includes('EAUTH') || message.includes('535') || message.includes('534')) message = 'Authentication failed. Check your Username and Password (use App Password for Gmail).';
-    else if (message.includes('ETIMEDOUT') || message.includes('timeout')) message = 'Connection timed out. Check your SMTP Host and Port.';
-    else if (message.includes('certificate')) message = 'SSL certificate error. Try port 587 instead of 465.';
-    return Response.json({ success: false, error: message }, { status: 500 });
+    console.error('[sendSmtpEmail] Error:', message);
+    if (message.includes('ECONNREFUSED')) message = `Cannot connect to SMTP server. Check Host (${smtp?.host}) and Port (${smtp?.port}). Raw: ${message}`;
+    else if (message.includes('EAUTH') || message.includes('535') || message.includes('534')) message = 'Authentication failed — check your Username and Password. For Gmail, use an App Password (not your main password).';
+    else if (message.includes('ETIMEDOUT') || message.includes('timeout')) message = `Connection timed out to ${smtp?.host}:${smtp?.port}. Check SMTP Host and Port settings.`;
+    else if (message.includes('certificate') || message.includes('SSL') || message.includes('TLS')) message = `SSL/TLS error on port ${smtp?.port}. Try port 587 with STARTTLS or 465 for SSL. Raw: ${message}`;
+    else if (message.includes('ENOTFOUND')) message = `SMTP host not found: "${smtp?.host}". Check the hostname spelling.`;
+    // Always return 200 so frontend can read the error detail (non-2xx causes axios to throw before reading body)
+    return Response.json({ success: false, error: message });
   }
 });

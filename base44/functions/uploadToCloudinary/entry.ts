@@ -9,19 +9,32 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const cloudName = (Deno.env.get('CLOUDINARY_CLOUD_NAME') || '').trim();
-    const apiKey    = (Deno.env.get('CLOUDINARY_API_KEY') || '').trim();
-    const apiSecret = (Deno.env.get('CLOUDINARY_API_SECRET') || '').trim();
+    const body = await req.json();
+    // Accept credentials from request body (Settings page test) OR fall back to env secrets
+    const cloudName = (body.cloud_name || Deno.env.get('CLOUDINARY_CLOUD_NAME') || '').trim();
+    const apiKey    = (body.api_key    || Deno.env.get('CLOUDINARY_API_KEY')    || '').trim();
+    const apiSecret = (body.api_secret || Deno.env.get('CLOUDINARY_API_SECRET') || '').trim();
+
+    console.log('[uploadToCloudinary] Using cloud_name:', cloudName || '(empty)');
 
     if (!cloudName || !apiKey || !apiSecret) {
-      return Response.json({ error: 'Cloudinary credentials not configured' }, { status: 500 });
+      // Return 200 so frontend can read the error (non-2xx causes axios to throw before reading body)
+      return Response.json({ error: 'Cloudinary credentials not configured. Provide cloud_name, api_key, and api_secret.' });
     }
 
-    const body = await req.json();
     const { file, folder = 'cashflow-pro' } = body;
 
     if (!file) {
-      return Response.json({ error: 'No file provided' }, { status: 400 });
+      // For connection test, skip actual upload and just verify credentials via a ping
+      const testUrl = `https://api.cloudinary.com/v1_1/${cloudName}/ping`;
+      const authHeader = 'Basic ' + btoa(`${apiKey}:${apiSecret}`);
+      const pingRes = await fetch(testUrl, { headers: { 'Authorization': authHeader } });
+      const pingData = await pingRes.json();
+      console.log('[uploadToCloudinary] Ping response:', pingRes.status, JSON.stringify(pingData));
+      if (!pingRes.ok) {
+        return Response.json({ error: `Cloudinary auth failed (${pingRes.status}): ${pingData.error?.message || JSON.stringify(pingData)}` });
+      }
+      return Response.json({ success: true, message: 'Cloudinary connection verified successfully!' });
     }
 
     // Generate SHA-1 signature
@@ -45,7 +58,9 @@ Deno.serve(async (req) => {
     const data = await response.json();
 
     if (!response.ok) {
-      return Response.json({ error: data.error?.message || 'Upload failed', cloudName, timestamp }, { status: response.status });
+      const errMsg = data.error?.message || JSON.stringify(data);
+      console.error('[uploadToCloudinary] Upload failed:', response.status, errMsg);
+      return Response.json({ error: `Upload failed (${response.status}): ${errMsg}` });
     }
 
     return Response.json({
@@ -55,6 +70,7 @@ Deno.serve(async (req) => {
       format: data.format,
     });
   } catch (error) {
-    return Response.json({ error: error.message }, { status: 500 });
+    console.error('[uploadToCloudinary] Exception:', error.message);
+    return Response.json({ error: error.message });
   }
 });

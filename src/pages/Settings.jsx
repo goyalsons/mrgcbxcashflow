@@ -177,16 +177,17 @@ export default function Settings() {
     setCloudinaryTesting(true);
     setCloudinaryTestResult(null);
     try {
-      // Create a tiny test text file as a Blob
-      const testBlob = new Blob(['cloudinary-test'], { type: 'text/plain' });
-      const file = new File([testBlob], 'connection-test.txt', { type: 'text/plain' });
+      // Pass credentials in body; omit 'file' to trigger ping/connection test only
       const res = await base44.functions.invoke('uploadToCloudinary', {
         cloud_name: cloudinary.cloud_name,
         api_key: cloudinary.api_key,
         api_secret: cloudinary.api_secret,
-        file_name: 'connection-test.txt',
       });
-      setCloudinaryTestResult({ success: true, message: `✅ Cloudinary connection successful!` });
+      if (res.data.success || res.data.url) {
+        setCloudinaryTestResult({ success: true, message: `✅ ${res.data.message || 'Cloudinary connection successful!'}` });
+      } else {
+        setCloudinaryTestResult({ success: false, message: `❌ ${res.data.error || 'Unknown error'}` });
+      }
     } catch (e) {
       setCloudinaryTestResult({ success: false, message: `❌ ${e.message}` });
     }
