@@ -505,6 +505,16 @@ export default function Settings() {
                       rows={3}
                       className="text-sm resize-none"
                     />
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Variables (comma-separated)</p>
+                      <Input
+                        value={tpl.variables || ''}
+                        onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], variables: e.target.value }; setW('wa_templates', updated); }}
+                        placeholder="e.g. John Doe, ₹5000, 31 March 2026"
+                        className="text-sm h-8"
+                      />
+                      <p className="text-xs text-muted-foreground">Values for &#123;&#123;1&#125;&#125;, &#123;&#123;2&#125;&#125;, ... in order</p>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -548,7 +558,10 @@ export default function Settings() {
                 <div className="space-y-1.5">
                   <Label>Template Name *</Label>
                   {(whatsapp.wa_templates || []).length > 0 ? (
-                    <Select value={testMsg.templateName} onValueChange={v => setTestMsg(f => ({ ...f, templateName: v }))}>
+                    <Select value={testMsg.templateName} onValueChange={v => {
+                      const tpl = (whatsapp.wa_templates || []).find(t => t.name === v);
+                      setTestMsg(f => ({ ...f, templateName: v, variables: tpl?.variables || f.variables }));
+                    }}>
                       <SelectTrigger><SelectValue placeholder="Select a template..." /></SelectTrigger>
                       <SelectContent>
                         {(whatsapp.wa_templates || []).filter(t => t.name).map(t => (
