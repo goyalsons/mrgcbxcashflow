@@ -13,6 +13,8 @@ import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import { useNavigate } from 'react-router-dom';
 
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
 function parseIndianDate(str) {
   if (!str) return null;
   // DD/MM/YYYY
@@ -381,6 +383,7 @@ export default function CSVImport() {
             status: row.data.status,
           });
           updated++;
+          await sleep(150);
         } else {
           toCreate.push(row.data);
         }
@@ -389,6 +392,7 @@ export default function CSVImport() {
         const batch = toCreate.slice(i, i + BATCH);
         await base44.entities.Payable.bulkCreate(batch);
         success += batch.length;
+        await sleep(300);
       }
     } else if (entityType === 'tally_receivable') {
       // Upsert logic for Tally Receivables: match on invoice_number
@@ -406,6 +410,7 @@ export default function CSVImport() {
             due_date: row.data.due_date,
           });
           updated++;
+          await sleep(150);
         } else {
           toCreate.push(row.data);
         }
@@ -414,6 +419,7 @@ export default function CSVImport() {
         const batch = toCreate.slice(i, i + BATCH);
         await base44.entities.Receivable.bulkCreate(batch);
         success += batch.length;
+        await sleep(300);
       }
       // Auto-create missing Debtor records
       const allNewRows = [...toCreate];
@@ -427,6 +433,7 @@ export default function CSVImport() {
         if (newDebtors.length > 0) {
           for (let i = 0; i < newDebtors.length; i += BATCH) {
             await base44.entities.Debtor.bulkCreate(newDebtors.slice(i, i + BATCH));
+            await sleep(300);
           }
         }
       }
@@ -444,6 +451,7 @@ export default function CSVImport() {
         const batch = toCreate.slice(i, i + BATCH);
         await base44.entities[config.entity].bulkCreate(batch);
         success += batch.length;
+        await sleep(300);
       }
     }
 
