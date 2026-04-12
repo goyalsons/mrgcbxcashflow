@@ -13,7 +13,7 @@ import Debtors from '@/pages/Debtors';
 import MyCollections from '@/pages/MyCollections';
 import CollectionTargets from '@/pages/CollectionTargets';
 import AgingAnalysis from '@/pages/AgingAnalysis';
-import CashFlowForecast from '@/pages/CashFlowForecast';
+
 import AIInsights from '@/pages/AIInsights';
 import Reports from '@/pages/Reports';
 import CSVImport from '@/pages/CSVImport';
@@ -66,7 +66,7 @@ const AuthenticatedApp = () => {
         <Route path="/my-collections" element={<ProtectedRoute user={user} featureKey="my_collections"><MyCollections /></ProtectedRoute>} />
         <Route path="/collection-targets" element={<ProtectedRoute user={user} featureKey="collection_targets"><CollectionTargets /></ProtectedRoute>} />
         <Route path="/aging-analysis" element={<ProtectedRoute user={user} featureKey="aging_analysis"><AgingAnalysis /></ProtectedRoute>} />
-        <Route path="/cash-flow-forecast" element={<ProtectedRoute user={user} featureKey="cash_flow_forecast"><CashFlowForecast /></ProtectedRoute>} />
+
         <Route path="/ai-insights" element={<ProtectedRoute user={user} featureKey="ai_insights"><AIInsights /></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute user={user} featureKey="reports"><Reports /></ProtectedRoute>} />
         <Route path="/csv-import" element={<ProtectedRoute user={user} featureKey="csv_import"><CSVImport /></ProtectedRoute>} />
