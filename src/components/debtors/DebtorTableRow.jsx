@@ -61,30 +61,6 @@ export default function DebtorTableRow({ debtor, onClick, checked, onCheck, next
           <div className="font-medium text-foreground">{debtor.name}</div>
           {debtor.contact_person && <div className="text-xs text-muted-foreground">{debtor.contact_person}</div>}
         </TableCell>
-        <TableCell onClick={e => e.stopPropagation()} className="gap-1 flex items-center">
-          {debtor.phone && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-blue-600 hover:bg-blue-50"
-              title={debtor.phone}
-              onClick={() => window.open(`tel:${debtor.phone}`)}
-            >
-              <Phone className="w-3.5 h-3.5" />
-            </Button>
-          )}
-          {debtor.email && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 text-orange-600 hover:bg-orange-50"
-              title={debtor.email}
-              onClick={() => window.open(`mailto:${debtor.email}`)}
-            >
-              <Mail className="w-3.5 h-3.5" />
-            </Button>
-          )}
-        </TableCell>
         <TableCell className="text-right font-medium">{formatINR(invoiced)}</TableCell>
         <TableCell className="text-right text-emerald-600 font-medium">{formatINR(received)}</TableCell>
         <TableCell className="text-right font-bold">{formatINR(outstanding)}</TableCell>
@@ -127,6 +103,28 @@ export default function DebtorTableRow({ debtor, onClick, checked, onCheck, next
         </TableCell>
         <TableCell onClick={e => e.stopPropagation()}>
           <div className="flex items-center gap-0.5">
+            {debtor.phone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-blue-600 hover:bg-blue-50"
+                title={debtor.phone}
+                onClick={() => window.open(`tel:${debtor.phone}`)}
+              >
+                <Phone className="w-3.5 h-3.5" />
+              </Button>
+            )}
+            {debtor.email && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-orange-600 hover:bg-orange-50"
+                title={debtor.email}
+                onClick={() => window.open(`mailto:${debtor.email}`)}
+              >
+                <Mail className="w-3.5 h-3.5" />
+              </Button>
+            )}
             <Button
               variant="ghost" size="icon" className="h-7 w-7 text-blue-600 hover:bg-blue-50"
               title="Send Reminder" onClick={() => setShowReminder(true)}
