@@ -557,7 +557,7 @@ export default function Receivables2() {
                               size="icon"
                               className="h-7 w-7 text-blue-600"
                               title="Send Reminder"
-                              onClick={() => setReminderDebtor(debtor)}
+                              onClick={() => setReminderDebtor(debtor?.id ? debtor : { id: invoice.debtor_id, name: invoice.debtor_name })}
                             >
                               <Bell className="w-3.5 h-3.5" />
                             </Button>
