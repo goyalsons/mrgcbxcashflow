@@ -9,8 +9,9 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, BrainCircuit, Eye, EyeOff } from 'lucide-react';
+import { Building2, Mail, MessageSquare, Save, CheckCircle, Cloud, Plus, Pencil, Trash2, MoreHorizontal, Clock, CreditCard, BrainCircuit, Eye, EyeOff, Copy, Check } from 'lucide-react';
 import LLMSettings from '@/components/settings/LLMSettings';
+import TemplatesTab from '@/components/settings/TemplatesTab';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -909,67 +910,15 @@ export default function Settings() {
 
         {/* Templates Tab */}
         <TabsContent value="templates" className="mt-4">
-          <div className="space-y-4">
-            <div className="flex justify-end">
-              <Button onClick={() => { setEditingTemplate(null); setShowTemplateEditor(true); }} className="gap-2">
-                <Plus className="w-4 h-4" />New Template
-              </Button>
-            </div>
-            {templates.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <MessageSquare className="w-10 h-10 mx-auto mb-3" />
-                <p>No templates yet. Create your first message template.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {templates.map(t => {
-                  const ts = templateTestState[t.id] || {};
-                  return (
-                  <Card key={t.id}>
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="text-base">{t.type === 'whatsapp' ? '💬' : t.type === 'email' ? '📧' : '📱'}</span>
-                          <span className="font-semibold text-sm">{t.name}</span>
-                          <Badge variant="outline" className="text-xs capitalize">{t.type}</Badge>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setEditingTemplate(t); setShowTemplateEditor(true); }}><Pencil className="w-4 h-4 mr-2" />Edit</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete template?')) deleteTemplateMut.mutate(t.id); }}><Trash2 className="w-4 h-4 mr-2" />Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      {t.subject && <p className="text-xs font-medium text-muted-foreground">Subject: {t.subject}</p>}
-                      <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">{t.body}</p>
-                      {t.type === 'email' && (
-                        <div className="border-t pt-3 space-y-2">
-                          <p className="text-xs font-medium">Send Test</p>
-                          <div className="flex gap-2">
-                            <Input type="email" placeholder="recipient@example.com" className="h-7 text-xs flex-1"
-                              value={ts.email || ''}
-                              onChange={e => setTemplateTestState(prev => ({ ...prev, [t.id]: { ...prev[t.id], email: e.target.value } }))} />
-                            <Button size="sm" variant="outline" className="h-7 text-xs shrink-0"
-                              disabled={ts.sending || !ts.email}
-                              onClick={() => handleTemplateTest(t, ts.email)}>
-                              {ts.sending ? '⏳' : '📤 Send'}
-                            </Button>
-                          </div>
-                          {ts.result && (
-                            <p className={`text-xs ${ts.result.success ? 'text-emerald-600' : 'text-red-600'}`}>{ts.result.message}</p>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          <TemplatesTab
+            templates={templates}
+            templateTestState={templateTestState}
+            setTemplateTestState={setTemplateTestState}
+            setEditingTemplate={setEditingTemplate}
+            setShowTemplateEditor={setShowTemplateEditor}
+            deleteTemplateMut={deleteTemplateMut}
+            handleTemplateTest={handleTemplateTest}
+          />
         </TabsContent>
         {/* LLM Settings */}
         <TabsContent value="llm" className="mt-4">
