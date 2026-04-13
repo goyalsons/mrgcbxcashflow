@@ -9,7 +9,16 @@ Deno.serve(async (req) => {
     const { to, subject, body } = await req.json();
     if (!to || !subject || !body) return Response.json({ error: 'Missing required fields: to, subject, body' }, { status: 400 });
 
-    const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
+    let accessToken;
+    try {
+      const conn = await base44.asServiceRole.connectors.getConnection('gmail');
+      if (!conn || !conn.accessToken) {
+        return Response.json({ error: 'Gmail not authorized. Please configure Gmail in Settings.' }, { status: 401 });
+      }
+      accessToken = conn.accessToken;
+    } catch (e) {
+      return Response.json({ error: `Gmail connection failed: ${e.message}` }, { status: 401 });
+    }
 
     // Encode subject as RFC 2047 encoded-word to handle non-ASCII chars
     const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;

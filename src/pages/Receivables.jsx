@@ -29,7 +29,7 @@ export default function Receivables() {
     dueMonth: '',
     manager: '',
   });
-  const [groupBy, setGroupBy] = useState('none');
+  const [groupBy, setGroupBy] = useState('company');
   const [selected, setSelected] = useState(new Set());
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkAction, setBulkAction] = useState('delete');
@@ -453,7 +453,9 @@ export default function Receivables() {
                     return (
                       <TableRow key={invoice.id} className={`hover:bg-muted/30 transition-colors ${invoice.status === 'overdue' ? 'bg-red-50/30' : ''}`}>
                         <TableCell className="px-3" onClick={e => e.stopPropagation()}>
-                          <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
+                          {groupBy === 'none' ? (
+                            <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
+                          ) : null}
                         </TableCell>
                         <TableCell className="px-3 font-medium">
                           {(() => {
