@@ -60,11 +60,10 @@ Deno.serve(async (req) => {
 
         if (reminder.send_type === 'email') {
           // Send via Gmail
-          await base44.functions.invoke('sendSmtpEmail', {
-            to: reminder.debtor_email,
+          await base44.functions.invoke('sendGmailReminder', {
+            to: reminder.customer_email,
             subject: reminder.message_subject || 'Payment Reminder',
             body: messageBody,
-            from_name: 'Payment Reminders',
           });
         } else if (reminder.send_type === 'whatsapp') {
           // Send via WhatsApp
