@@ -30,7 +30,7 @@ export default function ScheduledRemindersList() {
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterType, setFilterType] = useState('all');
-  const [searchDebtor, setSearchDebtor] = useState('');
+  const [searchCustomer, setSearchCustomer] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
 
@@ -69,21 +69,21 @@ export default function ScheduledRemindersList() {
   const filtered = reminders.filter(r => {
     if (filterStatus !== 'all' && r.status !== filterStatus) return false;
     if (filterType !== 'all' && r.send_type !== filterType) return false;
-    if (searchDebtor && !r.debtor_email?.toLowerCase().includes(searchDebtor.toLowerCase())) {
-      // also check debtor_id via name — use message_subject as fallback
-      const matchSubject = r.message_subject?.toLowerCase().includes(searchDebtor.toLowerCase());
-      const matchBody = r.message_body?.toLowerCase().includes(searchDebtor.toLowerCase());
+    if (searchCustomer && !r.customer_email?.toLowerCase().includes(searchCustomer.toLowerCase())) {
+      // also check customer_id via name — use message_subject as fallback
+      const matchSubject = r.message_subject?.toLowerCase().includes(searchCustomer.toLowerCase());
+      const matchBody = r.message_body?.toLowerCase().includes(searchCustomer.toLowerCase());
       if (!matchSubject && !matchBody) return false;
     }
     return true;
   });
 
-  // Group by debtor for display
-  const debtorGroups = {};
+  // Group by customer for display
+  const customerGroups = {};
   filtered.forEach(r => {
-    const key = r.debtor_id || r.debtor_email || 'unknown';
-    if (!debtorGroups[key]) debtorGroups[key] = { label: r.debtor_email || r.debtor_id, items: [] };
-    debtorGroups[key].items.push(r);
+    const key = r.customer_id || r.customer_email || 'unknown';
+    if (!customerGroups[key]) customerGroups[key] = { label: r.customer_email || r.customer_id, items: [] };
+    customerGroups[key].items.push(r);
   });
 
   const pendingCount = reminders.filter(r => r.status === 'pending').length;
@@ -110,9 +110,9 @@ export default function ScheduledRemindersList() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <Input
-          placeholder="Search by debtor / subject..."
-          value={searchDebtor}
-          onChange={e => setSearchDebtor(e.target.value)}
+          placeholder="Search by customer / subject..."
+          value={searchCustomer}
+          onChange={e => setSearchCustomer(e.target.value)}
           className="w-56"
         />
         <Select value={filterStatus} onValueChange={setFilterStatus}>
@@ -147,7 +147,7 @@ export default function ScheduledRemindersList() {
             <TableHeader>
               <TableRow>
                 <TableHead>#</TableHead>
-                <TableHead>Debtor</TableHead>
+                <TableHead>Customer</TableHead>
                 <TableHead>Channel</TableHead>
                 <TableHead>Scheduled Date</TableHead>
                 <TableHead>Status</TableHead>
@@ -160,7 +160,7 @@ export default function ScheduledRemindersList() {
                 <TableRow key={reminder.id} className={reminder.status === 'skipped' ? 'opacity-50' : ''}>
                   <TableCell className="text-muted-foreground text-xs">{reminder.reminder_number}</TableCell>
                   <TableCell>
-                    <div className="text-sm font-medium">{reminder.debtor_email || '—'}</div>
+                    <div className="text-sm font-medium">{reminder.customer_email || '—'}</div>
                     {reminder.message_subject && (
                       <div className="text-xs text-muted-foreground truncate max-w-[180px]">{reminder.message_subject}</div>
                     )}

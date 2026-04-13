@@ -45,22 +45,20 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
     },
   });
 
-  // Extract unique debtors from selected invoices
-  // Falls back to invoice data if debtor record not found in debtors list
-  const selectedDebtors = useMemo(() => {
+  // Extract unique customers from selected invoices
+  const selectedCustomers = useMemo(() => {
     if (!invoices || invoices.length === 0) return [];
     
-    const debtorMap = new Map();
+    const customerMap = new Map();
     invoices.forEach(inv => {
       if (!inv) return;
-      const key = inv.debtor_id || inv.debtor_name;
-      if (!key || debtorMap.has(key)) return;
-      const debtor = debtors.find(d => d.id === inv.debtor_id);
-      // Use matched debtor record, or synthesize from invoice data
-      debtorMap.set(key, debtor || { id: inv.debtor_id, name: inv.debtor_name, email: '', phone: '' });
+      const key = inv.customer_id || inv.customer_name;
+      if (!key || customerMap.has(key)) return;
+      // Invoices already store customer_id and customer_name
+      customerMap.set(key, { id: inv.customer_id, name: inv.customer_name, email: inv.customer_email || '', phone: inv.customer_phone || '' });
     });
-    return Array.from(debtorMap.values());
-  }, [invoices, debtors]);
+    return Array.from(customerMap.values());
+  }, [invoices]);
 
   // Handlers
   const toggleDay = (day) => {
@@ -81,8 +79,8 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
 
   const handleSchedule = async () => {
     // Validate
-    if (selectedDebtors.length === 0) {
-      toast({ title: 'No debtors to schedule', variant: 'destructive' });
+    if (selectedCustomers.length === 0) {
+      toast({ title: 'No customers to schedule', variant: 'destructive' });
       return;
     }
 
@@ -109,7 +107,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
     setLoading(true);
     try {
       const response = await base44.functions.invoke('scheduleRemindersForDebtors', {
-        debtorIds: selectedDebtors.map(d => d.id),
+        debtorIds: selectedCustomers.map(c => c.id),
         frequencyType,
         selectedDays: Array.from(selectedDays),
         selectedMonthlyDays: Array.from(selectedMonthlyDays),
@@ -124,7 +122,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
 
       toast({
         title: 'Reminders scheduled!',
-        description: `${response.data.totalCreated} reminder(s) created for ${selectedDebtors.length} debtor(s).`,
+        description: `${response.data.totalCreated} reminder(s) created for ${selectedCustomers.length} customer(s).`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['scheduledReminders'] });
@@ -147,20 +145,20 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
           {/* Selected Debtors */}
           <div>
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              Selected Debtors ({selectedDebtors.length})
+              Selected Customers ({selectedCustomers.length})
             </Label>
-            {selectedDebtors.length > 0 ? (
+            {selectedCustomers.length > 0 ? (
               <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-muted/40 rounded-lg border">
-                {selectedDebtors.map(d => (
-                  <Badge key={d.id} variant="secondary" className="text-xs">
-                    {d.name}
+                {selectedCustomers.map(c => (
+                  <Badge key={c.id} variant="secondary" className="text-xs">
+                    {c.name}
                   </Badge>
                 ))}
               </div>
             ) : (
               <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-sm">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
-                <span className="text-red-700">No debtors found. Please select invoices first.</span>
+                <span className="text-red-700">No customers found. Please select invoices first.</span>
               </div>
             )}
           </div>
@@ -313,7 +311,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
               <strong>Schedule:</strong> {frequencyType === 'daily' ? 'Daily' : frequencyType === 'weekly' ? `Every ${Array.from(selectedDays).join(', ')}` : `Dates: ${Array.from(selectedMonthlyDays).sort((a, b) => a - b).join(', ')}`}
             </p>
             <p><strong>Starting:</strong> {startDate} at {sendTime}</p>
-            <p><strong>Debtors:</strong> {selectedDebtors.length}</p>
+            <p><strong>Customers:</strong> {selectedCustomers.length}</p>
           </div>
         </div>
 
@@ -321,7 +319,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleSchedule}
-            disabled={loading || selectedDebtors.length === 0}
+            disabled={loading || selectedCustomers.length === 0}
           >
             {loading ? 'Scheduling...' : 'Schedule Reminders'}
           </Button>

@@ -29,29 +29,20 @@ Deno.serve(async (req) => {
     const daysArray = Array.from(selectedDays);
     const monthDaysArray = Array.from(selectedMonthlyDays);
 
-    for (const debtorId of debtorIds) {
-      const debtor = await base44.entities.Debtor.get(debtorId);
-      if (!debtor) continue;
-
-      // Try to find customer by debtor name to get correct email/phone
-      let customer = null;
-      try {
-        const customers = await base44.entities.Customer.filter({ name: debtor.name });
-        customer = customers.length > 0 ? customers[0] : null;
-      } catch (e) {
-        // Customer entity may not exist or filter may fail
-      }
+    for (const customerId of debtorIds) {
+      const customer = await base44.entities.Customer.get(customerId);
+      if (!customer) continue;
 
       // Determine channels
       const channels = [];
       if (mode === 'email' || mode === 'both') channels.push('email');
       if (mode === 'whatsapp' || mode === 'both') channels.push('whatsapp');
 
-      // Create one campaign per debtor (not per channel)
+      // Create one campaign per customer (not per channel)
       const campaign = await base44.entities.ReminderCampaign.create({
-        debtor_id: debtorId,
-        debtor_name: debtor.name,
-        campaign_name: `Payment Reminders - ${debtor.name}`,
+        customer_id: customerId,
+        customer_name: customer.name,
+        campaign_name: `Payment Reminders - ${customer.name}`,
         template_id: emailTemplateId || whatsappTemplateId,
         reminder_type: channels.length === 1 ? channels[0] : 'both',
         frequency: frequencyType,
@@ -69,15 +60,14 @@ Deno.serve(async (req) => {
         const template = await base44.entities.MessageTemplate.get(templateId);
         if (!template) continue;
 
-        // Use customer email/phone if available, fallback to debtor
-        const email = customer?.email || debtor.email || '';
-        const phone = customer?.phone || debtor.phone || '';
+        const email = customer.email || '';
+        const phone = customer.phone || '';
 
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,
-          debtor_id: debtorId,
-          debtor_email: email,
-          debtor_phone: phone,
+          customer_id: customerId,
+          customer_email: email,
+          customer_phone: phone,
           message_subject: template.subject || '',
           message_body: template.body || '',
           scheduled_send_date: nextSend.date,

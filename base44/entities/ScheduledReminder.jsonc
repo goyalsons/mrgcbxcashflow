@@ -6,17 +6,17 @@
       "type": "string",
       "description": "Reference to ReminderCampaign"
     },
-    "debtor_id": {
+    "customer_id": {
       "type": "string",
-      "description": "Reference to Debtor"
+      "description": "Reference to Customer"
     },
-    "debtor_email": {
+    "customer_email": {
       "type": "string",
-      "description": "Debtor email address"
+      "description": "Customer email address"
     },
-    "debtor_phone": {
+    "customer_phone": {
       "type": "string",
-      "description": "Debtor phone number for WhatsApp"
+      "description": "Customer phone number for WhatsApp"
     },
     "message_subject": {
       "type": "string",
@@ -70,7 +70,7 @@
   },
   "required": [
     "campaign_id",
-    "debtor_id",
+    "customer_id",
     "message_body",
     "scheduled_send_date",
     "send_type",
