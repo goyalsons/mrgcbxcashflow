@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { Paperclip, Upload, X, ExternalLink, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
@@ -17,14 +17,40 @@ export default function AttachmentCell({ invoice, onUpdate }) {
     } catch { return []; }
   })();
 
+  const getCloudinaryCreds = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+      return s.cloudinary || {};
+    } catch { return {}; }
+  };
+
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
+    const creds = getCloudinaryCreds();
+    if (!creds.cloud_name || !creds.api_key || !creds.api_secret) {
+      toast({ title: 'Cloudinary not configured', description: 'Please set up Cloudinary in Settings → Storage', variant: 'destructive' });
+      return;
+    }
     setUploading(true);
     try {
       const newItems = await Promise.all(files.map(async (file) => {
-        const { file_url } = await base44.integrations.Core.UploadFile({ file });
-        return { name: file.name, url: file_url };
+        // Convert file to base64
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const res = await base44.functions.invoke('uploadToCloudinary', {
+          cloud_name: creds.cloud_name,
+          api_key: creds.api_key,
+          api_secret: creds.api_secret,
+          file: base64,
+          file_name: file.name,
+        });
+        if (!res.data?.url) throw new Error(res.data?.error || 'Upload failed');
+        return { name: file.name, url: res.data.url };
       }));
       const updated = [...attachments, ...newItems];
       await onUpdate(invoice.id, { attachments: JSON.stringify(updated) });
