@@ -17,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import EditInvoiceModal from '@/components/receivables/EditInvoiceModal';
 import ScheduleRemindersModal from '@/components/receivables/ScheduleRemindersModal';
+import QuickReminderModal from '@/components/debtors/QuickReminderModal';
 import QuickBulkReminderModal from '@/components/debtors/QuickBulkReminderModal';
 import SetTargetModal from '@/components/debtors/SetTargetModal';
 
@@ -607,7 +608,10 @@ export default function Receivables() {
         <EditInvoiceModal invoice={editingInvoice} onClose={() => setEditingInvoice(null)} />
       )}
 
-
+      {/* Reminder Modal */}
+      {reminderCustomer && (
+        <QuickReminderModal customer={reminderCustomer} onClose={() => setReminderCustomer(null)} />
+      )}
 
       {/* Set Target Modal */}
       {targetCustomer && (
