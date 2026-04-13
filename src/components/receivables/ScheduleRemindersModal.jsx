@@ -55,7 +55,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
       });
     }
     return result;
-  }, [invoices.length, debtors]);
+  }, [invoices, debtors]);
 
   const toggleDay = (day) => {
     setSelectedDays(prev => {
