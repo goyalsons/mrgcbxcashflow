@@ -205,29 +205,30 @@ const ENTITY_CONFIGS = {
   },
   tally_receivable: {
     label: 'Tally Bills Receivable',
-    entity: 'Receivable',
+    entity: 'Invoice',
     fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
-    required: ['amount'],
+    required: ['debtor_name', 'amount'],
     sampleData: [
       ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
     ],
     transform: (row) => {
-      const customerName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
+      const debtorName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
       const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
       const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
       const invoiceNumber = row['ref_no'] || row['refno'] || row['invoice_number'] || '';
       const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue'] || '';
+      const overdueDaysNum = parseInt(overdueDays) || 0;
       return {
-        customer_name: customerName,
+        debtor_name: debtorName,
         invoice_number: invoiceNumber,
         amount,
-        amount_received: 0,
-        due_date: dueDate || invoiceDate,
+        amount_paid: 0,
         invoice_date: invoiceDate,
-        status: 'pending',
-        notes: overdueDays ? `Overdue by ${overdueDays} days` : '',
+        due_date: dueDate || invoiceDate,
+        status: overdueDaysNum > 0 ? 'overdue' : 'pending',
+        notes: overdueDaysNum > 0 ? `Overdue by ${overdueDaysNum} days` : '',
       };
     },
   },
@@ -395,48 +396,57 @@ export default function CSVImport() {
         await sleep(300);
       }
     } else if (entityType === 'tally_receivable') {
-      // Upsert logic for Tally Receivables: match on invoice_number
-      const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
-      const existingMap = {};
-      existingReceivables.forEach(r => {
-        if (r.invoice_number) existingMap[r.invoice_number.trim().toLowerCase()] = r;
+      // Step 1: Resolve / create Debtor records by company name
+      const allDebtors = await base44.entities.Debtor.list().catch(() => []);
+      const debtorByName = {};
+      allDebtors.forEach(d => { if (d.name) debtorByName[d.name.toLowerCase()] = d; });
+
+      // Find names that need new Debtor records
+      const uniqueNames = [...new Set(validRows.map(r => r.data.debtor_name).filter(Boolean))];
+      for (const name of uniqueNames) {
+        if (!debtorByName[name.toLowerCase()]) {
+          const created = await base44.entities.Debtor.create({ name, status: 'active' });
+          debtorByName[name.toLowerCase()] = created;
+          await sleep(100);
+        }
+      }
+
+      // Step 2: Upsert Invoices — match by invoice_number (Ref. No), fallback match by debtor_name+amount
+      const existingInvoices = await base44.entities.Invoice.list().catch(() => []);
+      const invoiceByRefNo = {};
+      existingInvoices.forEach(inv => {
+        if (inv.invoice_number) invoiceByRefNo[inv.invoice_number.trim().toLowerCase()] = inv;
       });
-      const toCreate = [];
+
       for (const row of validRows) {
-        const invNum = (row.data.invoice_number || '').trim().toLowerCase();
-        if (invNum && existingMap[invNum]) {
-          await base44.entities.Receivable.update(existingMap[invNum].id, {
-            amount: row.data.amount,
-            due_date: row.data.due_date,
+        const debtor = debtorByName[(row.data.debtor_name || '').toLowerCase()];
+        const invData = {
+          ...row.data,
+          debtor_id: debtor?.id || '',
+          debtor_name: row.data.debtor_name,
+        };
+
+        const refKey = (row.data.invoice_number || '').trim().toLowerCase();
+        const existing = refKey ? invoiceByRefNo[refKey] : null;
+
+        if (existing) {
+          await base44.entities.Invoice.update(existing.id, {
+            amount: invData.amount,
+            due_date: invData.due_date,
+            invoice_date: invData.invoice_date,
+            status: invData.status,
+            notes: invData.notes,
+            debtor_id: invData.debtor_id,
+            debtor_name: invData.debtor_name,
           });
           updated++;
-          await sleep(150);
         } else {
-          toCreate.push(row.data);
+          await base44.entities.Invoice.create(invData);
+          success++;
         }
+        await sleep(100);
       }
-      for (let i = 0; i < toCreate.length; i += BATCH) {
-        const batch = toCreate.slice(i, i + BATCH);
-        await base44.entities.Receivable.bulkCreate(batch);
-        success += batch.length;
-        await sleep(300);
-      }
-      // Auto-create missing Debtor records
-      const allNewRows = [...toCreate];
-      if (allNewRows.length > 0) {
-        const uniqueNames = [...new Set(allNewRows.map(r => r.customer_name).filter(Boolean))];
-        const existingDebtors = await base44.entities.Debtor.list().catch(() => []);
-        const existingNames = new Set(existingDebtors.map(d => d.name?.toLowerCase()));
-        const newDebtors = uniqueNames
-          .filter(name => !existingNames.has(name.toLowerCase()))
-          .map(name => ({ name, status: 'active' }));
-        if (newDebtors.length > 0) {
-          for (let i = 0; i < newDebtors.length; i += BATCH) {
-            await base44.entities.Debtor.bulkCreate(newDebtors.slice(i, i + BATCH));
-            await sleep(300);
-          }
-        }
-      }
+
     } else {
       // Standard import with dupCheck
       const toCreate = [];
