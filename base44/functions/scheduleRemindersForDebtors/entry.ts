@@ -40,24 +40,24 @@ Deno.serve(async (req) => {
       const daysArray = Array.from(selectedDays);
       const monthDaysArray = Array.from(selectedMonthlyDays);
 
-      // Create campaign record
-      const campaign = await base44.entities.ReminderCampaign.create({
-        debtor_id: debtorId,
-        debtor_name: debtor.name,
-        campaign_name: `Payment Reminders - ${debtor.name}`,
-        frequency_type: frequencyType,
-        selected_days: frequencyType === 'weekly' ? JSON.stringify(daysArray) : null,
-        selected_monthly_days: frequencyType === 'monthly' ? JSON.stringify(monthDaysArray) : null,
-        start_date: startDate,
-        send_time: sendTime,
-        status: 'active',
-      });
-
-      // Create scheduled reminders for each channel
+      // Create one campaign per channel
       for (const channel of channels) {
         const templateId = channel === 'email' ? emailTemplateId : whatsappTemplateId;
         const template = await base44.entities.MessageTemplate.get(templateId);
         if (!template) continue;
+
+        const campaign = await base44.entities.ReminderCampaign.create({
+          debtor_id: debtorId,
+          debtor_name: debtor.name,
+          campaign_name: `Payment Reminders - ${debtor.name} (${channel})`,
+          template_id: templateId,
+          reminder_type: channel,
+          frequency: frequencyType,
+          start_date: startDate,
+          send_time: sendTime,
+          number_of_reminders: 1,
+          status: 'active',
+        });
 
         const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, daysArray, monthDaysArray);
 
