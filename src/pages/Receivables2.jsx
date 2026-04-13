@@ -7,6 +7,7 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Phone, Mail, Edit, Target, Bell, Trash2, CalendarClock, MessageSquare, User, Building2 } from 'lucide-react';
+import AttachmentCell from '@/components/receivables/AttachmentCell';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
@@ -66,9 +67,12 @@ export default function Receivables2() {
 
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.Invoice.delete(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] });
-    },
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
+  });
+
+  const updateInvoiceMut = useMutation({
+    mutationFn: ({ id, data }) => base44.entities.Invoice.update(id, data),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
   });
 
   const getDebtorInfo = (debtorId) => {
@@ -386,7 +390,7 @@ export default function Receivables2() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
+                    <TableHead className="w-8 px-2">
                       <Checkbox
                         checked={group.items.length > 0 && group.items.every(inv => selected.has(inv.id))}
                         onCheckedChange={() => {
@@ -394,24 +398,23 @@ export default function Receivables2() {
                           const allSelected = group.items.every(inv => selected.has(inv.id));
                           setSelected(prev => {
                             const next = new Set(prev);
-                            if (allSelected) {
-                              groupIds.forEach(id => next.delete(id));
-                            } else {
-                              groupIds.forEach(id => next.add(id));
-                            }
+                            if (allSelected) { groupIds.forEach(id => next.delete(id)); }
+                            else { groupIds.forEach(id => next.add(id)); }
                             return next;
                           });
                         }}
                       />
                     </TableHead>
-                    <TableHead>Co. Name</TableHead>
-                    <TableHead className="text-right">Outstanding</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Credit Balance</TableHead>
-                    <TableHead>Manager</TableHead>
-                    <TableHead>Due Week</TableHead>
-                    <TableHead>Due Month</TableHead>
-                    <TableHead>Actions</TableHead>
+                    <TableHead className="px-2">Co. Name</TableHead>
+                    <TableHead className="px-2">Ref. No.</TableHead>
+                    <TableHead className="px-2 text-right">Outstanding</TableHead>
+                    <TableHead className="px-2">Due Date</TableHead>
+                    <TableHead className="px-2">Attachments</TableHead>
+                    <TableHead className="px-2 text-right">Credit Balance</TableHead>
+                    <TableHead className="px-2">Manager</TableHead>
+                    <TableHead className="px-2">Due Week</TableHead>
+                    <TableHead className="px-2">Due Month</TableHead>
+                    <TableHead className="px-2">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -422,10 +425,10 @@ export default function Receivables2() {
 
                     return (
                       <TableRow key={invoice.id}>
-                        <TableCell onClick={e => e.stopPropagation()}>
+                        <TableCell className="px-2" onClick={e => e.stopPropagation()}>
                           <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
                         </TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="px-2 font-medium">
                           {(() => {
                             const customer = getCustomerInfo(invoice.debtor_name);
                             const phone = customer.phone || debtor?.phone;
@@ -501,25 +504,34 @@ export default function Receivables2() {
                             <div className="text-xs text-muted-foreground mt-0.5">{debtor.contact_person}</div>
                           )}
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="px-2 text-xs text-muted-foreground">
+                          {invoice.invoice_number || '-'}
+                        </TableCell>
+                        <TableCell className="px-2 text-right font-medium">
                           ₹{outstanding.toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           {dueDate ? format(dueDate, 'dd/MM/yyyy') : '-'}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="px-2">
+                          <AttachmentCell
+                            invoice={invoice}
+                            onUpdate={(id, data) => updateInvoiceMut.mutate({ id, data })}
+                          />
+                        </TableCell>
+                        <TableCell className="px-2 text-right">
                           ₹{(debtor?.credit_limit || 0).toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="px-2 text-sm">
                           {(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '-'; })()}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="px-2 text-sm">
                           {dueDate ? `W${getWeekNumber(dueDate)}` : '-'}
                         </TableCell>
-                        <TableCell className="text-sm">
+                        <TableCell className="px-2 text-sm">
                           {dueDate ? format(dueDate, 'MMM yyyy') : '-'}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="px-2">
                           <div className="flex items-center gap-1">
                             <Button
                               variant="ghost"

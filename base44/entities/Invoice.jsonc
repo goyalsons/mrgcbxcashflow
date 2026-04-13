@@ -1,0 +1,75 @@
+{
+  "name": "Invoice",
+  "type": "object",
+  "properties": {
+    "invoice_number": {
+      "type": "string",
+      "description": "Invoice number"
+    },
+    "debtor_id": {
+      "type": "string",
+      "description": "Reference to Debtor"
+    },
+    "debtor_name": {
+      "type": "string",
+      "description": "Debtor name for display"
+    },
+    "amount": {
+      "type": "number",
+      "description": "Total invoice amount in INR"
+    },
+    "amount_paid": {
+      "type": "number",
+      "default": 0,
+      "description": "Total amount paid against this invoice"
+    },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Invoice date"
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Payment due date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "partial",
+        "paid",
+        "overdue",
+        "written_off"
+      ],
+      "default": "pending",
+      "description": "Invoice payment status"
+    },
+    "description": {
+      "type": "string",
+      "description": "Description of goods/services"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes"
+    },
+    "bank_account_id": {
+      "type": "string",
+      "description": "Bank account for receipt"
+    },
+    "document_url": {
+      "type": "string",
+      "description": "URL to invoice document"
+    },
+    "attachments": {
+      "type": "string",
+      "description": "JSON array of attachment URLs"
+    }
+  },
+  "required": [
+    "debtor_id",
+    "debtor_name",
+    "amount",
+    "due_date"
+  ]
+}
