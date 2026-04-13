@@ -30,7 +30,11 @@ export default function QuickReminderModal({ debtor, onClose }) {
   const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
-    base44.entities.Invoice.filter({ debtor_id: debtor.id })
+    const fetchInvoices = debtor.id
+      ? base44.entities.Invoice.filter({ debtor_id: debtor.id })
+      : base44.entities.Invoice.filter({ debtor_name: debtor.name });
+
+    fetchInvoices
       .then(all => {
         const outstanding = all.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
@@ -39,10 +43,10 @@ export default function QuickReminderModal({ debtor, onClose }) {
       })
       .catch(() => {})
       .finally(() => setLoadingInvoices(false));
-  }, [debtor.id]);
+  }, [debtor.id, debtor.name]);
 
-  const [subject, setSubject] = useState(`Payment Reminder — ${debtor.name}`);
-  const [body, setBody] = useState(`Dear ${debtor.name},\n\nLoading invoice details...`);
+  const [subject, setSubject] = useState(`Payment Reminder — ${debtor.name || ''}`);
+  const [body, setBody] = useState(`Dear ${debtor.name || ''},\n\nLoading invoice details...`);
 
   const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
 
