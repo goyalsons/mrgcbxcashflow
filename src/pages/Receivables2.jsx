@@ -81,6 +81,13 @@ export default function Receivables2() {
     return customers.find(c => c.name?.toLowerCase() === debtorName?.toLowerCase()) || {};
   };
 
+  const getResolvedManager = (invoice) => {
+    const customer = getCustomerInfo(invoice.debtor_name);
+    if (customer.account_manager) return customer.account_manager;
+    const debtor = getDebtorInfo(invoice.debtor_id);
+    return debtor?.assigned_manager || '';
+  };
+
   const getWeekNumber = (date) => {
     if (!date) return -1;
     try {
@@ -126,10 +133,7 @@ export default function Receivables2() {
     }
 
     if (filters.manager) {
-      result = result.filter(inv => {
-        const debtor = getDebtorInfo(inv.debtor_id);
-        return debtor?.assigned_manager === filters.manager;
-      });
+      result = result.filter(inv => getResolvedManager(inv) === filters.manager);
     }
 
     return result;
@@ -159,11 +163,12 @@ export default function Receivables2() {
 
   const uniqueManagers = useMemo(() => {
     const managers = new Set();
-    debtors.forEach(d => {
-      if (d.assigned_manager) managers.add(d.assigned_manager);
+    invoices.forEach(inv => {
+      const m = getResolvedManager(inv);
+      if (m) managers.add(m);
     });
     return Array.from(managers).sort();
-  }, [debtors]);
+  }, [invoices, debtors, customers]);
 
   const groupedData = useMemo(() => {
     if (groupBy === 'none') {
@@ -185,9 +190,9 @@ export default function Receivables2() {
         key = getMonthKey(inv.due_date);
         label = key ? format(parseISO(key + '-01'), 'MMMM yyyy') : 'Unknown';
       } else if (groupBy === 'manager') {
-        const debtor = getDebtorInfo(inv.debtor_id);
-        key = debtor?.assigned_manager || 'unassigned';
-        label = debtor?.assigned_manager ? debtor.assigned_manager.split('@')[0] : 'Unassigned';
+        const mgr = getResolvedManager(inv);
+        key = mgr || 'unassigned';
+        label = mgr ? mgr.split('@')[0] : 'Unassigned';
       }
 
       if (!groups[key]) {
@@ -506,7 +511,7 @@ export default function Receivables2() {
                           ₹{(debtor?.credit_limit || 0).toLocaleString('en-IN')}
                         </TableCell>
                         <TableCell className="text-sm">
-                          {debtor?.assigned_manager ? debtor.assigned_manager.split('@')[0] : '-'}
+                          {(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '-'; })()}
                         </TableCell>
                         <TableCell className="text-sm">
                           {dueDate ? `W${getWeekNumber(dueDate)}` : '-'}
