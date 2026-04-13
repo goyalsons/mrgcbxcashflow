@@ -20,7 +20,6 @@ import Settings from '@/pages/Settings';
 import AdminPanel from '@/pages/AdminPanel';
 import AuditLogs from '@/pages/AuditLogs';
 import Receivables from '@/pages/Receivables';
-import Receivables2 from '@/pages/Receivables2';
 import Payables from '@/pages/Payables';
 import Expenses from '@/pages/Expenses';
 import BankAccounts from '@/pages/BankAccounts';
@@ -74,7 +73,6 @@ const AuthenticatedApp = () => {
         <Route path="/admin-panel" element={<ProtectedRoute user={user} featureKey="admin_panel"><AdminPanel /></ProtectedRoute>} />
         <Route path="/audit-logs" element={<ProtectedRoute user={user} featureKey="audit_logs"><AuditLogs /></ProtectedRoute>} />
         <Route path="/receivables" element={<ProtectedRoute user={user} featureKey="receivables"><Receivables /></ProtectedRoute>} />
-        <Route path="/receivables2" element={<ProtectedRoute user={user} featureKey="receivables"><Receivables2 /></ProtectedRoute>} />
         <Route path="/payables" element={<ProtectedRoute user={user} featureKey="payables"><Payables /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute user={user} featureKey="expenses"><Expenses /></ProtectedRoute>} />
         <Route path="/recurring-expenses" element={<ProtectedRoute user={user} featureKey="recurring_expenses"><RecurringExpenses /></ProtectedRoute>} />
