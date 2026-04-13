@@ -22,12 +22,12 @@ function DebtorRow({ debtor, onRecordPayment, onLogFollowUp, onAddInvoice }) {
   const [expanded, setExpanded] = useState(false);
   const { data: invoices = [] } = useQuery({
     queryKey: ['invoices', debtor.id],
-    queryFn: () => base44.entities.Invoice.filter({ customer_id: debtor.id }, '-invoice_date'),
+    queryFn: () => base44.entities.Invoice.filter({ debtor_id: debtor.id }, '-invoice_date'),
     enabled: expanded,
   });
   const { data: followUps = [] } = useQuery({
     queryKey: ['followUps', debtor.id],
-    queryFn: () => base44.entities.FollowUp.filter({ customer_id: debtor.id }, '-follow_up_date'),
+    queryFn: () => base44.entities.FollowUp.filter({ debtor_id: debtor.id }, '-follow_up_date'),
     enabled: expanded,
   });
 
@@ -167,8 +167,8 @@ export default function MyCollections() {
   });
 
   const { data: debtors = [], isLoading } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => base44.entities.Customer.list('-created_date'),
+    queryKey: ['debtors'],
+    queryFn: () => base44.entities.Debtor.list('-created_date'),
   });
 
   const { data: myTarget } = useQuery({
@@ -183,7 +183,7 @@ export default function MyCollections() {
 
   const myDebtors = useMemo(() => {
     if (!currentUser?.email) return [];
-    return debtors.filter(d => d.account_manager === currentUser.email);
+    return debtors.filter(d => d.assigned_manager === currentUser.email);
   }, [debtors, currentUser]);
 
   const filtered = useMemo(() => {
@@ -202,7 +202,7 @@ export default function MyCollections() {
 
   const { data: paymentTargetInvoices = [] } = useQuery({
     queryKey: ['invoices', paymentTarget?.id],
-    queryFn: () => base44.entities.Invoice.filter({ customer_id: paymentTarget.id }, '-invoice_date'),
+    queryFn: () => base44.entities.Invoice.filter({ debtor_id: paymentTarget.id }, '-invoice_date'),
     enabled: !!paymentTarget?.id,
   });
 
@@ -217,15 +217,17 @@ export default function MyCollections() {
           await base44.entities.Invoice.update(data.invoice_id, { amount_paid: newPaid, status });
         }
       }
-      const allPayments = await base44.entities.Payment.filter({ customer_id: data.customer_id });
-      const allInvoices = await base44.entities.Invoice.filter({ customer_id: data.customer_id });
+      const allPayments = await base44.entities.Payment.filter({ debtor_id: data.debtor_id });
+      const allInvoices = await base44.entities.Invoice.filter({ debtor_id: data.debtor_id });
       const totalInvoiced = allInvoices.reduce((s, i) => s + (i.amount || 0), 0);
       const totalReceived = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
       const totalOutstanding = Math.max(0, totalInvoiced - totalReceived);
+      const newStatus = totalOutstanding <= 0 && totalInvoiced > 0 ? 'paid' : 'active';
+      await base44.entities.Debtor.update(data.debtor_id, { total_invoiced: totalInvoiced, total_received: totalReceived, total_outstanding: totalOutstanding, status: newStatus });
       return payment;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['debtors'] });
       queryClient.invalidateQueries({ queryKey: ['invoices', paymentTarget?.id] });
       queryClient.invalidateQueries({ queryKey: ['payments', paymentTarget?.id] });
       setPaymentTarget(null);
@@ -245,10 +247,15 @@ export default function MyCollections() {
   const createInvoiceMut = useMutation({
     mutationFn: async (data) => {
       const inv = await base44.entities.Invoice.create(data);
+      const allInvoices = await base44.entities.Invoice.filter({ debtor_id: data.debtor_id });
+      const allPayments = await base44.entities.Payment.filter({ debtor_id: data.debtor_id });
+      const totalInvoiced = allInvoices.reduce((s, i) => s + (i.amount || 0), 0);
+      const totalReceived = allPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      await base44.entities.Debtor.update(data.debtor_id, { total_invoiced: totalInvoiced, total_received: totalReceived, total_outstanding: Math.max(0, totalInvoiced - totalReceived) });
       return inv;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['debtors'] });
       queryClient.invalidateQueries({ queryKey: ['invoices', invoiceTarget?.id] });
       setInvoiceTarget(null);
       toast({ title: 'Invoice added' });
