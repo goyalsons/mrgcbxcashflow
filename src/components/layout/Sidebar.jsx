@@ -39,7 +39,6 @@ const NAV_GROUPS = [
   {
     label: 'Finance',
     items: [
-      { key: 'debtors', label: 'Receivables (Debtors)', path: '/debtors', icon: 'ArrowDownLeft' },
       { key: 'receivables', label: 'Receivables 2', path: '/receivables2', icon: 'Receipt' },
       { key: 'payables', label: 'Payables (Suppliers)', path: '/payables', icon: 'ArrowUpRight' },
       { key: 'expenses', label: 'Expenses', path: '/expenses', icon: 'Receipt' },

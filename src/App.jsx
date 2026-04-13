@@ -9,7 +9,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import AppLayout from '@/components/layout/AppLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import Dashboard from '@/pages/Dashboard';
-import Debtors from '@/pages/Debtors';
+
 import MyCollections from '@/pages/MyCollections';
 import CollectionTargets from '@/pages/CollectionTargets';
 import AgingAnalysis from '@/pages/AgingAnalysis';
@@ -62,7 +62,7 @@ const AuthenticatedApp = () => {
     <Routes>
       <Route element={<AppLayout user={user} />}>
         <Route path="/" element={<Dashboard />} />
-        <Route path="/debtors" element={<ProtectedRoute user={user} featureKey="debtors"><Debtors /></ProtectedRoute>} />
+
         <Route path="/my-collections" element={<ProtectedRoute user={user} featureKey="my_collections"><MyCollections /></ProtectedRoute>} />
         <Route path="/collection-targets" element={<ProtectedRoute user={user} featureKey="collection_targets"><CollectionTargets /></ProtectedRoute>} />
         <Route path="/payment-reminders" element={<ProtectedRoute user={user} featureKey="payment_reminders"><PaymentReminders /></ProtectedRoute>} />
