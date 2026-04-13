@@ -42,7 +42,21 @@ export default function QuickReminderModal({ debtor, onClose }) {
     select: (data) => data.filter(t => t.type === 'email'),
   });
 
-  // Load default template ID from settings
+  // Load default template ID and build signature from settings
+  const getSignature = () => {
+    try {
+      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+      const c = s.company || {};
+      const lines = [];
+      if (c.contact_person) lines.push(c.contact_person);
+      if (c.name) lines.push(c.name);
+      if (c.phone) lines.push(`Phone: ${c.phone}`);
+      if (c.email) lines.push(`Email: ${c.email}`);
+      if (c.website) lines.push(c.website);
+      return lines.length > 0 ? `\n\n--\n${lines.join('\n')}` : '';
+    } catch { return ''; }
+  };
+
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
@@ -67,7 +81,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
       .replace(/\{\{outstanding_amount\}\}/g, `₹${totalAmt.toLocaleString('en-IN')}`)
       .replace(/\{\{invoice_table\}\}/g, table);
     setSubject(newSubject);
-    setBody(newBody);
+    setBody(newBody + getSignature());
   };
 
   const handleTemplateChange = (templateId) => {
@@ -111,7 +125,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
         if (selectedTemplateId) {
           applyTemplate(selectedTemplateId, outstanding, total, resolvedContactPerson);
         } else {
-          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.`);
+          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.${getSignature()}`);
         }
       })
       .catch(() => {})

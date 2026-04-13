@@ -85,7 +85,7 @@ export default function Settings() {
   const [showTemplateEditor, setShowTemplateEditor] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState(null);
 
-  const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '' });
+  const [company, setCompany] = useState({ name: '', address: '', gstin: '', pan: '', email: '', phone: '', website: '', contact_person: '' });
   const [gmailFromName, setGmailFromName] = useState('');
   const [gmailConnected, setGmailConnected] = useState(null); // null=loading, false=no, {email}=yes
   const [gmailChecking, setGmailChecking] = useState(false);
@@ -335,6 +335,10 @@ export default function Settings() {
                 <div className="space-y-1.5">
                   <Label>Website</Label>
                   <Input value={company.website} onChange={e => setC('website', e.target.value)} placeholder="https://www.company.com" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Contact Person</Label>
+                  <Input value={company.contact_person} onChange={e => setC('contact_person', e.target.value)} placeholder="e.g. Ramesh Shah" />
                 </div>
                 <div className="space-y-1.5">
                   <Label>GSTIN</Label>
