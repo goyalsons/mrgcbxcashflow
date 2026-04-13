@@ -6,9 +6,24 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { debtorIds, frequencyType, selectedDays, startDate, sendTime, emailTemplateId, whatsappTemplateId, mode } = await req.json();
+    const payload = await req.json();
+    const { debtorIds, frequencyType, selectedDays, selectedMonthlyDays, startDate, sendTime, emailTemplateId, whatsappTemplateId, mode } = payload;
 
-    if (!debtorIds?.length) return Response.json({ error: 'No debtors provided' }, { status: 400 });
+    if (!debtorIds || debtorIds.length === 0) {
+      return Response.json({ error: 'No debtors provided' }, { status: 400 });
+    }
+
+    if (!startDate || !sendTime) {
+      return Response.json({ error: 'Start date and send time are required' }, { status: 400 });
+    }
+
+    if ((mode === 'email' || mode === 'both') && !emailTemplateId) {
+      return Response.json({ error: 'Email template required' }, { status: 400 });
+    }
+
+    if ((mode === 'whatsapp' || mode === 'both') && !whatsappTemplateId) {
+      return Response.json({ error: 'WhatsApp template required' }, { status: 400 });
+    }
 
     let totalCreated = 0;
 
@@ -17,43 +32,40 @@ Deno.serve(async (req) => {
       if (!debtor) continue;
 
       // Determine channels
-      const channels = mode === 'both' ? ['email', 'whatsapp'] : [mode];
+      const channels = [];
+      if (mode === 'email' || mode === 'both') channels.push('email');
+      if (mode === 'whatsapp' || mode === 'both') channels.push('whatsapp');
 
-      // Create campaign
+      // Create campaign record
       const campaign = await base44.entities.ReminderCampaign.create({
         debtor_id: debtorId,
         debtor_name: debtor.name,
-        campaign_name: `Reminders - ${debtor.name} - ${startDate}`,
-        template_id: mode === 'email' ? emailTemplateId : whatsappTemplateId,
-        reminder_type: mode === 'both' ? 'email' : mode,
-        frequency: frequencyType,
+        campaign_name: `Payment Reminders - ${debtor.name}`,
+        frequency_type: frequencyType,
+        selected_days: frequencyType === 'weekly' ? JSON.stringify(selectedDays) : null,
+        selected_months_days: frequencyType === 'monthly' ? JSON.stringify(selectedMonthlyDays) : null,
         start_date: startDate,
-        number_of_reminders: 1,
+        send_time: sendTime,
         status: 'active',
-        created_by: user.email,
       });
 
+      // Create scheduled reminders for each channel
       for (const channel of channels) {
         const templateId = channel === 'email' ? emailTemplateId : whatsappTemplateId;
         const template = await base44.entities.MessageTemplate.get(templateId);
-
         if (!template) continue;
 
-        const messageBody = template.body || 'Please settle your outstanding payment.';
-        const messageSubject = template.subject || `Payment Reminder - ${debtor.name}`;
-
-        // Create initial scheduled reminder with next send date/time
-        const nextSendDateTime = calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays);
+        const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays, selectedMonthlyDays);
 
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,
           debtor_id: debtorId,
           debtor_email: debtor.email || '',
           debtor_phone: debtor.phone || '',
-          message_subject: messageSubject,
-          message_body: messageBody,
-          scheduled_send_date: nextSendDateTime.date,
-          scheduled_send_time: nextSendDateTime.time,
+          message_subject: template.subject || '',
+          message_body: template.body || '',
+          scheduled_send_date: nextSend.date,
+          scheduled_send_time: nextSend.time,
           status: 'pending',
           send_type: channel,
           reminder_number: 1,
@@ -61,13 +73,6 @@ Deno.serve(async (req) => {
 
         totalCreated++;
       }
-
-      // Update campaign next send date
-      const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays);
-      await base44.entities.ReminderCampaign.update(campaign.id, {
-        next_send_date: nextSend.date,
-        last_sent_date: null,
-      });
     }
 
     return Response.json({ success: true, totalCreated });
@@ -76,40 +81,52 @@ Deno.serve(async (req) => {
   }
 });
 
-function calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays) {
+function calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays, selectedMonthlyDays) {
   const [hours, minutes] = sendTime.split(':').map(Number);
-  let sendDateTime = new Date(startDate);
-  sendDateTime.setHours(hours, minutes, 0, 0);
-
+  const start = new Date(startDate);
+  start.setHours(hours, minutes, 0, 0);
   const now = new Date();
 
-  if (frequencyType === 'weekly') {
-    // Find next occurrence in selectedDays
-    const dayMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 0 };
-    const targetDays = [...selectedDays].map(d => dayMap[d]).sort((a, b) => a - b);
-
-    while (sendDateTime <= now) {
-      const dayOfWeek = sendDateTime.getDay();
-      const nextDay = targetDays.find(d => d > dayOfWeek) || targetDays[0];
-
-      if (nextDay > dayOfWeek) {
-        sendDateTime.setDate(sendDateTime.getDate() + (nextDay - dayOfWeek));
-      } else {
-        sendDateTime.setDate(sendDateTime.getDate() + (7 - dayOfWeek + nextDay));
-      }
-    }
-  } else if (frequencyType === 'daily') {
-    while (sendDateTime <= now) {
-      sendDateTime.setDate(sendDateTime.getDate() + 1);
-    }
-  } else if (frequencyType === 'monthly') {
-    while (sendDateTime <= now) {
-      sendDateTime.setMonth(sendDateTime.getMonth() + 1);
-    }
+  if (start > now) {
+    return formatDateTime(start, hours, minutes);
   }
 
-  const dateStr = sendDateTime.toISOString().split('T')[0];
-  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  let next = new Date(start);
 
+  if (frequencyType === 'daily') {
+    next.setDate(next.getDate() + 1);
+  } else if (frequencyType === 'weekly') {
+    const dayMap = { 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3, 'Thursday': 4, 'Friday': 5, 'Saturday': 6, 'Sunday': 0 };
+    const targetDays = selectedDays.map(d => dayMap[d]).sort((a, b) => a - b);
+
+    do {
+      next.setDate(next.getDate() + 1);
+      const dayOfWeek = next.getDay();
+      if (!targetDays.includes(dayOfWeek)) continue;
+      if (next > now) break;
+    } while (true);
+  } else if (frequencyType === 'monthly') {
+    const targetDays = Array.from(selectedMonthlyDays).sort((a, b) => a - b);
+    do {
+      const currentDay = next.getDate();
+      const nextTargetDay = targetDays.find(d => d > currentDay);
+
+      if (nextTargetDay) {
+        next.setDate(nextTargetDay);
+      } else {
+        next.setMonth(next.getMonth() + 1);
+        next.setDate(targetDays[0]);
+      }
+
+      if (next > now) break;
+    } while (true);
+  }
+
+  return formatDateTime(next, hours, minutes);
+}
+
+function formatDateTime(date, hours, minutes) {
+  const dateStr = date.toISOString().split('T')[0];
+  const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
   return { date: dateStr, time: timeStr };
 }

@@ -4,59 +4,64 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
+import { Calendar, Clock, AlertCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, Mail } from 'lucide-react';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
 
 export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Form state
   const [loading, setLoading] = useState(false);
   const [frequencyType, setFrequencyType] = useState('weekly');
   const [selectedDays, setSelectedDays] = useState(new Set(['Monday', 'Wednesday', 'Friday']));
   const [selectedMonthlyDays, setSelectedMonthlyDays] = useState(new Set([1]));
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [sendTime, setSendTime] = useState('09:00');
+  const [mode, setMode] = useState('email');
   const [emailTemplateId, setEmailTemplateId] = useState('');
   const [whatsappTemplateId, setWhatsappTemplateId] = useState('');
-  const [mode, setMode] = useState('email');
 
   // Fetch templates
   const { data: emailTemplates = [] } = useQuery({
-    queryKey: ['messageTemplates'],
-    queryFn: () => base44.entities.MessageTemplate.list(),
-    select: (data) => data.filter(t => t.type === 'email' && t.is_active !== false),
+    queryKey: ['messageTemplates', 'email'],
+    queryFn: async () => {
+      const all = await base44.entities.MessageTemplate.list();
+      return all.filter(t => t.type === 'email' && t.is_active !== false);
+    },
   });
 
   const { data: whatsappTemplates = [] } = useQuery({
-    queryKey: ['messageTemplates'],
-    queryFn: () => base44.entities.MessageTemplate.list(),
-    select: (data) => data.filter(t => t.type === 'whatsapp' && t.is_active !== false),
+    queryKey: ['messageTemplates', 'whatsapp'],
+    queryFn: async () => {
+      const all = await base44.entities.MessageTemplate.list();
+      return all.filter(t => t.type === 'whatsapp' && t.is_active !== false);
+    },
   });
 
-  // Deduplicate debtors from invoices
+  // Extract unique debtors from selected invoices
   const selectedDebtors = useMemo(() => {
-    const seen = new Set();
-    const result = [];
-    if (invoices && invoices.length > 0) {
-      invoices.forEach(inv => {
-        if (!inv) return;
-        const debtor = debtors.find(d => d.id === inv.debtor_id || d.name === inv.debtor_name);
-        if (debtor && !seen.has(debtor.id)) {
-          seen.add(debtor.id);
-          result.push(debtor);
+    if (!invoices || invoices.length === 0) return [];
+    
+    const debtorMap = new Map();
+    invoices.forEach(inv => {
+      if (inv) {
+        const debtor = debtors.find(d => d.id === inv.debtor_id);
+        if (debtor && !debtorMap.has(debtor.id)) {
+          debtorMap.set(debtor.id, debtor);
         }
-      });
-    }
-    return result;
+      }
+    });
+    return Array.from(debtorMap.values());
   }, [invoices, debtors]);
 
+  // Handlers
   const toggleDay = (day) => {
     setSelectedDays(prev => {
       const next = new Set(prev);
@@ -74,46 +79,57 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
   };
 
   const handleSchedule = async () => {
+    // Validate
     if (selectedDebtors.length === 0) {
-      toast({ title: 'No debtors selected', variant: 'destructive' });
+      toast({ title: 'No debtors to schedule', variant: 'destructive' });
       return;
     }
 
     if ((mode === 'email' || mode === 'both') && !emailTemplateId) {
-      toast({ title: 'Please select an email template', variant: 'destructive' });
+      toast({ title: 'Please select email template', variant: 'destructive' });
       return;
     }
 
     if ((mode === 'whatsapp' || mode === 'both') && !whatsappTemplateId) {
-      toast({ title: 'Please select a WhatsApp template', variant: 'destructive' });
+      toast({ title: 'Please select WhatsApp template', variant: 'destructive' });
+      return;
+    }
+
+    if (frequencyType === 'weekly' && selectedDays.size === 0) {
+      toast({ title: 'Select at least one day for weekly reminders', variant: 'destructive' });
+      return;
+    }
+
+    if (frequencyType === 'monthly' && selectedMonthlyDays.size === 0) {
+      toast({ title: 'Select at least one date for monthly reminders', variant: 'destructive' });
       return;
     }
 
     setLoading(true);
     try {
-      const res = await base44.functions.invoke('scheduleRemindersForDebtors', {
+      const response = await base44.functions.invoke('scheduleRemindersForDebtors', {
         debtorIds: selectedDebtors.map(d => d.id),
         frequencyType,
-        selectedDays: [...selectedDays],
-        selectedMonthlyDays: [...selectedMonthlyDays],
+        selectedDays: Array.from(selectedDays),
+        selectedMonthlyDays: Array.from(selectedMonthlyDays),
         startDate,
         sendTime,
-        emailTemplateId: mode === 'email' || mode === 'both' ? emailTemplateId : null,
-        whatsappTemplateId: mode === 'whatsapp' || mode === 'both' ? whatsappTemplateId : null,
+        emailTemplateId: (mode === 'email' || mode === 'both') ? emailTemplateId : null,
+        whatsappTemplateId: (mode === 'whatsapp' || mode === 'both') ? whatsappTemplateId : null,
         mode,
       });
 
-      if (res.data?.error) throw new Error(res.data.error);
+      if (response.data?.error) throw new Error(response.data.error);
 
       toast({
         title: 'Reminders scheduled!',
-        description: `Created ${res.data.totalCreated} reminder(s) for ${selectedDebtors.length} debtor(s).`,
+        description: `${response.data.totalCreated} reminder(s) created for ${selectedDebtors.length} debtor(s).`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['scheduledReminders'] });
       onClose();
-    } catch (e) {
-      toast({ title: 'Failed to schedule', description: e.message, variant: 'destructive' });
+    } catch (err) {
+      toast({ title: 'Failed to schedule reminders', description: err.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -129,21 +145,21 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
         <div className="space-y-5">
           {/* Selected Debtors */}
           <div>
-            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground flex items-center gap-2">
-              <span>Selected Debtors ({selectedDebtors.length})</span>
-              {selectedDebtors.length === 0 && <span className="text-red-600 font-normal">Required</span>}
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Selected Debtors ({selectedDebtors.length})
             </Label>
             {selectedDebtors.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 mt-2 max-h-24 overflow-y-auto p-2 bg-muted/40 rounded-lg border">
-                {selectedDebtors.map((debtor) => (
-                  <Badge key={debtor.id} variant="secondary" className="text-xs">
-                    {debtor.name}
+              <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-muted/40 rounded-lg border">
+                {selectedDebtors.map(d => (
+                  <Badge key={d.id} variant="secondary" className="text-xs">
+                    {d.name}
                   </Badge>
                 ))}
               </div>
             ) : (
-              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-                No debtors found. Please select invoices first.
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-sm">
+                <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <span className="text-red-700">No debtors found. Please select invoices first.</span>
               </div>
             )}
           </div>
@@ -162,7 +178,6 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
                 className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
             </div>
-
             <div className="space-y-1.5">
               <Label className="flex items-center gap-1.5">
                 <Clock className="w-3.5 h-3.5" /> Send Time
@@ -176,7 +191,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
             </div>
           </div>
 
-          {/* Frequency Type */}
+          {/* Frequency */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Frequency</Label>
             <div className="grid grid-cols-3 gap-2">
@@ -196,7 +211,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
             </div>
           </div>
 
-          {/* Days of Week (for weekly) */}
+          {/* Weekly Days */}
           {frequencyType === 'weekly' && (
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Send on these days</Label>
@@ -214,7 +229,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
             </div>
           )}
 
-          {/* Days of Month (for monthly) */}
+          {/* Monthly Days */}
           {frequencyType === 'monthly' && (
             <div className="space-y-2">
               <Label className="text-sm font-semibold">Send on these dates</Label>
@@ -224,16 +239,15 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
                     <Checkbox
                       checked={selectedMonthlyDays.has(day)}
                       onCheckedChange={() => toggleMonthlyDay(day)}
-                      className="w-4 h-4"
                     />
-                    <span className="text-xs ml-1 w-6 text-center">{day}</span>
+                    <span className="text-xs ml-1">{day}</span>
                   </label>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Message Mode */}
+          {/* Send Via */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Send via</Label>
             <Select value={mode} onValueChange={setMode}>
@@ -248,15 +262,13 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
             </Select>
           </div>
 
-          {/* Template Selection */}
+          {/* Email Template */}
           {(mode === 'email' || mode === 'both') && (
             <div className="space-y-2">
-              <Label className="text-sm font-semibold flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" /> Email Template
-              </Label>
+              <Label className="text-sm font-semibold">Email Template</Label>
               <Select value={emailTemplateId} onValueChange={setEmailTemplateId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select email template..." />
+                  <SelectValue placeholder="Select template..." />
                 </SelectTrigger>
                 <SelectContent>
                   {emailTemplates.map(t => (
@@ -267,17 +279,18 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
                 </SelectContent>
               </Select>
               {emailTemplates.length === 0 && (
-                <p className="text-xs text-amber-600">No email templates available. Create one in Settings → Templates.</p>
+                <p className="text-xs text-amber-600">No templates. Create one in Settings.</p>
               )}
             </div>
           )}
 
+          {/* WhatsApp Template */}
           {(mode === 'whatsapp' || mode === 'both') && (
             <div className="space-y-2">
               <Label className="text-sm font-semibold">WhatsApp Template</Label>
               <Select value={whatsappTemplateId} onValueChange={setWhatsappTemplateId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select WhatsApp template..." />
+                  <SelectValue placeholder="Select template..." />
                 </SelectTrigger>
                 <SelectContent>
                   {whatsappTemplates.map(t => (
@@ -288,15 +301,15 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
                 </SelectContent>
               </Select>
               {whatsappTemplates.length === 0 && (
-                <p className="text-xs text-amber-600">No WhatsApp templates available. Create one in Settings → Templates.</p>
+                <p className="text-xs text-amber-600">No templates. Create one in Settings.</p>
               )}
             </div>
           )}
 
-          {/* Info Box */}
+          {/* Summary */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 space-y-1">
             <p>
-              <strong>Schedule:</strong> {frequencyType === 'weekly' ? `Every ${[...selectedDays].join(', ')}` : frequencyType === 'monthly' ? `On dates: ${[...selectedMonthlyDays].sort((a, b) => a - b).join(', ')}` : frequencyType.charAt(0).toUpperCase() + frequencyType.slice(1)}
+              <strong>Schedule:</strong> {frequencyType === 'daily' ? 'Daily' : frequencyType === 'weekly' ? `Every ${Array.from(selectedDays).join(', ')}` : `Dates: ${Array.from(selectedMonthlyDays).sort((a, b) => a - b).join(', ')}`}
             </p>
             <p><strong>Starting:</strong> {startDate} at {sendTime}</p>
             <p><strong>Debtors:</strong> {selectedDebtors.length}</p>
@@ -307,9 +320,9 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleSchedule}
-            disabled={loading || selectedDebtors.length === 0 || (mode === 'email' && !emailTemplateId) || (mode === 'whatsapp' && !whatsappTemplateId)}
+            disabled={loading || selectedDebtors.length === 0}
           >
-            {loading ? 'Scheduling...' : `Schedule Reminders`}
+            {loading ? 'Scheduling...' : 'Schedule Reminders'}
           </Button>
         </DialogFooter>
       </DialogContent>
