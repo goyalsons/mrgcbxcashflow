@@ -77,7 +77,8 @@ export default function QuickReminderModal({ debtor, onClose }) {
     }
     setSending(true);
     try {
-      await base44.integrations.Core.SendEmail({ to: resolvedEmail, subject, body });
+      const res = await base44.functions.invoke('sendGmailReminder', { to: resolvedEmail, subject, body });
+      if (res.data?.error) throw new Error(res.data.error);
       toast({ title: `Reminder sent to ${resolvedEmail}` });
       onClose();
     } catch (err) {
