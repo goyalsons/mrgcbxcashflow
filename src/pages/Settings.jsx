@@ -122,6 +122,7 @@ export default function Settings() {
   const [cloudinaryTesting, setCloudinaryTesting] = useState(false);
   const [cloudinaryTestResult, setCloudinaryTestResult] = useState(null);
   const [templateTestState, setTemplateTestState] = useState({}); // { [id]: { email, sending, result } }
+  const [defaultReminderTemplateId, setDefaultReminderTemplateId] = useState('');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -156,6 +157,7 @@ export default function Settings() {
     if (s.reminderSchedule) setReminderSchedule(s.reminderSchedule);
     if (s.digest) setDigest(s.digest);
     if (s.approvalThreshold !== undefined) setApprovalThreshold(Number(s.approvalThreshold) || 0);
+    if (s.defaultReminderTemplateId) setDefaultReminderTemplateId(s.defaultReminderTemplateId);
   }, []);
 
   const checkGmailStatus = async () => {
@@ -177,7 +179,7 @@ export default function Settings() {
   useEffect(() => { checkGmailStatus(); }, []);
 
   const handleSave = () => {
-    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold });
+    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -927,6 +929,8 @@ export default function Settings() {
             setShowTemplateEditor={setShowTemplateEditor}
             deleteTemplateMut={deleteTemplateMut}
             handleTemplateTest={handleTemplateTest}
+            defaultReminderTemplateId={defaultReminderTemplateId}
+            setDefaultReminderTemplateId={(id) => { setDefaultReminderTemplateId(id); saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId: id }); }}
           />
         </TabsContent>
         {/* LLM Settings */}

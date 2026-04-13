@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Mail, MessageSquare } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Mail, MessageSquare, Star } from 'lucide-react';
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -20,7 +20,8 @@ function CopyButton({ text }) {
   );
 }
 
-function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest }) {
+function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest, defaultReminderTemplateId, setDefaultReminderTemplateId }) {
+  const isDefault = t.id === defaultReminderTemplateId;
   const isWhatsApp = t.type === 'whatsapp';
   const isEmail = t.type === 'email';
 
@@ -44,6 +45,7 @@ function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, se
             <span className="text-base">{isWhatsApp ? '💬' : isEmail ? '📧' : '📱'}</span>
             <span className="font-semibold text-sm">{t.name}</span>
             <Badge variant="outline" className={`text-xs ${badgeStyle}`}>{t.type}</Badge>
+            {isDefault && <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-300"><Star className="w-2.5 h-2.5 mr-1" />Default Reminder</Badge>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <CopyButton text={isEmail && t.subject ? `Subject: ${t.subject}\n\n${t.body}` : t.body} />
@@ -55,6 +57,11 @@ function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, se
                 <DropdownMenuItem onClick={() => { setEditingTemplate(t); setShowTemplateEditor(true); }}>
                   <Pencil className="w-4 h-4 mr-2" />Edit
                 </DropdownMenuItem>
+                {isEmail && (
+                  <DropdownMenuItem onClick={() => setDefaultReminderTemplateId(isDefault ? '' : t.id)}>
+                    <Star className="w-4 h-4 mr-2" />{isDefault ? 'Remove as Default' : 'Set as Default Reminder'}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete template?')) deleteTemplateMut.mutate(t.id); }}>
                   <Trash2 className="w-4 h-4 mr-2" />Delete
                 </DropdownMenuItem>
@@ -113,13 +120,14 @@ function SectionHeader({ icon, label, count, colorClass }) {
 
 export default function TemplatesTab({
   templates, templateTestState, setTemplateTestState,
-  setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest
+  setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest,
+  defaultReminderTemplateId, setDefaultReminderTemplateId
 }) {
   const emailTemplates = templates.filter(t => t.type === 'email');
   const whatsappTemplates = templates.filter(t => t.type === 'whatsapp');
   const otherTemplates = templates.filter(t => t.type !== 'email' && t.type !== 'whatsapp');
 
-  const cardProps = { templateTestState, setTemplateTestState, setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest };
+  const cardProps = { templateTestState, setTemplateTestState, setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest, defaultReminderTemplateId, setDefaultReminderTemplateId };
 
   return (
     <div className="space-y-6">

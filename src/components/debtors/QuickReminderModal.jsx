@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
-import { Send, Loader2, Mail, Eye, EyeOff, FileText } from 'lucide-react';
+import { Send, Loader2, Mail, Eye, EyeOff, FileText, ChevronDown } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { format, parseISO } from 'date-fns';
 
@@ -29,8 +31,50 @@ export default function QuickReminderModal({ debtor, onClose }) {
   const [showPreview, setShowPreview] = useState(false);
   const [resolvedEmail, setResolvedEmail] = useState(debtor.email || '');
   const [resolvedPhone, setResolvedPhone] = useState(debtor.phone || '');
-  const [subject, setSubject] = useState(`Payment Reminder — ${debtor.name || ''}`);
-  const [body, setBody] = useState(`Dear ${debtor.name || ''},\n\nLoading invoice details...`);
+  const [resolvedContactPerson, setResolvedContactPerson] = useState(debtor.contact_person || debtor.name || '');
+  const [subject, setSubject] = useState(`Payment Reminder - ${debtor.name || ''}`);
+  const [body, setBody] = useState(`Dear ${debtor.contact_person || debtor.name || ''},\n\nLoading invoice details...`);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+
+  const { data: emailTemplates = [] } = useQuery({
+    queryKey: ['messageTemplates'],
+    queryFn: () => base44.entities.MessageTemplate.list(),
+    select: (data) => data.filter(t => t.type === 'email'),
+  });
+
+  // Load default template ID from settings
+  useEffect(() => {
+    try {
+      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+      if (s.defaultReminderTemplateId) setSelectedTemplateId(s.defaultReminderTemplateId);
+    } catch {}
+  }, []);
+
+  const applyTemplate = (templateId, invoiceList, totalAmt, contactPerson) => {
+    const template = emailTemplates.find(t => t.id === templateId);
+    if (!template) return;
+    const table = buildInvoiceTable(
+      invoiceList.length > 0 ? invoiceList :
+      [{ invoice_number: '-', amount: totalAmt, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
+    );
+    const contact = contactPerson || debtor.name || '';
+    const newSubject = (template.subject || `Payment Reminder - ${debtor.name}`)
+      .replace(/\{\{company_name\}\}/g, debtor.name || '')
+      .replace(/\{\{contact_person\}\}/g, contact);
+    const newBody = (template.body || '')
+      .replace(/\{\{contact_person\}\}/g, contact)
+      .replace(/\{\{company_name\}\}/g, debtor.name || '')
+      .replace(/\{\{outstanding_amount\}\}/g, `₹${totalAmt.toLocaleString('en-IN')}`)
+      .replace(/\{\{invoice_table\}\}/g, table);
+    setSubject(newSubject);
+    setBody(newBody);
+  };
+
+  const handleTemplateChange = (templateId) => {
+    setSelectedTemplateId(templateId);
+    const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
+    applyTemplate(templateId, invoices, total, resolvedContactPerson);
+  };
 
   // Fetch contact info from Customer records by company name if not on debtor
   useEffect(() => {
@@ -42,6 +86,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
         if (match) {
           if (match.email && !resolvedEmail) setResolvedEmail(match.email);
           if (match.phone && !resolvedPhone) setResolvedPhone(match.phone);
+          if (match.contact_person) setResolvedContactPerson(match.contact_person);
         }
       })
       .catch(() => {});
@@ -62,7 +107,12 @@ export default function QuickReminderModal({ debtor, onClose }) {
             ? outstanding
             : [{ invoice_number: '-', amount: debtor.total_outstanding || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
         );
-        setBody(`Dear ${debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.`);
+        const total = outstanding.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
+        if (selectedTemplateId) {
+          applyTemplate(selectedTemplateId, outstanding, total, resolvedContactPerson);
+        } else {
+          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.`);
+        }
       })
       .catch(() => {})
       .finally(() => setLoadingInvoices(false));
@@ -138,6 +188,23 @@ export default function QuickReminderModal({ debtor, onClose }) {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* Template Selector */}
+          {emailTemplates.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Template</Label>
+              <Select value={selectedTemplateId} onValueChange={handleTemplateChange}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select a template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
 

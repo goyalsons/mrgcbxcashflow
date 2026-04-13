@@ -11,17 +11,23 @@ Deno.serve(async (req) => {
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
 
+    // Encode subject as RFC 2047 encoded-word to handle non-ASCII chars
+    const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+
     // Build RFC 2822 email message
     const messageParts = [
       `To: ${to}`,
-      `Subject: ${subject}`,
+      `Subject: ${encodedSubject}`,
       'Content-Type: text/plain; charset=utf-8',
       'MIME-Version: 1.0',
       '',
       body,
     ];
-    const raw = btoa(unescape(encodeURIComponent(messageParts.join('\r\n'))))
-      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    // Encode full message as UTF-8 bytes → base64
+    const uint8 = new TextEncoder().encode(messageParts.join('\r\n'));
+    let binary = '';
+    uint8.forEach(b => { binary += String.fromCharCode(b); });
+    const raw = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
