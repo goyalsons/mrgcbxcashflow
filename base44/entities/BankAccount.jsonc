@@ -27,11 +27,19 @@
     "snapshot_date": {
       "type": "string",
       "format": "date",
-      "description": "Date of this balance snapshot"
+      "description": "Date of this balance snapshot (auto-set)"
     },
     "snapshot_time": {
       "type": "string",
-      "description": "Time of this balance snapshot (HH:MM)"
+      "description": "Time of this balance snapshot HH:MM (auto-set)"
+    },
+    "last_updated_by_name": {
+      "type": "string",
+      "description": "Name of user who last updated the balance"
+    },
+    "last_updated_by_email": {
+      "type": "string",
+      "description": "Email of user who last updated the balance"
     },
     "is_active": {
       "type": "boolean",

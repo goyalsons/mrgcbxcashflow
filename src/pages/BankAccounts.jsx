@@ -87,24 +87,26 @@ export default function BankAccounts() {
   };
 
   const handleSave = async (formData) => {
+    const enriched = { ...formData, last_updated_by_name: user?.full_name || user?.email || '', last_updated_by_email: user?.email || '' };
     if (editing) {
       const oldBalance = editing.balance || 0;
       const newBalance = Number(formData.balance) || 0;
-      await updateMut.mutateAsync({ id: editing.id, data: formData });
+      await updateMut.mutateAsync({ id: editing.id, data: enriched });
       await logAudit('BankAccount', editing.id, editing.name, oldBalance, newBalance, 'balance');
     } else {
-      await createMut.mutateAsync(formData);
+      await createMut.mutateAsync(enriched);
     }
   };
 
   const handleAssetSave = async (formData) => {
+    const enriched = { ...formData, last_updated_by_name: user?.full_name || user?.email || '', last_updated_by_email: user?.email || '' };
     if (editingAsset) {
       const oldAmount = editingAsset.amount || 0;
       const newAmount = parseFloat(formData.amount) || 0;
-      await assetUpdateMut.mutateAsync({ id: editingAsset.id, data: formData });
+      await assetUpdateMut.mutateAsync({ id: editingAsset.id, data: enriched });
       await logAudit('FinancialAsset', editingAsset.id, editingAsset.name, oldAmount, newAmount, 'amount');
     } else {
-      await assetCreateMut.mutateAsync(formData);
+      await assetCreateMut.mutateAsync(enriched);
     }
   };
 
@@ -220,7 +222,7 @@ export default function BankAccounts() {
                       <TableCell className="text-sm">
                         <div className="flex items-center gap-1.5 text-muted-foreground">
                           <User className="w-3.5 h-3.5" />
-                          <span>{a.created_by ? a.created_by.split('@')[0] : '—'}</span>
+                          <span>{a.last_updated_by_name || a.last_updated_by_email?.split('@')[0] || '—'}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right font-semibold">{formatINR(a.balance || 0)}</TableCell>

@@ -43,7 +43,15 @@
     "snapshot_date": {
       "type": "string",
       "format": "date",
-      "description": "Date of this valuation"
+      "description": "Date of this valuation (auto-set)"
+    },
+    "last_updated_by_name": {
+      "type": "string",
+      "description": "Name of user who last updated the amount"
+    },
+    "last_updated_by_email": {
+      "type": "string",
+      "description": "Email of user who last updated the amount"
     },
     "notes": {
       "type": "string",

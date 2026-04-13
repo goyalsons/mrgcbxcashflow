@@ -15,8 +15,7 @@ const ASSET_TYPES = [
   { value: 'other', label: 'Other' },
 ];
 
-const today = new Date().toISOString().split('T')[0];
-const EMPTY = { name: '', type: 'fixed_deposit', institution: '', account_number: '', amount: '', maturity_date: '', interest_rate: '', snapshot_date: today, notes: '' };
+const EMPTY = { name: '', type: 'fixed_deposit', institution: '', account_number: '', amount: '', maturity_date: '', interest_rate: '', notes: '' };
 
 export default function FinancialAssetForm({ open, onClose, onSave, editData }) {
   const [form, setForm] = useState(EMPTY);
@@ -24,7 +23,7 @@ export default function FinancialAssetForm({ open, onClose, onSave, editData }) 
 
   useEffect(() => {
     if (editData) setForm({ ...EMPTY, ...editData, amount: editData.amount ?? '', interest_rate: editData.interest_rate ?? '' });
-    else setForm({ ...EMPTY, snapshot_date: new Date().toISOString().split('T')[0] });
+    else setForm(EMPTY);
   }, [editData, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
@@ -32,10 +31,12 @@ export default function FinancialAssetForm({ open, onClose, onSave, editData }) 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    const snapshot_date = new Date().toISOString().split('T')[0];
     await onSave({
       ...form,
       amount: parseFloat(form.amount) || 0,
       interest_rate: form.interest_rate ? parseFloat(form.interest_rate) : undefined,
+      snapshot_date,
     });
     setSaving(false);
   };
@@ -84,10 +85,7 @@ export default function FinancialAssetForm({ open, onClose, onSave, editData }) 
               <Input type="number" step="0.01" value={form.interest_rate} onChange={e => set('interest_rate', e.target.value)} placeholder="e.g. 7.5" />
             </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Valuation Date</Label>
-            <Input type="date" value={form.snapshot_date} onChange={e => set('snapshot_date', e.target.value)} />
-          </div>
+
           <div className="space-y-1.5">
             <Label>Notes</Label>
             <Textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={2} />
