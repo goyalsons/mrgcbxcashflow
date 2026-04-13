@@ -35,7 +35,6 @@ export default function Receivables() {
   const [assigningManager, setAssigningManager] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
-  const [reminderCustomer, setReminderCustomer] = useState(null);
   const [targetCustomer, setTargetCustomer] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBulkReminder, setShowBulkReminder] = useState(false);
@@ -373,7 +372,6 @@ export default function Receivables() {
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowScheduleModal(true)}>
               <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
             </Button>
-            <Button size="sm" variant="outline" onClick={handleBulkReminder}>Send Quick Reminder</Button>
             <Button size="sm" variant="outline" onClick={() => { setBulkAction('manager'); setShowBulkModal(true); }}>Assign Manager</Button>
             <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
           </div>
@@ -575,15 +573,6 @@ export default function Receivables() {
                              <Button
                                variant="ghost"
                                size="icon"
-                               className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                               title="Send Reminder Email"
-                               onClick={() => setReminderCustomer(getCustomerInfo(invoice.debtor_name) || { id: invoice.debtor_id, name: invoice.debtor_name, email: '', phone: '' })}
-                             >
-                               <Mail className="w-3.5 h-3.5" />
-                             </Button>
-                             <Button
-                               variant="ghost"
-                               size="icon"
                                className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
                                title="Delete"
                                onClick={() => deleteMut.mutate(invoice.id)}
@@ -606,8 +595,6 @@ export default function Receivables() {
       {editingInvoice && (
         <EditInvoiceModal invoice={editingInvoice} onClose={() => setEditingInvoice(null)} />
       )}
-
-
 
       {/* Set Target Modal */}
       {targetCustomer && (
