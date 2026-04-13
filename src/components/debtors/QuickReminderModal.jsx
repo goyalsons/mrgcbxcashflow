@@ -41,17 +41,17 @@ function buildAttachmentLinks(invoices) {
   return links.length > 0 ? `Attachments:\n${links.join('\n')}` : '';
 }
 
-export default function QuickReminderModal({ debtor, onClose }) {
+export default function QuickReminderModal({ customer, onClose }) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [resolvedEmail, setResolvedEmail] = useState(debtor.email || '');
-  const [resolvedPhone, setResolvedPhone] = useState(debtor.phone || '');
-  const [resolvedContactPerson, setResolvedContactPerson] = useState(debtor.contact_person || debtor.name || '');
-  const [subject, setSubject] = useState(`Payment Reminder - ${debtor.name || ''}`);
-  const [body, setBody] = useState(`Dear ${debtor.contact_person || debtor.name || ''},\n\nLoading invoice details...`);
+  const [resolvedEmail, setResolvedEmail] = useState(customer.email || '');
+  const [resolvedPhone, setResolvedPhone] = useState(customer.phone || '');
+  const [resolvedContactPerson, setResolvedContactPerson] = useState(customer.contact_person || customer.name || '');
+  const [subject, setSubject] = useState(`Payment Reminder - ${customer.name || ''}`);
+  const [body, setBody] = useState(`Dear ${customer.contact_person || customer.name || ''},\n\nLoading invoice details...`);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -89,14 +89,14 @@ export default function QuickReminderModal({ debtor, onClose }) {
       invoiceList.length > 0 ? invoiceList :
       [{ invoice_number: '-', amount: totalAmt, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
     );
-    const contact = contactPerson || debtor.name || '';
-    const newSubject = (template.subject || `Payment Reminder - ${debtor.name}`)
-      .replace(/\{\{company_name\}\}/g, debtor.name || '')
-      .replace(/\{\{contact_person\}\}/g, contact);
+    const contact = contactPerson || customer.name || '';
+    const newSubject = (template.subject || `Payment Reminder - ${customer.name}`)
+    .replace(/\{\{company_name\}\}/g, customer.name || '')
+    .replace(/\{\{contact_person\}\}/g, contact);
     const attachmentText = buildAttachmentLinks(invoiceList);
     const newBody = (template.body || '')
       .replace(/\{\{contact_person\}\}/g, contact)
-      .replace(/\{\{company_name\}\}/g, debtor.name || '')
+      .replace(/\{\{company_name\}\}/g, customer.name || '')
       .replace(/\{\{outstanding_amount\}\}/g, `₹${totalAmt.toLocaleString('en-IN')}`)
       .replace(/\{\{invoice_table\}\}/g, table)
       .replace(/\{\{attachments\}\}/g, attachmentText);
@@ -106,67 +106,47 @@ export default function QuickReminderModal({ debtor, onClose }) {
 
   const handleTemplateChange = (templateId) => {
     setSelectedTemplateId(templateId);
-    const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
+    const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
     applyTemplate(templateId, invoices, total, resolvedContactPerson);
   };
 
   useEffect(() => {
-    base44.entities.Customer.list()
-      .then(customers => {
-        const match = customers.find(c =>
-          c.name?.toLowerCase() === debtor.name?.toLowerCase()
-        );
-        if (match) {
-          const email = match.email || debtor.email || '';
-          const phone = match.phone || debtor.phone || '';
-          const contact = match.contact_person || debtor.contact_person || debtor.name || '';
-          setResolvedEmail(email);
-          setResolvedPhone(phone);
-          setResolvedContactPerson(contact);
-        } else {
-          setResolvedEmail(debtor.email || '');
-          setResolvedPhone(debtor.phone || '');
-          setResolvedContactPerson(debtor.contact_person || debtor.name || '');
-        }
-      })
-      .catch(() => {
-        setResolvedEmail(debtor.email || '');
-        setResolvedPhone(debtor.phone || '');
-        setResolvedContactPerson(debtor.contact_person || debtor.name || '');
-      });
-  }, [debtor]);
+    setResolvedEmail(customer.email || '');
+    setResolvedPhone(customer.phone || '');
+    setResolvedContactPerson(customer.contact_person || customer.name || '');
+  }, [customer]);
 
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
-        const forThisDebtor = all.filter(inv => {
-          if (debtor.id) return inv.debtor_id === debtor.id;
-          return inv.debtor_name?.toLowerCase() === debtor.name?.toLowerCase();
+        const forThisCustomer = all.filter(inv => {
+          if (customer.id) return inv.debtor_id === customer.id;
+          return inv.debtor_name?.toLowerCase() === customer.name?.toLowerCase();
         });
-        const outstanding = forThisDebtor.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
+        const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
         const table = buildInvoiceTable(
           outstanding.length > 0
             ? outstanding
-            : [{ invoice_number: '-', amount: debtor.total_outstanding || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
+            : [{ invoice_number: '-', amount: customer.credit_limit || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
         );
-        const total = outstanding.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
+        const total = outstanding.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
         if (selectedTemplateId) {
           applyTemplate(selectedTemplateId, outstanding, total, resolvedContactPerson);
         } else {
           const attachmentText = buildAttachmentLinks(outstanding);
           const attachmentSection = attachmentText ? `\n\n${attachmentText}` : '';
-          const contactName = resolvedContactPerson || debtor.name;
-          setSubject(`Payment Reminder - ${debtor.name || ''}`);
+          const contactName = resolvedContactPerson || customer.name;
+          setSubject(`Payment Reminder - ${customer.name || ''}`);
           setBody(`Dear ${contactName},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`);
         }
         setIsInitializing(false);
       })
       .catch(() => setIsInitializing(false))
       .finally(() => setLoadingInvoices(false));
-  }, [debtor.id, debtor.name, resolvedContactPerson]);
+  }, [customer.id, customer.name, resolvedContactPerson]);
 
-  const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
+  const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
 
   const handleSend = async () => {
     if (!resolvedEmail) {
@@ -191,7 +171,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Mail className="w-4 h-4 text-primary" /> Send Reminder — {debtor.name}
+            <Mail className="w-4 h-4 text-primary" /> Send Reminder — {customer.name}
           </DialogTitle>
         </DialogHeader>
 
@@ -203,7 +183,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
             </div>
           ) : (
             <div className="text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">
-              ⚠️ No email found in debtor or customer records. Please add an email first.
+              ⚠️ No email found in customer records. Please add an email first.
             </div>
           )}
 

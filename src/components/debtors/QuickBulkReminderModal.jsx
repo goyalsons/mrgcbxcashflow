@@ -31,18 +31,18 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
     },
   });
 
-  const getUniqueDebitors = () => {
+  const getUniqueCustomers = () => {
     const seen = new Set();
     return selectedInvoices
       .filter(inv => {
-        const key = `${inv.debtor_id || inv.debtor_name}`;
+        const key = `${inv.customer_id || inv.customer_name}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
   };
 
-  const uniqueDebitors = getUniqueDebitors();
+  const uniqueCustomers = getUniqueCustomers();
 
   const handleSend = async () => {
     const selectedTemplate = channel === 'email' ? emailTemplateId : whatsappTemplateId;
@@ -61,38 +61,38 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
 
       if (!template) throw new Error('Template not found');
 
-      // For each unique debtor, send reminder
-      for (const inv of uniqueDebitors) {
+      // For each unique customer, send reminder
+      for (const inv of uniqueCustomers) {
         try {
           if (channel === 'email') {
-            const debtor = inv; // Has email field
-            if (!debtor.email) continue;
+            const customer = inv; // Has email field
+            if (!customer.email) continue;
             
-            const subject = (template.subject || `Payment Reminder - ${inv.debtor_name}`)
-              .replace(/\{\{company_name\}\}/g, inv.debtor_name || '')
-              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.debtor_name || '');
+            const subject = (template.subject || `Payment Reminder - ${inv.customer_name}`)
+              .replace(/\{\{company_name\}\}/g, inv.customer_name || '')
+              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.customer_name || '');
 
             const body = (template.body || '')
-              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.debtor_name || '')
-              .replace(/\{\{company_name\}\}/g, inv.debtor_name || '')
+              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.customer_name || '')
+              .replace(/\{\{company_name\}\}/g, inv.customer_name || '')
               .replace(/\{\{outstanding_amount\}\}/g, '₹0')
               .replace(/\{\{invoice_table\}\}/g, '');
 
             await base44.functions.invoke('sendGmailReminder', {
-              to: debtor.email,
+              to: customer.email,
               subject,
               body,
             });
             successCount++;
           }
         } catch (err) {
-          console.error(`Failed to send to ${inv.debtor_name}:`, err);
+          console.error(`Failed to send to ${inv.customer_name}:`, err);
         }
       }
 
       toast({
         title: `Reminders sent`,
-        description: `Successfully sent ${successCount}/${uniqueDebitors.length} ${channel} reminder(s)`,
+        description: `Successfully sent ${successCount}/${uniqueCustomers.length} ${channel} reminder(s)`,
       });
       onSuccess?.();
       onClose();
@@ -111,7 +111,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Send Reminders to {uniqueDebitors.length} Debtor{uniqueDebitors.length > 1 ? 's' : ''}</DialogTitle>
+          <DialogTitle>Send Reminders to {uniqueCustomers.length} Customer{uniqueCustomers.length > 1 ? 's' : ''}</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -161,7 +161,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-            <p><strong>Recipients:</strong> {uniqueDebitors.map(d => d.debtor_name).join(', ')}</p>
+            <p><strong>Recipients:</strong> {uniqueCustomers.map(d => d.customer_name).join(', ')}</p>
           </div>
         </div>
 

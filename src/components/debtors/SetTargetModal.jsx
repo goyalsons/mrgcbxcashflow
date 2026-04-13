@@ -8,13 +8,13 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { Target } from 'lucide-react';
 
-export default function SetTargetModal({ debtor, onClose }) {
+export default function SetTargetModal({ customer, onClose }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const today = new Date();
 
   const [form, setForm] = useState({
-    target_amount: debtor.total_outstanding || '',
+    target_amount: customer?.credit_limit || '',
     target_date: today.toISOString().split('T')[0],
     notes: '',
   });
@@ -30,19 +30,19 @@ export default function SetTargetModal({ debtor, onClose }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!debtor.assigned_manager) {
-      toast({ title: 'No manager assigned to this debtor', variant: 'destructive' });
+    if (!customer?.account_manager) {
+      toast({ title: 'No manager assigned to this customer', variant: 'destructive' });
       return;
     }
     const date = new Date(form.target_date);
     createMut.mutate({
-      manager_email: debtor.assigned_manager,
-      manager_name: debtor.assigned_manager,
+      manager_email: customer.account_manager,
+      manager_name: customer.account_manager,
       target_amount: parseFloat(form.target_amount),
       target_date: form.target_date,
       period_month: date.getMonth() + 1,
       period_year: date.getFullYear(),
-      notes: form.notes || `Target for ${debtor.name} by ${form.target_date}`,
+      notes: form.notes || `Target for ${customer.name} by ${form.target_date}`,
     });
   };
 
@@ -57,14 +57,14 @@ export default function SetTargetModal({ debtor, onClose }) {
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
-            <div className="font-medium">{debtor.name}</div>
+            <div className="font-medium">{customer?.name}</div>
             <div className="text-muted-foreground mt-0.5">
-              Manager: <span className="font-medium text-foreground">{debtor.assigned_manager || 'Not assigned'}</span>
+              Manager: <span className="font-medium text-foreground">{customer?.account_manager || 'Not assigned'}</span>
             </div>
           </div>
 
-          {!debtor.assigned_manager && (
-            <p className="text-sm text-destructive">This debtor has no assigned manager. Please assign one first.</p>
+          {!customer?.account_manager && (
+            <p className="text-sm text-destructive">This customer has no assigned manager. Please assign one first.</p>
           )}
 
           <div>
@@ -103,7 +103,7 @@ export default function SetTargetModal({ debtor, onClose }) {
 
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={createMut.isPending || !debtor.assigned_manager}>
+            <Button type="submit" disabled={createMut.isPending || !customer?.account_manager}>
               {createMut.isPending ? 'Saving...' : 'Set Target'}
             </Button>
           </div>

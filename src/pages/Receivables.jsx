@@ -36,8 +36,8 @@ export default function Receivables() {
   const [assigningManager, setAssigningManager] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState(null);
-  const [reminderDebtor, setReminderDebtor] = useState(null);
-  const [targetDebtor, setTargetDebtor] = useState(null);
+  const [reminderCustomer, setReminderCustomer] = useState(null);
+  const [targetCustomer, setTargetCustomer] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBulkReminder, setShowBulkReminder] = useState(false);
   const { toast } = useToast();
@@ -50,12 +50,7 @@ export default function Receivables() {
     },
   });
 
-  const { data: debtors = [] } = useQuery({
-    queryKey: ['debtors'],
-    queryFn: async () => {
-      return await base44.entities.Debtor.list();
-    },
-  });
+
 
   const { data: customers = [] } = useQuery({
     queryKey: ['customers'],
@@ -77,21 +72,14 @@ export default function Receivables() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
   });
 
-  const getDebtorInfo = (debtorId) => {
-    const debtor = debtors.find(d => d.id === debtorId);
-    return debtor || {};
-  };
-
-  const getCustomerInfo = (debtorName) => {
-    if (!debtorName) return {};
-    return customers.find(c => c.name?.toLowerCase() === debtorName?.toLowerCase()) || {};
+  const getCustomerInfo = (customerName) => {
+    if (!customerName) return {};
+    return customers.find(c => c.name?.toLowerCase() === customerName?.toLowerCase()) || {};
   };
 
   const getResolvedManager = (invoice) => {
     const customer = getCustomerInfo(invoice.debtor_name);
-    if (customer.account_manager) return customer.account_manager;
-    const debtor = getDebtorInfo(invoice.debtor_id);
-    return debtor?.assigned_manager || '';
+    return customer.account_manager || '';
   };
 
   const getWeekNumber = (date) => {
@@ -174,7 +162,7 @@ export default function Receivables() {
       if (m) managers.add(m);
     });
     return Array.from(managers).sort();
-  }, [invoices, debtors, customers]);
+  }, [invoices, customers]);
 
   const groupedData = useMemo(() => {
     if (groupBy === 'none') {
@@ -446,7 +434,6 @@ export default function Receivables() {
                 </TableHeader>
                 <TableBody>
                   {group.items.map((invoice) => {
-                    const debtor = getDebtorInfo(invoice.debtor_id);
                     const outstanding = invoice.amount - (invoice.amount_paid || 0);
                     const dueDate = invoice.due_date ? parseISO(invoice.due_date) : null;
 
@@ -459,10 +446,10 @@ export default function Receivables() {
                         </TableCell>
                         <TableCell className="px-3 font-medium">
                           {(() => {
-                            const customer = getCustomerInfo(invoice.debtor_name);
-                            const phone = customer.phone || debtor?.phone;
-                            const email = customer.email || debtor?.email;
-                            const contactPerson = customer.contact_person || debtor?.contact_person;
+                                     const customer = getCustomerInfo(invoice.debtor_name);
+                                     const phone = customer.phone || '';
+                                     const email = customer.email || '';
+                                     const contactPerson = customer.contact_person || '';
                             return (
                               <HoverCard openDelay={200} closeDelay={100}>
                                 <HoverCardTrigger asChild>
@@ -529,9 +516,6 @@ export default function Receivables() {
                               </HoverCard>
                             );
                           })()}
-                          {debtor?.contact_person && (
-                            <div className="text-xs text-muted-foreground mt-0.5">{debtor.contact_person}</div>
-                          )}
                         </TableCell>
                         <TableCell className="px-3">
                            <span className="text-xs font-mono text-muted-foreground">{invoice.invoice_number || '—'}</span>
@@ -558,7 +542,7 @@ export default function Receivables() {
                            />
                          </TableCell>
                          <TableCell className="px-3 text-right text-xs text-muted-foreground">
-                           {debtor?.credit_limit ? `₹${(debtor.credit_limit).toLocaleString('en-IN')}` : '—'}
+                           {(() => { const cust = getCustomerInfo(invoice.debtor_name); return cust?.credit_limit ? `₹${(cust.credit_limit).toLocaleString('en-IN')}` : '—'; })()}
                          </TableCell>
                          <TableCell className="px-3">
                            <span className="text-xs text-muted-foreground">{(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '—'; })()}</span>
@@ -585,7 +569,7 @@ export default function Receivables() {
                                size="icon"
                                className="h-7 w-7 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                                title="Set Target"
-                               onClick={() => setTargetDebtor(debtor)}
+                               onClick={() => setTargetCustomer(getCustomerInfo(invoice.debtor_name))}
                              >
                                <Target className="w-3.5 h-3.5" />
                              </Button>
@@ -594,7 +578,7 @@ export default function Receivables() {
                                size="icon"
                                className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                                title="Send Reminder Email"
-                               onClick={() => setReminderDebtor(debtor?.id ? debtor : { id: invoice.debtor_id, name: invoice.debtor_name })}
+                               onClick={() => setReminderCustomer(getCustomerInfo(invoice.debtor_name) || { id: invoice.debtor_id, name: invoice.debtor_name, email: '', phone: '' })}
                              >
                                <Mail className="w-3.5 h-3.5" />
                              </Button>
@@ -625,20 +609,19 @@ export default function Receivables() {
       )}
 
       {/* Reminder Modal */}
-      {reminderDebtor && (
-        <QuickReminderModal debtor={reminderDebtor} onClose={() => setReminderDebtor(null)} />
+      {reminderCustomer && (
+        <QuickReminderModal customer={reminderCustomer} onClose={() => setReminderCustomer(null)} />
       )}
 
       {/* Set Target Modal */}
-      {targetDebtor && (
-        <SetTargetModal debtor={targetDebtor} onClose={() => setTargetDebtor(null)} />
+      {targetCustomer && (
+        <SetTargetModal customer={targetCustomer} onClose={() => setTargetCustomer(null)} />
       )}
 
       {/* Schedule Reminders Modal */}
       {showScheduleModal && (
         <ScheduleRemindersModal
           invoices={[...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean)}
-          debtors={debtors}
           onClose={() => { setShowScheduleModal(false); setSelected(new Set()); }}
         />
       )}

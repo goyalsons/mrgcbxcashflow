@@ -28,34 +28,19 @@ Deno.serve(async (req) => {
       }
 
       try {
-        // Fetch customer and receivables to replace placeholders
+        // Fetch customer data to replace placeholders
         const customer = await base44.entities.Customer.get(reminder.customer_id);
         let receivables = [];
         if (customer) {
           receivables = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
         }
 
-        // Build invoice table HTML
-        const invoiceTable = receivables.length > 0
-          ? `<table style="border-collapse:collapse;width:100%;margin:10px 0;">
-              <tr style="background:#f5f5f5;">
-                <th style="border:1px solid #ddd;padding:8px;text-align:left;">Invoice #</th>
-                <th style="border:1px solid #ddd;padding:8px;text-align:right;">Amount</th>
-                <th style="border:1px solid #ddd;padding:8px;text-align:left;">Due Date</th>
-              </tr>
-              ${receivables.map(r => `<tr>
-                <td style="border:1px solid #ddd;padding:8px;">${r.invoice_number || 'N/A'}</td>
-                <td style="border:1px solid #ddd;padding:8px;text-align:right;">₹${(r.amount || 0).toLocaleString('en-IN')}</td>
-                <td style="border:1px solid #ddd;padding:8px;">${r.due_date || 'N/A'}</td>
-              </tr>`).join('')}
-            </table>`
-          : '<p style="color:#999;">No outstanding receivables found.</p>';
+
 
         // Replace placeholders in message body
         const messageBody = reminder.message_body
           .replace(/{{company_name}}/g, customer?.name || 'Valued Customer')
           .replace(/{{contact_person}}/g, customer?.contact_person || 'Sir/Madam')
-          .replace(/{{invoice_table}}/g, invoiceTable)
           .replace(/{{attachments}}/g, '');
 
         if (reminder.send_type === 'email') {
