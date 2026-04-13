@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
-import { Send, Loader2, Mail, Eye, EyeOff, FileText, ChevronDown } from 'lucide-react';
+import { Send, Loader2, Mail, Eye, EyeOff, FileText } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -21,6 +21,24 @@ function buildInvoiceTable(invoices) {
   }).join('\n');
   const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0);
   return rows + `\n${'─'.repeat(60)}\n  TOTAL OUTSTANDING: ₹${total.toLocaleString('en-IN')}`;
+}
+
+function buildAttachmentLinks(invoices) {
+  const links = [];
+  invoices.forEach(inv => {
+    if (inv.attachments) {
+      try {
+        const arr = JSON.parse(inv.attachments);
+        arr.forEach(a => {
+          if (a.url) links.push(`  • ${a.name || 'Attachment'} (Inv# ${inv.invoice_number || '-'}): ${a.url}`);
+        });
+      } catch (e) { /* ignore parse errors */ }
+    }
+    if (inv.document_url && !inv.attachments) {
+      links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
+    }
+  });
+  return links.length > 0 ? `Attachments:\n${links.join('\n')}` : '';
 }
 
 export default function QuickReminderModal({ debtor, onClose }) {
@@ -42,7 +60,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
     select: (data) => data.filter(t => t.type === 'email'),
   });
 
-  // Load default template ID and build signature from settings
   const getSignature = () => {
     try {
       const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
@@ -54,14 +71,14 @@ export default function QuickReminderModal({ debtor, onClose }) {
       if (c.email) lines.push(`Email: ${c.email}`);
       if (c.website) lines.push(c.website);
       return lines.length > 0 ? `\n\n--\n${lines.join('\n')}` : '';
-    } catch { return ''; }
+    } catch (e) { return ''; }
   };
 
   useEffect(() => {
     try {
       const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
       if (s.defaultReminderTemplateId) setSelectedTemplateId(s.defaultReminderTemplateId);
-    } catch {}
+    } catch (e) {}
   }, []);
 
   const applyTemplate = (templateId, invoiceList, totalAmt, contactPerson) => {
@@ -75,11 +92,13 @@ export default function QuickReminderModal({ debtor, onClose }) {
     const newSubject = (template.subject || `Payment Reminder - ${debtor.name}`)
       .replace(/\{\{company_name\}\}/g, debtor.name || '')
       .replace(/\{\{contact_person\}\}/g, contact);
+    const attachmentText = buildAttachmentLinks(invoiceList);
     const newBody = (template.body || '')
       .replace(/\{\{contact_person\}\}/g, contact)
       .replace(/\{\{company_name\}\}/g, debtor.name || '')
       .replace(/\{\{outstanding_amount\}\}/g, `₹${totalAmt.toLocaleString('en-IN')}`)
-      .replace(/\{\{invoice_table\}\}/g, table);
+      .replace(/\{\{invoice_table\}\}/g, table)
+      .replace(/\{\{attachments\}\}/g, attachmentText);
     setSubject(newSubject);
     setBody(newBody + getSignature());
   };
@@ -90,7 +109,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
     applyTemplate(templateId, invoices, total, resolvedContactPerson);
   };
 
-  // Fetch contact info from Customer records by company name if not on debtor
   useEffect(() => {
     base44.entities.Customer.list()
       .then(customers => {
@@ -106,7 +124,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
       .catch(() => {});
   }, [debtor.name]);
 
-  // Fetch invoices for this debtor
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
@@ -125,7 +142,9 @@ export default function QuickReminderModal({ debtor, onClose }) {
         if (selectedTemplateId) {
           applyTemplate(selectedTemplateId, outstanding, total, resolvedContactPerson);
         } else {
-          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.${getSignature()}`);
+          const attachmentText = buildAttachmentLinks(outstanding);
+          const attachmentSection = attachmentText ? `\n\n${attachmentText}` : '';
+          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`);
         }
       })
       .catch(() => {})
@@ -162,7 +181,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
         </DialogHeader>
 
         <div className="space-y-3">
-          {/* Email recipient */}
           {resolvedEmail ? (
             <div className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-3 py-2">
               Sending to: <span className="font-semibold">{resolvedEmail}</span>
@@ -174,7 +192,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
             </div>
           )}
 
-          {/* Invoice summary */}
           {loadingInvoices ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading invoices...
@@ -205,7 +222,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
             </div>
           )}
 
-          {/* Template Selector */}
           {emailTemplates.length > 0 && (
             <div className="space-y-1.5">
               <Label className="text-xs">Template</Label>
@@ -222,7 +238,6 @@ export default function QuickReminderModal({ debtor, onClose }) {
             </div>
           )}
 
-          {/* Toggle preview / edit */}
           <div className="flex items-center justify-between">
             <Label className="text-xs">Email Message</Label>
             <Button variant="ghost" size="sm" className="h-7 text-xs gap-1.5" onClick={() => setShowPreview(p => !p)}>

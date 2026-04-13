@@ -27,17 +27,29 @@ function saveSettings(data) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
 }
 
+const PLACEHOLDER_GUIDE = [
+  { placeholder: '{{contact_person}}', description: 'Contact person at the debtor company' },
+  { placeholder: '{{company_name}}', description: 'Debtor company name' },
+  { placeholder: '{{outstanding_amount}}', description: 'Total outstanding balance (e.g. ₹1,50,000)' },
+  { placeholder: '{{invoice_table}}', description: 'Full table of outstanding invoices with dates & amounts' },
+  { placeholder: '{{attachments}}', description: 'Links to invoice attachments (if any are uploaded)' },
+];
+
 function TemplateEditor({ template, onClose, onSave }) {
   const [form, setForm] = useState(template || { name: '', type: 'whatsapp', subject: '', body: '', is_active: true });
   const [saving, setSaving] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true);
     await onSave(form); setSaving(false);
   };
+  const insertPlaceholder = (ph) => {
+    set('body', (form.body || '') + ph);
+  };
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>{template?.id ? 'Edit Template' : 'New Template'}</DialogTitle></DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -60,13 +72,45 @@ function TemplateEditor({ template, onClose, onSave }) {
           {form.type === 'email' && (
             <div className="space-y-1.5">
               <Label>Subject</Label>
-              <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Payment Reminder" />
+              <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Payment Reminder - {{company_name}}" />
             </div>
           )}
+
+          {/* Dynamic Fields Guide */}
+          <div className="rounded-lg border border-blue-200 bg-blue-50/60 overflow-hidden">
+            <button
+              type="button"
+              className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-blue-800 hover:bg-blue-100 transition-colors"
+              onClick={() => setShowGuide(v => !v)}
+            >
+              <span>📋 Dynamic Fields Reference</span>
+              <span>{showGuide ? '▲ Hide' : '▼ Show'}</span>
+            </button>
+            {showGuide && (
+              <div className="px-3 pb-3 space-y-2">
+                <p className="text-xs text-blue-700 mb-2">Click a placeholder to insert it at the end of the message body.</p>
+                <div className="grid gap-1.5">
+                  {PLACEHOLDER_GUIDE.map(({ placeholder, description }) => (
+                    <div key={placeholder} className="flex items-center gap-2 bg-white rounded border border-blue-100 px-2 py-1.5">
+                      <button
+                        type="button"
+                        className="font-mono text-xs text-blue-700 font-bold bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded hover:bg-blue-100 shrink-0"
+                        onClick={() => insertPlaceholder(placeholder)}
+                        title="Insert into body"
+                      >
+                        {placeholder}
+                      </button>
+                      <span className="text-xs text-muted-foreground">{description}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-1.5">
             <Label>Message Body *</Label>
-            <Textarea value={form.body} onChange={e => set('body', e.target.value)} rows={6} required />
-            <p className="text-xs text-muted-foreground">Placeholders: {'{{name}}'}, {'{{amount}}'}, {'{{due_date}}'}</p>
+            <Textarea value={form.body} onChange={e => set('body', e.target.value)} rows={8} required className="font-mono text-sm" />
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
