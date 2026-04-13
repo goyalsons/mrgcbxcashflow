@@ -30,7 +30,7 @@ export default function DebtorForm({ open, onClose, onSave, editData }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
-    await onSave(form);
+    await onSave({ ...form, credit_limit: form.credit_limit !== '' ? Number(form.credit_limit) : 0 });
     setSaving(false);
   };
 
