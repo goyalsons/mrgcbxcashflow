@@ -31,25 +31,34 @@ Deno.serve(async (req) => {
 
     for (const customerId of debtorIds) {
       const customer = await base44.entities.Customer.get(customerId);
-      if (!customer) continue;
+      if (!customer) {
+        console.warn(`Customer ${customerId} not found, skipping`);
+        continue;
+      }
 
       // Determine channels
       const channels = [];
       if (mode === 'email' || mode === 'both') channels.push('email');
       if (mode === 'whatsapp' || mode === 'both') channels.push('whatsapp');
 
-      // Create one campaign per customer (not per channel)
+      if (channels.length === 0) {
+        console.warn(`No valid channels for customer ${customerId}`);
+        continue;
+      }
+
+      // Create one campaign per customer per primary channel
+      const primaryChannel = channels[0];
       const campaign = await base44.entities.ReminderCampaign.create({
-        customer_id: customerId,
-        customer_name: customer.name,
+        debtor_id: customerId,
+        debtor_name: customer.name,
         campaign_name: `Payment Reminders - ${customer.name}`,
-        template_id: emailTemplateId || whatsappTemplateId,
-        reminder_type: channels.length === 1 ? channels[0] : 'both',
+        template_id: primaryChannel === 'email' ? emailTemplateId : whatsappTemplateId,
+        reminder_type: primaryChannel,
         frequency: frequencyType,
         start_date: startDate,
-        send_time: sendTime,
-        number_of_reminders: 1,
+        number_of_reminders: 5,
         status: 'active',
+        created_by: user.email,
       });
 
       const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, daysArray, monthDaysArray);
@@ -58,10 +67,23 @@ Deno.serve(async (req) => {
       for (const channel of channels) {
         const templateId = channel === 'email' ? emailTemplateId : whatsappTemplateId;
         const template = await base44.entities.MessageTemplate.get(templateId);
-        if (!template) continue;
+        if (!template) {
+          console.warn(`Template ${templateId} not found for channel ${channel}`);
+          continue;
+        }
 
         const email = customer.email || '';
         const phone = customer.phone || '';
+
+        if (channel === 'email' && !email) {
+          console.warn(`Customer ${customerId} has no email, skipping email reminder`);
+          continue;
+        }
+
+        if (channel === 'whatsapp' && !phone) {
+          console.warn(`Customer ${customerId} has no phone, skipping WhatsApp reminder`);
+          continue;
+        }
 
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,
