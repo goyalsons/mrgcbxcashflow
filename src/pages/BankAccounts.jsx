@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
@@ -8,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp, Upload } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp, Upload, Clock, User } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
@@ -27,6 +29,7 @@ const ASSET_TYPE_LABELS = {
 
 export default function BankAccounts() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [showAssetForm, setShowAssetForm] = useState(false);
@@ -70,14 +73,39 @@ export default function BankAccounts() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['financialAssets'] }); toast({ title: 'Asset deleted' }); },
   });
 
+  const logAudit = async (entityType, entityId, entityName, oldVal, newVal, field) => {
+    if (oldVal === newVal) return;
+    await base44.entities.AuditLog.create({
+      entity_type: entityType,
+      entity_id: entityId,
+      entity_name: entityName,
+      action: 'update',
+      changes: JSON.stringify({ field, old_value: oldVal, new_value: newVal }),
+      performed_by: user?.email || '',
+      performed_by_name: user?.full_name || user?.email || '',
+    });
+  };
+
   const handleSave = async (formData) => {
-    if (editing) await updateMut.mutateAsync({ id: editing.id, data: formData });
-    else await createMut.mutateAsync(formData);
+    if (editing) {
+      const oldBalance = editing.balance || 0;
+      const newBalance = Number(formData.balance) || 0;
+      await updateMut.mutateAsync({ id: editing.id, data: formData });
+      await logAudit('BankAccount', editing.id, editing.name, oldBalance, newBalance, 'balance');
+    } else {
+      await createMut.mutateAsync(formData);
+    }
   };
 
   const handleAssetSave = async (formData) => {
-    if (editingAsset) await assetUpdateMut.mutateAsync({ id: editingAsset.id, data: formData });
-    else await assetCreateMut.mutateAsync(formData);
+    if (editingAsset) {
+      const oldAmount = editingAsset.amount || 0;
+      const newAmount = parseFloat(formData.amount) || 0;
+      await assetUpdateMut.mutateAsync({ id: editingAsset.id, data: formData });
+      await logAudit('FinancialAsset', editingAsset.id, editingAsset.name, oldAmount, newAmount, 'amount');
+    } else {
+      await assetCreateMut.mutateAsync(formData);
+    }
   };
 
   // Group accounts by account_number (or by name+type if no account_number), pick latest snapshot per group
@@ -156,7 +184,6 @@ export default function BankAccounts() {
         <TabsList>
           <TabsTrigger value="accounts">Bank & Cash Accounts</TabsTrigger>
           <TabsTrigger value="assets">Other Financial Assets</TabsTrigger>
-          <TabsTrigger value="history">All Snapshots</TabsTrigger>
         </TabsList>
 
         {/* Latest Snapshots per Account */}
@@ -171,8 +198,8 @@ export default function BankAccounts() {
                     <TableHead>Name</TableHead>
                     <TableHead>Account Number</TableHead>
                     <TableHead>Type</TableHead>
-                    <TableHead>Snapshot Date</TableHead>
-                    <TableHead>Snapshot Time</TableHead>
+                    <TableHead>Last Updated</TableHead>
+                    <TableHead>Updated By</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="w-10"></TableHead>
@@ -184,8 +211,18 @@ export default function BankAccounts() {
                       <TableCell className="font-medium">{a.name}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-sm">{a.account_number || '—'}</TableCell>
                       <TableCell><Badge variant="outline" className="capitalize">{a.type === 'cash' ? 'Cash' : 'Bank'}</Badge></TableCell>
-                      <TableCell className="text-sm">{a.snapshot_date || '—'}</TableCell>
-                      <TableCell className="text-sm">{a.snapshot_time || '—'}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span>{a.snapshot_date ? `${a.snapshot_date}${a.snapshot_time ? ' ' + a.snapshot_time : ''}` : '—'}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-1.5 text-muted-foreground">
+                          <User className="w-3.5 h-3.5" />
+                          <span>{a.created_by ? a.created_by.split('@')[0] : '—'}</span>
+                        </div>
+                      </TableCell>
                       <TableCell className="text-right font-semibold">{formatINR(a.balance || 0)}</TableCell>
                       <TableCell>{a.is_active === false ? <Badge variant="secondary">Inactive</Badge> : <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200">Active</Badge>}</TableCell>
                       <TableCell>
@@ -262,49 +299,6 @@ export default function BankAccounts() {
           )}
         </TabsContent>
 
-        {/* Full History */}
-        <TabsContent value="history" className="mt-4">
-          {accounts.length === 0 ? (
-            <EmptyState title="No snapshots yet" description="Add balance snapshots to see history." icon={Landmark} />
-          ) : (
-            <div className="rounded-lg border overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Account Number</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Snapshot Date</TableHead>
-                    <TableHead>Snapshot Time</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {[...accounts].sort((a, b) => {
-                    const aDT = `${a.snapshot_date || ''}${a.snapshot_time || ''}`;
-                    const bDT = `${b.snapshot_date || ''}${b.snapshot_time || ''}`;
-                    return bDT.localeCompare(aDT);
-                  }).map(a => (
-                    <TableRow key={a.id}>
-                      <TableCell className="font-medium">{a.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{a.account_number || '—'}</TableCell>
-                      <TableCell><Badge variant="outline" className="capitalize">{a.type === 'cash' ? 'Cash' : 'Bank'}</Badge></TableCell>
-                      <TableCell className="text-sm">{a.snapshot_date || '—'}</TableCell>
-                      <TableCell className="text-sm">{a.snapshot_time || '—'}</TableCell>
-                      <TableCell className="text-right font-semibold">{formatINR(a.balance || 0)}</TableCell>
-                      <TableCell>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { if (confirm('Delete this snapshot?')) deleteMut.mutate(a.id); }}>
-                          <Trash2 className="w-4 h-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
 
       <BalanceForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} />
