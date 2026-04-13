@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, Mail, Edit, Target, Bell, Trash2, CalendarClock, MessageSquare, User, Building2 } from 'lucide-react';
+import { Mail, Edit, Target, Trash2, CalendarClock, MessageSquare, Phone, Building2, Search, SlidersHorizontal, IndianRupee, Users } from 'lucide-react';
 import AttachmentCell from '@/components/receivables/AttachmentCell';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import PageHeader from '@/components/shared/PageHeader';
@@ -260,33 +260,48 @@ export default function Receivables2() {
     return filteredData.reduce((sum, inv) => sum + (inv.amount - (inv.amount_paid || 0)), 0);
   }, [filteredData]);
 
+  const statusColors = {
+    overdue: 'bg-red-50 text-red-700 border-red-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    partial: 'bg-blue-50 text-blue-700 border-blue-200',
+    paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  };
+
   if (isLoading) {
     return (
       <div className="p-6">
-        <PageHeader title="Receivables 2" subtitle="Manage and track outstanding invoices" />
+        <PageHeader title="Receivables" subtitle="Manage and track outstanding invoices" />
         <div className="mt-8 flex items-center justify-center h-64">
-          <div className="text-muted-foreground">Loading...</div>
+          <div className="animate-pulse text-muted-foreground">Loading invoices...</div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader title="Receivables 2" subtitle="Manage and track outstanding invoices" />
+    <div className="p-6 space-y-5">
+      <PageHeader title="Receivables" subtitle="Manage and track outstanding invoices" />
 
       {/* Filters */}
-      <Card className="p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-          <Input
-            placeholder="Search by company name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <Card className="p-4 space-y-3 shadow-sm">
+        <div className="flex items-center gap-2 mb-1">
+          <SlidersHorizontal className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-semibold text-foreground">Filters</span>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-2.5">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Search company..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
           <select
             value={filters.company}
             onChange={(e) => setFilters({ ...filters, company: e.target.value })}
-            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-ring"
           >
             <option value="">All Companies</option>
             {uniqueCompanies.map(c => (
@@ -296,7 +311,7 @@ export default function Receivables2() {
           <select
             value={filters.dueWeek}
             onChange={(e) => setFilters({ ...filters, dueWeek: e.target.value })}
-            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-ring"
           >
             <option value="">All Weeks</option>
             {uniqueWeeks.map(w => (
@@ -306,7 +321,7 @@ export default function Receivables2() {
           <select
             value={filters.dueMonth}
             onChange={(e) => setFilters({ ...filters, dueMonth: e.target.value })}
-            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-ring"
           >
             <option value="">All Months</option>
             {uniqueMonths.map(m => (
@@ -316,7 +331,7 @@ export default function Receivables2() {
           <select
             value={filters.manager}
             onChange={(e) => setFilters({ ...filters, manager: e.target.value })}
-            className="h-9 rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:ring-1 focus:ring-ring"
           >
             <option value="">All Managers</option>
             {uniqueManagers.map(m => (
@@ -325,16 +340,15 @@ export default function Receivables2() {
           </select>
         </div>
 
-        {/* Grouping Buttons */}
-        <div className="flex gap-2 items-center flex-wrap">
+        <div className="flex gap-2 items-center flex-wrap pt-1 border-t">
           <span className="text-xs font-medium text-muted-foreground">Group by:</span>
           {['none', 'company', 'week', 'month', 'manager'].map(option => (
             <Button
               key={option}
               size="sm"
-              variant={groupBy === option ? 'default' : 'outline'}
+              variant={groupBy === option ? 'default' : 'ghost'}
               onClick={() => setGroupBy(option)}
-              className="text-xs"
+              className="text-xs h-7 px-2.5"
             >
               {option === 'none' ? 'None' : option.charAt(0).toUpperCase() + option.slice(1)}
             </Button>
@@ -343,22 +357,27 @@ export default function Receivables2() {
       </Card>
 
       {/* Total Outstanding Card */}
-      <Card className="p-4 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+      <Card className="p-4 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border-primary/20 shadow-sm">
         <div className="flex justify-between items-center">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">Total Outstanding (Filtered)</p>
-            <p className="text-2xl font-bold text-primary">₹{totalOutstanding.toLocaleString('en-IN')}</p>
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary/15 flex items-center justify-center">
+              <IndianRupee className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Outstanding</p>
+              <p className="text-2xl font-bold text-primary">₹{totalOutstanding.toLocaleString('en-IN')}</p>
+            </div>
           </div>
-          <div className="text-right text-sm text-muted-foreground">
-            {filteredData.length} invoice{filteredData.length !== 1 ? 's' : ''}
+          <div className="text-right">
+            <p className="text-2xl font-bold text-foreground">{filteredData.length}</p>
+            <p className="text-xs text-muted-foreground">invoice{filteredData.length !== 1 ? 's' : ''}</p>
           </div>
         </div>
       </Card>
 
-      {/* Bulk Actions */}
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
-          <span className="text-sm font-medium text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
+        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
+          <span className="text-sm font-semibold text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2 ml-auto">
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowScheduleModal(true)}>
               <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
@@ -379,18 +398,22 @@ export default function Receivables2() {
         />
       ) : (
         groupedData.map(group => (
-          <div key={group.key} className="space-y-3">
+          <div key={group.key} className="space-y-2">
             {groupBy !== 'none' && (
-              <div className="flex items-center justify-between px-4 py-2 bg-muted/50 rounded-lg">
-                <h3 className="font-semibold text-sm">{group.label}</h3>
-                <span className="text-sm font-medium">₹{group.items.reduce((sum, inv) => sum + (inv.amount - (inv.amount_paid || 0)), 0).toLocaleString('en-IN')}</span>
+              <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-muted/80 to-muted/30 rounded-lg border">
+                <h3 className="font-semibold text-sm flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5 text-muted-foreground" />
+                  {group.label}
+                  <span className="text-xs text-muted-foreground font-normal">({group.items.length} invoice{group.items.length !== 1 ? 's' : ''})</span>
+                </h3>
+                <span className="text-sm font-bold text-primary">₹{group.items.reduce((sum, inv) => sum + (inv.amount - (inv.amount_paid || 0)), 0).toLocaleString('en-IN')}</span>
               </div>
             )}
-            <Card className="overflow-hidden">
+            <Card className="overflow-hidden shadow-sm border">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-8 px-2">
+                    <TableHead className="w-8 px-3">
                       <Checkbox
                         checked={group.items.length > 0 && group.items.every(inv => selected.has(inv.id))}
                         onCheckedChange={() => {
@@ -405,16 +428,16 @@ export default function Receivables2() {
                         }}
                       />
                     </TableHead>
-                    <TableHead className="px-2">Co. Name</TableHead>
-                    <TableHead className="px-2">Ref. No.</TableHead>
-                    <TableHead className="px-2 text-right">Outstanding</TableHead>
-                    <TableHead className="px-2">Due Date</TableHead>
-                    <TableHead className="px-2">Attachments</TableHead>
-                    <TableHead className="px-2 text-right">Credit Balance</TableHead>
-                    <TableHead className="px-2">Manager</TableHead>
-                    <TableHead className="px-2">Due Week</TableHead>
-                    <TableHead className="px-2">Due Month</TableHead>
-                    <TableHead className="px-2">Actions</TableHead>
+                    <TableHead className="px-3 text-xs font-semibold">Company</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Ref. No.</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold text-right">Outstanding</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Due Date</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Attachments</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold text-right">Credit Limit</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Manager</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Week</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Month</TableHead>
+                     <TableHead className="px-3 text-xs font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -424,11 +447,11 @@ export default function Receivables2() {
                     const dueDate = invoice.due_date ? parseISO(invoice.due_date) : null;
 
                     return (
-                      <TableRow key={invoice.id}>
-                        <TableCell className="px-2" onClick={e => e.stopPropagation()}>
+                      <TableRow key={invoice.id} className={`hover:bg-muted/30 transition-colors ${invoice.status === 'overdue' ? 'bg-red-50/30' : ''}`}>
+                        <TableCell className="px-3" onClick={e => e.stopPropagation()}>
                           <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
                         </TableCell>
-                        <TableCell className="px-2 font-medium">
+                        <TableCell className="px-3 font-medium">
                           {(() => {
                             const customer = getCustomerInfo(invoice.debtor_name);
                             const phone = customer.phone || debtor?.phone;
@@ -504,91 +527,82 @@ export default function Receivables2() {
                             <div className="text-xs text-muted-foreground mt-0.5">{debtor.contact_person}</div>
                           )}
                         </TableCell>
-                        <TableCell className="px-2 text-xs text-muted-foreground">
-                          {invoice.invoice_number || '-'}
-                        </TableCell>
-                        <TableCell className="px-2 text-right font-medium">
-                          ₹{outstanding.toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell className="px-2">
-                          {dueDate ? format(dueDate, 'dd/MM/yyyy') : '-'}
-                        </TableCell>
-                        <TableCell className="px-2">
-                          <AttachmentCell
-                            invoice={invoice}
-                            onUpdate={(id, data) => updateInvoiceMut.mutate({ id, data })}
-                          />
-                        </TableCell>
-                        <TableCell className="px-2 text-right">
-                          ₹{(debtor?.credit_limit || 0).toLocaleString('en-IN')}
-                        </TableCell>
-                        <TableCell className="px-2 text-sm">
-                          {(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '-'; })()}
-                        </TableCell>
-                        <TableCell className="px-2 text-sm">
-                          {dueDate ? `W${getWeekNumber(dueDate)}` : '-'}
-                        </TableCell>
-                        <TableCell className="px-2 text-sm">
-                          {dueDate ? format(dueDate, 'MMM yyyy') : '-'}
-                        </TableCell>
-                        <TableCell className="px-2">
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-blue-600"
-                              title="Call"
-                              onClick={() => { if (debtor?.phone) window.open(`tel:${debtor.phone}`); }}
-                            >
-                              <Phone className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-orange-600"
-                              title="Email"
-                              onClick={() => { if (debtor?.email) window.open(`mailto:${debtor.email}`); }}
-                            >
-                              <Mail className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-slate-600"
-                              title="Edit"
-                              onClick={() => setEditingInvoice(invoice)}
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-purple-600"
-                              title="Set Target"
-                              onClick={() => setTargetDebtor(debtor)}
-                            >
-                              <Target className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-blue-600"
-                              title="Send Reminder"
-                              onClick={() => setReminderDebtor(debtor?.id ? debtor : { id: invoice.debtor_id, name: invoice.debtor_name })}
-                            >
-                              <Bell className="w-3.5 h-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-red-600"
-                              title="Delete"
-                              onClick={() => deleteMut.mutate(invoice.id)}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </Button>
-                          </div>
-                        </TableCell>
+                        <TableCell className="px-3">
+                           <span className="text-xs font-mono text-muted-foreground">{invoice.invoice_number || '—'}</span>
+                         </TableCell>
+                         <TableCell className="px-3 text-right">
+                           <span className={`font-semibold text-sm ${invoice.status === 'overdue' ? 'text-red-600' : 'text-foreground'}`}>
+                             ₹{outstanding.toLocaleString('en-IN')}
+                           </span>
+                           {invoice.status && (
+                             <div className={`mt-0.5 inline-flex ml-1.5 items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusColors[invoice.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                               {invoice.status}
+                             </div>
+                           )}
+                         </TableCell>
+                         <TableCell className="px-3">
+                           <span className={`text-xs ${dueDate && new Date(dueDate) < new Date() ? 'text-red-600 font-medium' : 'text-foreground'}`}>
+                             {dueDate ? format(dueDate, 'dd/MM/yyyy') : '—'}
+                           </span>
+                         </TableCell>
+                         <TableCell className="px-3">
+                           <AttachmentCell
+                             invoice={invoice}
+                             onUpdate={(id, data) => updateInvoiceMut.mutate({ id, data })}
+                           />
+                         </TableCell>
+                         <TableCell className="px-3 text-right text-xs text-muted-foreground">
+                           {debtor?.credit_limit ? `₹${(debtor.credit_limit).toLocaleString('en-IN')}` : '—'}
+                         </TableCell>
+                         <TableCell className="px-3">
+                           <span className="text-xs text-muted-foreground">{(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '—'; })()}</span>
+                         </TableCell>
+                         <TableCell className="px-3">
+                           <span className="text-xs font-medium text-muted-foreground">{dueDate ? `W${getWeekNumber(dueDate)}` : '—'}</span>
+                         </TableCell>
+                         <TableCell className="px-3">
+                           <span className="text-xs text-muted-foreground">{dueDate ? format(dueDate, 'MMM yyyy') : '—'}</span>
+                         </TableCell>
+                        <TableCell className="px-3">
+                           <div className="flex items-center gap-0.5">
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted"
+                               title="Edit Invoice"
+                               onClick={() => setEditingInvoice(invoice)}
+                             >
+                               <Edit className="w-3.5 h-3.5" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-7 w-7 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
+                               title="Set Target"
+                               onClick={() => setTargetDebtor(debtor)}
+                             >
+                               <Target className="w-3.5 h-3.5" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                               title="Send Reminder Email"
+                               onClick={() => setReminderDebtor(debtor?.id ? debtor : { id: invoice.debtor_id, name: invoice.debtor_name })}
+                             >
+                               <Mail className="w-3.5 h-3.5" />
+                             </Button>
+                             <Button
+                               variant="ghost"
+                               size="icon"
+                               className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                               title="Delete"
+                               onClick={() => deleteMut.mutate(invoice.id)}
+                             >
+                               <Trash2 className="w-3.5 h-3.5" />
+                             </Button>
+                           </div>
+                         </TableCell>
                       </TableRow>
                     );
                   })}
