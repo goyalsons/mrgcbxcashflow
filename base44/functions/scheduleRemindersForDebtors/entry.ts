@@ -33,6 +33,15 @@ Deno.serve(async (req) => {
       const debtor = await base44.entities.Debtor.get(debtorId);
       if (!debtor) continue;
 
+      // Try to find customer by debtor name to get correct email/phone
+      let customer = null;
+      try {
+        const customers = await base44.entities.Customer.filter({ name: debtor.name });
+        customer = customers.length > 0 ? customers[0] : null;
+      } catch (e) {
+        // Customer entity may not exist or filter may fail
+      }
+
       // Determine channels
       const channels = [];
       if (mode === 'email' || mode === 'both') channels.push('email');
@@ -60,11 +69,15 @@ Deno.serve(async (req) => {
         const template = await base44.entities.MessageTemplate.get(templateId);
         if (!template) continue;
 
+        // Use customer email/phone if available, fallback to debtor
+        const email = customer?.email || debtor.email || '';
+        const phone = customer?.phone || debtor.phone || '';
+
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,
           debtor_id: debtorId,
-          debtor_email: debtor.email || '',
-          debtor_phone: debtor.phone || '',
+          debtor_email: email,
+          debtor_phone: phone,
           message_subject: template.subject || '',
           message_body: template.body || '',
           scheduled_send_date: nextSend.date,

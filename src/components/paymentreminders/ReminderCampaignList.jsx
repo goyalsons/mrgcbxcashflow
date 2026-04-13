@@ -73,8 +73,19 @@ export default function ReminderCampaignList() {
         return;
       }
 
-      // Mock sending test message
-      toast({ title: `Test ${campaign.reminder_type} sent to ${campaign.reminder_type === 'email' ? testEmail : testPhone}` });
+      const res = await base44.functions.invoke('sendTestReminder', {
+        campaignId: campaign.id,
+        testEmail: testEmail || null,
+        testPhone: testPhone || null,
+      });
+
+      if (res.data?.success) {
+        toast({ title: res.data.message });
+      } else {
+        toast({ title: res.data?.error || 'Failed to send test message', variant: 'destructive' });
+      }
+    } catch (err) {
+      toast({ title: 'Error sending test message', description: err.message, variant: 'destructive' });
     } finally {
       setTestLoading(false);
       setTestingCampaignId(null);
