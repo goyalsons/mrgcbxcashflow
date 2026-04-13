@@ -26,6 +26,8 @@ Deno.serve(async (req) => {
     }
 
     let totalCreated = 0;
+    const daysArray = Array.from(selectedDays);
+    const monthDaysArray = Array.from(selectedMonthlyDays);
 
     for (const debtorId of debtorIds) {
       const debtor = await base44.entities.Debtor.get(debtorId);
@@ -36,30 +38,27 @@ Deno.serve(async (req) => {
       if (mode === 'email' || mode === 'both') channels.push('email');
       if (mode === 'whatsapp' || mode === 'both') channels.push('whatsapp');
 
-      // Convert Sets to Arrays
-      const daysArray = Array.from(selectedDays);
-      const monthDaysArray = Array.from(selectedMonthlyDays);
+      // Create one campaign per debtor (not per channel)
+      const campaign = await base44.entities.ReminderCampaign.create({
+        debtor_id: debtorId,
+        debtor_name: debtor.name,
+        campaign_name: `Payment Reminders - ${debtor.name}`,
+        template_id: emailTemplateId || whatsappTemplateId,
+        reminder_type: channels.length === 1 ? channels[0] : 'both',
+        frequency: frequencyType,
+        start_date: startDate,
+        send_time: sendTime,
+        number_of_reminders: 1,
+        status: 'active',
+      });
 
-      // Create one campaign per channel
+      const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, daysArray, monthDaysArray);
+
+      // Create scheduled reminders for each channel
       for (const channel of channels) {
         const templateId = channel === 'email' ? emailTemplateId : whatsappTemplateId;
         const template = await base44.entities.MessageTemplate.get(templateId);
         if (!template) continue;
-
-        const campaign = await base44.entities.ReminderCampaign.create({
-          debtor_id: debtorId,
-          debtor_name: debtor.name,
-          campaign_name: `Payment Reminders - ${debtor.name} (${channel})`,
-          template_id: templateId,
-          reminder_type: channel,
-          frequency: frequencyType,
-          start_date: startDate,
-          send_time: sendTime,
-          number_of_reminders: 1,
-          status: 'active',
-        });
-
-        const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, daysArray, monthDaysArray);
 
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,

@@ -18,11 +18,10 @@ export default function PaymentReminders() {
         title="Payment Reminders"
         subtitle="Schedule automated email and WhatsApp reminders to collect payments"
       />
-      <Tabs defaultValue="scheduled">
+      <Tabs defaultValue="campaigns">
         <TabsList>
-          <TabsTrigger value="scheduled">Scheduled Reminders</TabsTrigger>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
-          <TabsTrigger value="new">New Campaign (Manual)</TabsTrigger>
+          <TabsTrigger value="scheduled">Scheduled Reminders</TabsTrigger>
         </TabsList>
         <TabsContent value="scheduled" className="mt-4">
           <ScheduledRemindersList key={refreshKey} />
@@ -30,9 +29,7 @@ export default function PaymentReminders() {
         <TabsContent value="campaigns" className="mt-4">
           <ReminderCampaignList key={refreshKey} />
         </TabsContent>
-        <TabsContent value="new" className="mt-4">
-          <ReminderCampaignForm onSuccess={handleSuccess} key={refreshKey} />
-        </TabsContent>
+
       </Tabs>
     </div>
   );
