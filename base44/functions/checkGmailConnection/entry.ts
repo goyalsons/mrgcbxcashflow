@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
@@ -8,18 +8,18 @@ Deno.serve(async (req) => {
 
     const { accessToken } = await base44.asServiceRole.connectors.getConnection('gmail');
     
-    // Verify token by fetching Gmail profile
     const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
     
     if (!res.ok) {
-      return Response.json({ connected: false });
+      const errText = await res.text();
+      return Response.json({ connected: false, error: `Gmail API error: ${res.status} - ${errText}` });
     }
     
     const profile = await res.json();
     return Response.json({ connected: true, email: profile.emailAddress });
-  } catch {
-    return Response.json({ connected: false });
+  } catch(err) {
+    return Response.json({ connected: false, error: err.message });
   }
 });

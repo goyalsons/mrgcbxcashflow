@@ -162,9 +162,14 @@ export default function Settings() {
     setGmailChecking(true);
     try {
       const res = await base44.functions.invoke('checkGmailConnection', {});
-      setGmailConnected(res.data.connected ? { email: res.data.email } : false);
-    } catch {
-      setGmailConnected(false);
+      if (res.data.connected) {
+        setGmailConnected({ email: res.data.email });
+      } else {
+        // Even if status check fails, Gmail connector may still work — show warning only
+        setGmailConnected({ warning: true, error: res.data.error });
+      }
+    } catch (e) {
+      setGmailConnected({ warning: true, error: e.message });
     }
     setGmailChecking(false);
   };
@@ -359,23 +364,30 @@ export default function Settings() {
                 {/* Connection Status */}
                 <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/40">
                   <div className="flex items-center gap-3">
-                    <div className={`w-3 h-3 rounded-full ${gmailConnected?.email ? 'bg-emerald-500' : 'bg-gray-300'}`} />
+                    <div className={`w-3 h-3 rounded-full ${gmailConnected?.email ? 'bg-emerald-500' : gmailConnected?.warning ? 'bg-amber-400' : 'bg-gray-300'}`} />
                     <div>
-                      <p className="font-medium text-sm">{gmailConnected?.email ? `Connected as ${gmailConnected.email}` : 'Not connected'}</p>
-                      <p className="text-xs text-muted-foreground">{gmailConnected?.email ? 'Emails will be sent from this Gmail account.' : 'Connect your Gmail account to enable email sending.'}</p>
+                      <p className="font-medium text-sm">
+                        {gmailConnected?.email
+                          ? `Connected as ${gmailConnected.email}`
+                          : gmailConnected?.warning
+                          ? 'Gmail connected via OAuth (status check pending)'
+                          : 'Not connected'}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {gmailConnected?.email
+                          ? 'Emails will be sent from this Gmail account.'
+                          : gmailConnected?.warning
+                          ? 'Use the test email below to verify your connection works.'
+                          : 'Connect your Gmail account to enable email sending.'}
+                      </p>
                     </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={checkGmailStatus}
-                    disabled={gmailChecking}
-                  >
+                  <Button variant="outline" size="sm" onClick={checkGmailStatus} disabled={gmailChecking}>
                     {gmailChecking ? '⏳ Checking...' : '🔄 Refresh'}
                   </Button>
                 </div>
 
-                {!gmailConnected?.email && (
+                {!gmailConnected?.email && !gmailConnected?.warning && (
                   <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 space-y-3">
                     <p className="text-sm font-medium text-blue-800">How to connect Gmail:</p>
                     <ol className="text-sm text-blue-700 space-y-1 list-decimal ml-4">
@@ -384,48 +396,40 @@ export default function Settings() {
                       <li>Sign in with your Google account and grant permission to send emails</li>
                       <li>Come back here and click <strong>Refresh Status</strong> to confirm</li>
                     </ol>
-                    <div className="p-3 rounded-lg bg-white border border-blue-200 text-xs text-blue-600">
-                      Once connected, all emails (reminders, digests, test emails) will be sent from your Gmail account via the secure Gmail API — no SMTP ports needed.
-                    </div>
                   </div>
                 )}
 
-                {gmailConnected?.email && (
-                  <div className="space-y-1.5 max-w-xs">
-                    <Label>From Name</Label>
-                    <Input value={gmailFromName} onChange={e => setGmailFromName(e.target.value)} placeholder="CashFlow Pro" />
-                    <p className="text-xs text-muted-foreground">Display name shown to email recipients.</p>
-                  </div>
-                )}
+                <div className="space-y-1.5 max-w-xs">
+                  <Label>From Name</Label>
+                  <Input value={gmailFromName} onChange={e => setGmailFromName(e.target.value)} placeholder="CashFlow Pro" />
+                  <p className="text-xs text-muted-foreground">Display name shown to email recipients.</p>
+                </div>
 
-                {/* Test Email */}
-                {gmailConnected?.email && (
-                  <div className="border-t pt-4 space-y-3">
-                    <p className="text-sm font-medium">Send Test Email</p>
-                    <div className="flex gap-3">
-                      <Input
-                        type="email"
-                        value={testEmail}
-                        onChange={e => setTestEmail(e.target.value)}
-                        placeholder="recipient@example.com"
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="outline"
-                        onClick={handleTestEmail}
-                        disabled={testEmailSending || !testEmail}
-                        className="gap-2 shrink-0"
-                      >
-                        {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
-                      </Button>
-                    </div>
-                    {testEmailResult && (
-                      <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                        {testEmailResult.message}
-                      </div>
-                    )}
+                <div className="border-t pt-4 space-y-3">
+                  <p className="text-sm font-medium">Send Test Email</p>
+                  <div className="flex gap-3">
+                    <Input
+                      type="email"
+                      value={testEmail}
+                      onChange={e => setTestEmail(e.target.value)}
+                      placeholder="recipient@example.com"
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={handleTestEmail}
+                      disabled={testEmailSending || !testEmail}
+                      className="gap-2 shrink-0"
+                    >
+                      {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
+                    </Button>
                   </div>
-                )}
+                  {testEmailResult && (
+                    <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                      {testEmailResult.message}
+                    </div>
+                  )}
+                </div>
 
               </CardContent>
             </Card>
@@ -445,6 +449,11 @@ export default function Settings() {
             </p>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="p-4 rounded-lg bg-amber-50 border border-amber-300 text-sm text-amber-800 space-y-1">
+              <p className="font-semibold">⚠️ Important: Templates must be created in Meta first</p>
+              <p>WhatsApp templates must be <strong>pre-approved in your Meta Business Manager</strong> before they can be sent. The messages in the Templates tab are for reference only — you can copy them and use them as a starting point when creating templates in Meta.</p>
+              <a href="https://business.facebook.com/wa/manage/message-templates/" target="_blank" rel="noreferrer" className="underline font-medium text-amber-700">→ Open Meta Message Templates Manager</a>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label>RedLava API Key *</Label>
