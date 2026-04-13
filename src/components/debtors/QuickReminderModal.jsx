@@ -30,13 +30,14 @@ export default function QuickReminderModal({ debtor, onClose }) {
   const [showPreview, setShowPreview] = useState(false);
 
   useEffect(() => {
-    const fetchInvoices = debtor.id
-      ? base44.entities.Invoice.filter({ debtor_id: debtor.id })
-      : base44.entities.Invoice.filter({ debtor_name: debtor.name });
-
-    fetchInvoices
+    base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
-        const outstanding = all.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
+        // Filter strictly to this debtor only — by debtor_id if available, else by name
+        const forThisDebtor = all.filter(inv => {
+          if (debtor.id) return inv.debtor_id === debtor.id;
+          return inv.debtor_name?.toLowerCase() === debtor.name?.toLowerCase();
+        });
+        const outstanding = forThisDebtor.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
         const table = buildInvoiceTable(outstanding.length > 0 ? outstanding : [{ invoice_number: '-', amount: debtor.total_outstanding || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]);
         setBody(`Dear ${debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.`);
