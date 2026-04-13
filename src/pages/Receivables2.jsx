@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, Mail, Edit, Target, Bell, Trash2 } from 'lucide-react';
+import { Phone, Mail, Edit, Target, Bell, Trash2, CalendarClock } from 'lucide-react';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import { format, parseISO } from 'date-fns';
@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import EditInvoiceModal from '@/components/receivables/EditInvoiceModal';
+import ScheduleRemindersModal from '@/components/receivables/ScheduleRemindersModal';
 import QuickReminderModal from '@/components/debtors/QuickReminderModal';
 import SetTargetModal from '@/components/debtors/SetTargetModal';
 
@@ -34,6 +35,7 @@ export default function Receivables2() {
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [reminderDebtor, setReminderDebtor] = useState(null);
   const [targetDebtor, setTargetDebtor] = useState(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -338,7 +340,10 @@ export default function Receivables2() {
         <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
           <span className="text-sm font-medium text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2 ml-auto">
-            <Button size="sm" variant="outline" onClick={() => { setBulkAction('reminder'); setShowBulkModal(true); }}>Send Reminder</Button>
+            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowScheduleModal(true)}>
+              <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => { setBulkAction('reminder'); setShowBulkModal(true); }}>Send Quick Reminder</Button>
             <Button size="sm" variant="outline" onClick={() => { setBulkAction('manager'); setShowBulkModal(true); }}>Assign Manager</Button>
             <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
           </div>
@@ -509,6 +514,15 @@ export default function Receivables2() {
       {/* Set Target Modal */}
       {targetDebtor && (
         <SetTargetModal debtor={targetDebtor} onClose={() => setTargetDebtor(null)} />
+      )}
+
+      {/* Schedule Reminders Modal */}
+      {showScheduleModal && (
+        <ScheduleRemindersModal
+          invoices={[...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean)}
+          debtors={debtors}
+          onClose={() => { setShowScheduleModal(false); setSelected(new Set()); }}
+        />
       )}
 
       {/* Bulk Action Modal */}
