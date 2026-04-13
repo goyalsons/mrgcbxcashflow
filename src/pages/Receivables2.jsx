@@ -51,7 +51,7 @@ export default function Receivables2() {
   const { data: debtors = [] } = useQuery({
     queryKey: ['debtors'],
     queryFn: async () => {
-      return await base44.entities.Debtor.list('-created_date', 100);
+      return await base44.entities.Debtor.list();
     },
   });
 
