@@ -78,7 +78,7 @@ export default function Receivables() {
   };
 
   const getResolvedManager = (invoice) => {
-    const customer = getCustomerInfo(invoice.debtor_name);
+    const customer = getCustomerInfo(invoice.customer_name);
     return customer?.account_manager || '';
   };
 
@@ -217,7 +217,7 @@ export default function Receivables() {
     try {
       await Promise.all([...selected].map(id => {
         const inv = invoices.find(i => i.id === id);
-        const customer = getCustomerInfo(inv?.debtor_name);
+        const customer = getCustomerInfo(inv?.customer_name);
         if (customer?.id) {
           return base44.entities.Customer.update(customer.id, { account_manager: assigningManager });
         }
@@ -542,7 +542,7 @@ export default function Receivables() {
                            />
                          </TableCell>
                          <TableCell className="px-3 text-right text-xs text-muted-foreground">
-                           {(() => { const cust = getCustomerInfo(invoice.debtor_name); return cust?.credit_limit ? `₹${(cust.credit_limit).toLocaleString('en-IN')}` : '—'; })()}
+                           {(() => { const cust = getCustomerInfo(invoice.customer_name); return cust?.credit_limit ? `₹${(cust.credit_limit).toLocaleString('en-IN')}` : '—'; })()}
                          </TableCell>
                          <TableCell className="px-3">
                            <span className="text-xs text-muted-foreground">{(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '—'; })()}</span>
