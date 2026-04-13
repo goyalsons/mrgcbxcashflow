@@ -61,6 +61,19 @@ export default function QuickReminderModal({ customer, onClose }) {
     select: (data) => data.filter(t => t.type === 'email'),
   });
 
+  // Fetch full customer data from Customer table
+  const { data: fullCustomerData } = useQuery({
+    queryKey: ['customer', customer.name || customer.id],
+    queryFn: async () => {
+      if (!customer.name && !customer.id) return null;
+      const all = await base44.entities.Customer.list();
+      return all.find(c => 
+        (customer.id && c.id === customer.id) || 
+        (customer.name && c.name?.toLowerCase() === customer.name?.toLowerCase())
+      );
+    },
+  });
+
   const getSignature = () => {
     try {
       const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
@@ -111,17 +124,17 @@ export default function QuickReminderModal({ customer, onClose }) {
   };
 
   useEffect(() => {
-    setResolvedEmail(customer.email || '');
-    setResolvedPhone(customer.phone || '');
-    setResolvedContactPerson(customer.contact_person || customer.name || '');
-  }, [customer]);
+    setResolvedEmail(fullCustomerData?.email || customer.email || '');
+    setResolvedPhone(fullCustomerData?.phone || customer.phone || '');
+    setResolvedContactPerson(fullCustomerData?.contact_person || customer.contact_person || customer.name || '');
+  }, [customer, fullCustomerData]);
 
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
         const forThisCustomer = all.filter(inv => {
-          if (customer.id) return inv.debtor_id === customer.id;
-          return inv.debtor_name?.toLowerCase() === customer.name?.toLowerCase();
+          if (fullCustomerData?.id) return inv.debtor_id === fullCustomerData.id;
+          return inv.debtor_name?.toLowerCase() === (customer.name || fullCustomerData?.name)?.toLowerCase();
         });
         const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
@@ -144,7 +157,7 @@ export default function QuickReminderModal({ customer, onClose }) {
       })
       .catch(() => setIsInitializing(false))
       .finally(() => setLoadingInvoices(false));
-  }, [customer.id, customer.name, resolvedContactPerson]);
+  }, [customer.id, customer.name, fullCustomerData, resolvedContactPerson]);
 
   const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
 
