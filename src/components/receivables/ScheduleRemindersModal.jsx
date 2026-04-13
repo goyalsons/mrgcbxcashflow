@@ -13,7 +13,7 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
 
-export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
+export default function ScheduleRemindersModal({ invoices, onClose }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   

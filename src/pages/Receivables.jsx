@@ -79,7 +79,7 @@ export default function Receivables() {
 
   const getResolvedManager = (invoice) => {
     const customer = getCustomerInfo(invoice.debtor_name);
-    return customer.account_manager || '';
+    return customer?.account_manager || '';
   };
 
   const getWeekNumber = (date) => {
@@ -217,12 +217,12 @@ export default function Receivables() {
     try {
       await Promise.all([...selected].map(id => {
         const inv = invoices.find(i => i.id === id);
-        const debtor = getDebtorInfo(inv?.debtor_id);
-        if (debtor?.id) {
-          return base44.entities.Debtor.update(debtor.id, { assigned_manager: assigningManager });
+        const customer = getCustomerInfo(inv?.debtor_name);
+        if (customer?.id) {
+          return base44.entities.Customer.update(customer.id, { account_manager: assigningManager });
         }
       }).filter(Boolean));
-      queryClient.invalidateQueries({ queryKey: ['invoices', 'debtors'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices', 'customers'] });
       toast({ title: `Assigned manager to ${selected.size} invoice(s)` });
       setSelected(new Set());
     } finally {

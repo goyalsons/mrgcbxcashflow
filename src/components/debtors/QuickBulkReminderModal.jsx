@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
     },
   });
 
-  const getUniqueCustomers = () => {
+  const uniqueCustomers = useMemo(() => {
     const seen = new Set();
     return selectedInvoices
       .filter(inv => {
@@ -39,10 +39,15 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
-      });
-  };
-
-  const uniqueCustomers = getUniqueCustomers();
+      })
+      .map(inv => ({
+        id: inv.customer_id,
+        name: inv.customer_name,
+        email: inv.customer_email || '',
+        phone: inv.customer_phone || '',
+        contact_person: inv.contact_person || ''
+      }));
+  }, [selectedInvoices]);
 
   const handleSend = async () => {
     const selectedTemplate = channel === 'email' ? emailTemplateId : whatsappTemplateId;
@@ -62,19 +67,18 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
       if (!template) throw new Error('Template not found');
 
       // For each unique customer, send reminder
-      for (const inv of uniqueCustomers) {
+      for (const customer of uniqueCustomers) {
         try {
           if (channel === 'email') {
-            const customer = inv; // Has email field
             if (!customer.email) continue;
             
-            const subject = (template.subject || `Payment Reminder - ${inv.customer_name}`)
-              .replace(/\{\{company_name\}\}/g, inv.customer_name || '')
-              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.customer_name || '');
+            const subject = (template.subject || `Payment Reminder - ${customer.name}`)
+              .replace(/\{\{company_name\}\}/g, customer.name || '')
+              .replace(/\{\{contact_person\}\}/g, customer.contact_person || customer.name || '');
 
             const body = (template.body || '')
-              .replace(/\{\{contact_person\}\}/g, inv.contact_person || inv.customer_name || '')
-              .replace(/\{\{company_name\}\}/g, inv.customer_name || '')
+              .replace(/\{\{contact_person\}\}/g, customer.contact_person || customer.name || '')
+              .replace(/\{\{company_name\}\}/g, customer.name || '')
               .replace(/\{\{outstanding_amount\}\}/g, '₹0')
               .replace(/\{\{invoice_table\}\}/g, '');
 
@@ -86,7 +90,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
             successCount++;
           }
         } catch (err) {
-          console.error(`Failed to send to ${inv.customer_name}:`, err);
+          console.error(`Failed to send to ${customer.name}:`, err);
         }
       }
 
@@ -161,7 +165,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
           </div>
 
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-blue-700">
-            <p><strong>Recipients:</strong> {uniqueCustomers.map(d => d.customer_name).join(', ')}</p>
+            <p><strong>Recipients:</strong> {uniqueCustomers.map(d => d.name).join(', ')}</p>
           </div>
         </div>
 
