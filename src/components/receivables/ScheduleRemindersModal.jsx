@@ -45,6 +45,14 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     },
   });
 
+  // Fetch all customers to match with invoices
+  const { data: allCustomers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: async () => {
+      return await base44.entities.Customer.list();
+    },
+  });
+
   // Extract unique customers from selected invoices
   const selectedCustomers = useMemo(() => {
     if (!invoices || invoices.length === 0) return [];
@@ -52,13 +60,21 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     const customerMap = new Map();
     invoices.forEach(inv => {
       if (!inv) return;
-      const key = inv.customer_id || inv.customer_name;
+      const key = inv.debtor_name || inv.customer_name;
       if (!key || customerMap.has(key)) return;
-      // Invoices already store customer_id and customer_name
-      customerMap.set(key, { id: inv.customer_id, name: inv.customer_name, email: inv.customer_email || '', phone: inv.customer_phone || '' });
+      
+      // Find matching customer from Customer table
+      const matchedCustomer = allCustomers.find(c => c.name?.toLowerCase() === key?.toLowerCase());
+      
+      customerMap.set(key, { 
+        id: matchedCustomer?.id || inv.debtor_id || inv.customer_id, 
+        name: key, 
+        email: matchedCustomer?.email || '', 
+        phone: matchedCustomer?.phone || '' 
+      });
     });
     return Array.from(customerMap.values());
-  }, [invoices]);
+  }, [invoices, allCustomers]);
 
   // Handlers
   const toggleDay = (day) => {
