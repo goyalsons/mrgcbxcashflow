@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Phone, Mail, Edit, Target, Bell, Trash2, CalendarClock } from 'lucide-react';
+import { Phone, Mail, Edit, Target, Bell, Trash2, CalendarClock, MessageSquare, User, Building2 } from 'lucide-react';
+import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import { format, parseISO } from 'date-fns';
@@ -53,6 +54,11 @@ export default function Receivables2() {
     },
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => base44.entities.User.list(),
@@ -68,6 +74,11 @@ export default function Receivables2() {
   const getDebtorInfo = (debtorId) => {
     const debtor = debtors.find(d => d.id === debtorId);
     return debtor || {};
+  };
+
+  const getCustomerInfo = (debtorName) => {
+    if (!debtorName) return {};
+    return customers.find(c => c.name?.toLowerCase() === debtorName?.toLowerCase()) || {};
   };
 
   const getWeekNumber = (date) => {
@@ -410,9 +421,79 @@ export default function Receivables2() {
                           <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
                         </TableCell>
                         <TableCell className="font-medium">
-                          <div>{invoice.debtor_name}</div>
+                          {(() => {
+                            const customer = getCustomerInfo(invoice.debtor_name);
+                            const phone = customer.phone || debtor?.phone;
+                            const email = customer.email || debtor?.email;
+                            const contactPerson = customer.contact_person || debtor?.contact_person;
+                            return (
+                              <HoverCard openDelay={200} closeDelay={100}>
+                                <HoverCardTrigger asChild>
+                                  <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-primary transition-colors">
+                                    {invoice.debtor_name}
+                                  </span>
+                                </HoverCardTrigger>
+                                <HoverCardContent className="w-72 p-0 overflow-hidden" align="start">
+                                  <div className="bg-primary/5 border-b px-4 py-3 flex items-center gap-2">
+                                    <Building2 className="w-4 h-4 text-primary shrink-0" />
+                                    <div>
+                                      <p className="font-semibold text-sm">{invoice.debtor_name}</p>
+                                      {contactPerson && <p className="text-xs text-muted-foreground">{contactPerson}</p>}
+                                    </div>
+                                  </div>
+                                  <div className="px-4 py-3 space-y-2">
+                                    {email ? (
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Mail className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="truncate text-xs">{email}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No email on file</span>
+                                      </div>
+                                    )}
+                                    {phone ? (
+                                      <div className="flex items-center gap-2 text-sm">
+                                        <Phone className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                                        <span className="text-xs">{phone}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No phone on file</span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <div className="border-t px-4 py-2.5 flex items-center gap-2">
+                                    <button
+                                      disabled={!phone}
+                                      onClick={() => phone && window.open(`tel:${phone}`)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md bg-blue-50 text-blue-700 hover:bg-blue-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      <Phone className="w-3 h-3" /> Call
+                                    </button>
+                                    <button
+                                      disabled={!email}
+                                      onClick={() => email && window.open(`mailto:${email}`)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md bg-orange-50 text-orange-700 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      <Mail className="w-3 h-3" /> Email
+                                    </button>
+                                    <button
+                                      disabled={!phone}
+                                      onClick={() => phone && window.open(`https://wa.me/${phone.replace(/\D/g, '')}`)}
+                                      className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-1.5 rounded-md bg-green-50 text-green-700 hover:bg-green-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                                    >
+                                      <MessageSquare className="w-3 h-3" /> WhatsApp
+                                    </button>
+                                  </div>
+                                </HoverCardContent>
+                              </HoverCard>
+                            );
+                          })()}
                           {debtor?.contact_person && (
-                            <div className="text-xs text-muted-foreground">{debtor.contact_person}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{debtor.contact_person}</div>
                           )}
                         </TableCell>
                         <TableCell className="text-right font-medium">
