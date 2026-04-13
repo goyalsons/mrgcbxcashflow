@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { base44 } from '@/api/base44Client';
-import { formatINR } from '@/lib/utils/currency';
 import { Send, Loader2, Mail, Eye, EyeOff, FileText } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import { format, parseISO } from 'date-fns';
@@ -28,38 +27,58 @@ export default function QuickReminderModal({ debtor, onClose }) {
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
+  const [resolvedEmail, setResolvedEmail] = useState(debtor.email || '');
+  const [resolvedPhone, setResolvedPhone] = useState(debtor.phone || '');
+  const [subject, setSubject] = useState(`Payment Reminder — ${debtor.name || ''}`);
+  const [body, setBody] = useState(`Dear ${debtor.name || ''},\n\nLoading invoice details...`);
 
+  // Fetch contact info from Customer records by company name if not on debtor
+  useEffect(() => {
+    base44.entities.Customer.list()
+      .then(customers => {
+        const match = customers.find(c =>
+          c.name?.toLowerCase() === debtor.name?.toLowerCase()
+        );
+        if (match) {
+          if (match.email && !resolvedEmail) setResolvedEmail(match.email);
+          if (match.phone && !resolvedPhone) setResolvedPhone(match.phone);
+        }
+      })
+      .catch(() => {});
+  }, [debtor.name]);
+
+  // Fetch invoices for this debtor
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
-        // Filter strictly to this debtor only — by debtor_id if available, else by name
         const forThisDebtor = all.filter(inv => {
           if (debtor.id) return inv.debtor_id === debtor.id;
           return inv.debtor_name?.toLowerCase() === debtor.name?.toLowerCase();
         });
         const outstanding = forThisDebtor.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
-        const table = buildInvoiceTable(outstanding.length > 0 ? outstanding : [{ invoice_number: '-', amount: debtor.total_outstanding || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]);
+        const table = buildInvoiceTable(
+          outstanding.length > 0
+            ? outstanding
+            : [{ invoice_number: '-', amount: debtor.total_outstanding || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
+        );
         setBody(`Dear ${debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.\n\nThank you.`);
       })
       .catch(() => {})
       .finally(() => setLoadingInvoices(false));
   }, [debtor.id, debtor.name]);
 
-  const [subject, setSubject] = useState(`Payment Reminder — ${debtor.name || ''}`);
-  const [body, setBody] = useState(`Dear ${debtor.name || ''},\n\nLoading invoice details...`);
-
   const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
 
   const handleSend = async () => {
-    if (!debtor.email) {
-      toast({ title: 'No email on file for this debtor', variant: 'destructive' });
+    if (!resolvedEmail) {
+      toast({ title: 'No email found for this company', variant: 'destructive' });
       return;
     }
     setSending(true);
     try {
-      await base44.integrations.Core.SendEmail({ to: debtor.email, subject, body });
-      toast({ title: `Reminder sent to ${debtor.email}` });
+      await base44.integrations.Core.SendEmail({ to: resolvedEmail, subject, body });
+      toast({ title: `Reminder sent to ${resolvedEmail}` });
       onClose();
     } catch (err) {
       toast({ title: `Failed: ${err.message}`, variant: 'destructive' });
@@ -79,17 +98,18 @@ export default function QuickReminderModal({ debtor, onClose }) {
 
         <div className="space-y-3">
           {/* Email recipient */}
-          {debtor.email ? (
+          {resolvedEmail ? (
             <div className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-3 py-2">
-              Sending to: <span className="font-semibold">{debtor.email}</span>
+              Sending to: <span className="font-semibold">{resolvedEmail}</span>
+              {resolvedPhone && <span className="ml-3 text-emerald-600">📞 {resolvedPhone}</span>}
             </div>
           ) : (
             <div className="text-xs bg-red-50 text-red-700 border border-red-200 rounded px-3 py-2">
-              ⚠️ No email on file. Please add an email to the debtor record first.
+              ⚠️ No email found in debtor or customer records. Please add an email first.
             </div>
           )}
 
-          {/* Invoice summary table */}
+          {/* Invoice summary */}
           {loadingInvoices ? (
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
               <Loader2 className="w-3.5 h-3.5 animate-spin" /> Loading invoices...
@@ -97,7 +117,9 @@ export default function QuickReminderModal({ debtor, onClose }) {
           ) : invoices.length > 0 && (
             <div className="border rounded-lg overflow-hidden">
               <div className="bg-muted/50 px-3 py-2 flex items-center justify-between">
-                <span className="text-xs font-semibold flex items-center gap-1.5"><FileText className="w-3.5 h-3.5" /> {invoices.length} Outstanding Invoice{invoices.length > 1 ? 's' : ''}</span>
+                <span className="text-xs font-semibold flex items-center gap-1.5">
+                  <FileText className="w-3.5 h-3.5" /> {invoices.length} Outstanding Invoice{invoices.length > 1 ? 's' : ''}
+                </span>
                 <span className="text-xs font-bold text-primary">Total: ₹{totalOutstanding.toLocaleString('en-IN')}</span>
               </div>
               <div className="divide-y max-h-40 overflow-y-auto">
@@ -134,7 +156,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
           {showPreview ? (
             <div className="border rounded-lg bg-white p-4 text-sm whitespace-pre-wrap font-mono text-foreground max-h-64 overflow-y-auto shadow-inner">
               <div className="text-xs text-muted-foreground mb-2 font-sans border-b pb-2">
-                <strong>To:</strong> {debtor.email || '—'}<br />
+                <strong>To:</strong> {resolvedEmail || '—'}<br />
                 <strong>Subject:</strong> {subject}
               </div>
               {body}
@@ -145,7 +167,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSend} disabled={sending || !debtor.email}>
+            <Button size="sm" onClick={handleSend} disabled={sending || !resolvedEmail}>
               {sending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
               {sending ? 'Sending...' : 'Send Reminder'}
             </Button>
