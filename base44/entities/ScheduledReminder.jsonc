@@ -31,10 +31,18 @@
       "format": "date",
       "description": "Scheduled send date"
     },
+    "scheduled_send_time": {
+      "type": "string",
+      "description": "Scheduled send time (HH:MM format)"
+    },
     "sent_date": {
       "type": "string",
       "format": "date",
       "description": "Actual sent date"
+    },
+    "sent_time": {
+      "type": "string",
+      "description": "Actual sent time"
     },
     "status": {
       "type": "string",
