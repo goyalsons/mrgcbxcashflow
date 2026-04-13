@@ -167,6 +167,8 @@ export default function Settings() {
   const [cloudinaryTestResult, setCloudinaryTestResult] = useState(null);
   const [templateTestState, setTemplateTestState] = useState({}); // { [id]: { email, sending, result } }
   const [defaultReminderTemplateId, setDefaultReminderTemplateId] = useState('');
+  const [testEmailForReminders, setTestEmailForReminders] = useState('');
+  const [testPhoneForReminders, setTestPhoneForReminders] = useState('');
 
   const { data: templates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -202,6 +204,8 @@ export default function Settings() {
     if (s.digest) setDigest(s.digest);
     if (s.approvalThreshold !== undefined) setApprovalThreshold(Number(s.approvalThreshold) || 0);
     if (s.defaultReminderTemplateId) setDefaultReminderTemplateId(s.defaultReminderTemplateId);
+    if (s.testEmailForReminders) setTestEmailForReminders(s.testEmailForReminders);
+    if (s.testPhoneForReminders) setTestPhoneForReminders(s.testPhoneForReminders);
   }, []);
 
   const checkGmailStatus = async () => {
@@ -223,7 +227,7 @@ export default function Settings() {
   useEffect(() => { checkGmailStatus(); }, []);
 
   const handleSave = () => {
-    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId });
+    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId, testEmailForReminders, testPhoneForReminders });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });
@@ -455,30 +459,42 @@ export default function Settings() {
                 </div>
 
                 <div className="border-t pt-4 space-y-3">
-                  <p className="text-sm font-medium">Send Test Email</p>
-                  <div className="flex gap-3">
-                    <Input
-                      type="email"
-                      value={testEmail}
-                      onChange={e => setTestEmail(e.target.value)}
-                      placeholder="recipient@example.com"
-                      className="flex-1"
-                    />
-                    <Button
-                      variant="outline"
-                      onClick={handleTestEmail}
-                      disabled={testEmailSending || !testEmail}
-                      className="gap-2 shrink-0"
-                    >
-                      {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
-                    </Button>
-                  </div>
-                  {testEmailResult && (
-                    <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
-                      {testEmailResult.message}
-                    </div>
-                  )}
-                </div>
+                   <p className="text-sm font-medium">Default Test Email for Reminders</p>
+                   <Input
+                     type="email"
+                     value={testEmailForReminders}
+                     onChange={e => setTestEmailForReminders(e.target.value)}
+                     placeholder="test@example.com"
+                     className="max-w-xs"
+                   />
+                   <p className="text-xs text-muted-foreground">Used to send test email reminders from campaign list.</p>
+                 </div>
+
+                 <div className="border-t pt-4 space-y-3">
+                   <p className="text-sm font-medium">Send Ad-hoc Test Email</p>
+                   <div className="flex gap-3">
+                     <Input
+                       type="email"
+                       value={testEmail}
+                       onChange={e => setTestEmail(e.target.value)}
+                       placeholder="recipient@example.com"
+                       className="flex-1"
+                     />
+                     <Button
+                       variant="outline"
+                       onClick={handleTestEmail}
+                       disabled={testEmailSending || !testEmail}
+                       className="gap-2 shrink-0"
+                     >
+                       {testEmailSending ? '⏳ Sending...' : '📤 Send Test'}
+                     </Button>
+                   </div>
+                   {testEmailResult && (
+                     <div className={`p-3 rounded-lg border text-sm ${testEmailResult.success ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                       {testEmailResult.message}
+                     </div>
+                   )}
+                 </div>
 
               </CardContent>
             </Card>
@@ -618,11 +634,23 @@ export default function Settings() {
                   className="w-32"
                 />
                 <p className="text-xs text-muted-foreground">e.g. en, hi, mr, ta, te</p>
-              </div>
+                </div>
 
-              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
+                <div className="border-t pt-4 space-y-3">
+                <Label className="text-sm font-semibold">Default Test Phone for Reminders</Label>
+                <Input
+                  type="tel"
+                  value={testPhoneForReminders}
+                  onChange={e => setTestPhoneForReminders(e.target.value)}
+                  placeholder="919876543210"
+                  className="max-w-xs"
+                />
+                <p className="text-xs text-muted-foreground">Used to send test WhatsApp reminders from campaign list. Country code without +.</p>
+                </div>
+
+                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-sm text-blue-700">
                 <strong>How it works:</strong> When sending a reminder, select a template name and the recipient's phone number. RedLava will deliver the approved WhatsApp template message instantly.
-              </div>
+                </div>
             </CardContent>
           </Card>
 
