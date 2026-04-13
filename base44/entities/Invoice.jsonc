@@ -6,13 +6,13 @@
       "type": "string",
       "description": "Invoice number"
     },
-    "debtor_id": {
+    "customer_id": {
       "type": "string",
-      "description": "Reference to Debtor"
+      "description": "Reference to Customer"
     },
-    "debtor_name": {
+    "customer_name": {
       "type": "string",
-      "description": "Debtor name for display"
+      "description": "Customer name for display"
     },
     "amount": {
       "type": "number",
@@ -67,8 +67,8 @@
     }
   },
   "required": [
-    "debtor_id",
-    "debtor_name",
+    "customer_id",
+    "customer_name",
     "amount",
     "due_date"
   ]
