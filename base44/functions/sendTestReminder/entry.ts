@@ -30,6 +30,36 @@ Deno.serve(async (req) => {
 
     const reminder = reminders[0];
 
+    // Fetch debtor and invoices to replace placeholders
+    const debtor = await base44.entities.Debtor.get(reminder.debtor_id);
+    let invoices = [];
+    if (debtor) {
+      invoices = await base44.entities.Invoice.filter({ debtor_id: reminder.debtor_id });
+    }
+
+    // Build invoice table HTML
+    const invoiceTable = invoices.length > 0
+      ? `<table style="border-collapse:collapse;width:100%;margin:10px 0;">
+          <tr style="background:#f5f5f5;">
+            <th style="border:1px solid #ddd;padding:8px;text-align:left;">Invoice #</th>
+            <th style="border:1px solid #ddd;padding:8px;text-align:right;">Amount</th>
+            <th style="border:1px solid #ddd;padding:8px;text-align:left;">Due Date</th>
+          </tr>
+          ${invoices.map(inv => `<tr>
+            <td style="border:1px solid #ddd;padding:8px;">${inv.invoice_number || 'N/A'}</td>
+            <td style="border:1px solid #ddd;padding:8px;text-align:right;">₹${(inv.amount || 0).toLocaleString('en-IN')}</td>
+            <td style="border:1px solid #ddd;padding:8px;">${inv.due_date || 'N/A'}</td>
+          </tr>`).join('')}
+        </table>`
+      : '<p style="color:#999;">No outstanding invoices found.</p>';
+
+    // Replace placeholders in message body
+    let messageBody = reminder.message_body
+      .replace(/{{company_name}}/g, debtor?.name || 'Valued Customer')
+      .replace(/{{contact_person}}/g, debtor?.contact_person || 'Sir/Madam')
+      .replace(/{{invoice_table}}/g, invoiceTable)
+      .replace(/{{attachments}}/g, '');
+
     if (campaign.reminder_type === 'email' || campaign.reminder_type === 'both') {
       if (!testEmail) {
         return Response.json({ error: 'Test email not provided' }, { status: 400 });
@@ -39,7 +69,7 @@ Deno.serve(async (req) => {
       await base44.functions.invoke('sendSmtpEmail', {
         to: testEmail,
         subject: `[TEST] ${reminder.message_subject || 'Payment Reminder'}`,
-        body: `[This is a TEST message]\n\n${reminder.message_body}`,
+        body: `[This is a TEST message]\n\n${messageBody}`,
         from_name: 'Payment Reminders - Test',
       });
     }
