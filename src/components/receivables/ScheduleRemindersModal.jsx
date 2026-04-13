@@ -46,17 +46,18 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
   });
 
   // Extract unique debtors from selected invoices
+  // Falls back to invoice data if debtor record not found in debtors list
   const selectedDebtors = useMemo(() => {
     if (!invoices || invoices.length === 0) return [];
     
     const debtorMap = new Map();
     invoices.forEach(inv => {
-      if (inv) {
-        const debtor = debtors.find(d => d.id === inv.debtor_id);
-        if (debtor && !debtorMap.has(debtor.id)) {
-          debtorMap.set(debtor.id, debtor);
-        }
-      }
+      if (!inv) return;
+      const key = inv.debtor_id || inv.debtor_name;
+      if (!key || debtorMap.has(key)) return;
+      const debtor = debtors.find(d => d.id === inv.debtor_id);
+      // Use matched debtor record, or synthesize from invoice data
+      debtorMap.set(key, debtor || { id: inv.debtor_id, name: inv.debtor_name, email: '', phone: '' });
     });
     return Array.from(debtorMap.values());
   }, [invoices, debtors]);
