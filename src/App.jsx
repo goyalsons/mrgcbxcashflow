@@ -15,7 +15,6 @@ import CollectionTargets from '@/pages/CollectionTargets';
 import AgingAnalysis from '@/pages/AgingAnalysis';
 
 import AIInsights from '@/pages/AIInsights';
-import Reports from '@/pages/Reports';
 import CSVImport from '@/pages/CSVImport';
 import Settings from '@/pages/Settings';
 import AdminPanel from '@/pages/AdminPanel';
@@ -30,7 +29,6 @@ import Vendors from '@/pages/Vendors';
 import FollowUpSchedule from '@/pages/FollowUpSchedule';
 import Notifications from '@/pages/Notifications';
 import Analysis from '@/pages/Analysis';
-import TallyIntegration from '@/pages/TallyIntegration';
 import RecurringExpenses from '@/pages/RecurringExpenses';
 import CashFlowSimulator from '@/pages/CashFlowSimulator';
 
@@ -71,7 +69,6 @@ const AuthenticatedApp = () => {
         <Route path="/aging-analysis" element={<ProtectedRoute user={user} featureKey="aging_analysis"><AgingAnalysis /></ProtectedRoute>} />
 
         <Route path="/ai-insights" element={<ProtectedRoute user={user} featureKey="ai_insights"><AIInsights /></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute user={user} featureKey="reports"><Reports /></ProtectedRoute>} />
         <Route path="/csv-import" element={<ProtectedRoute user={user} featureKey="csv_import"><CSVImport /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} featureKey="settings"><Settings /></ProtectedRoute>} />
         <Route path="/admin-panel" element={<ProtectedRoute user={user} featureKey="admin_panel"><AdminPanel /></ProtectedRoute>} />
@@ -87,7 +84,6 @@ const AuthenticatedApp = () => {
         <Route path="/follow-up-schedule" element={<FollowUpSchedule />} />
         <Route path="/notifications" element={<Notifications />} />
         <Route path="/analysis" element={<Analysis />} />
-        <Route path="/tally-integration" element={<TallyIntegration />} />
         <Route path="/cash-flow-simulator" element={<CashFlowSimulator />} />
 
         <Route path="/vendor/:id" element={<VendorProfile />} />
