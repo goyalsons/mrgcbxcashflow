@@ -18,6 +18,7 @@ import { useToast } from '@/components/ui/use-toast';
 import EditInvoiceModal from '@/components/receivables/EditInvoiceModal';
 import ScheduleRemindersModal from '@/components/receivables/ScheduleRemindersModal';
 import QuickReminderModal from '@/components/debtors/QuickReminderModal';
+import QuickBulkReminderModal from '@/components/debtors/QuickBulkReminderModal';
 import SetTargetModal from '@/components/debtors/SetTargetModal';
 
 export default function Receivables2() {
@@ -38,6 +39,7 @@ export default function Receivables2() {
   const [reminderDebtor, setReminderDebtor] = useState(null);
   const [targetDebtor, setTargetDebtor] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showBulkReminder, setShowBulkReminder] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -243,8 +245,10 @@ export default function Receivables2() {
   };
 
   const handleBulkReminder = async () => {
-    toast({ title: `Reminder sent to ${selected.size} debtors` });
-    setSelected(new Set());
+    const selectedInvoices = [...selected]
+      .map(id => invoices.find(i => i.id === id))
+      .filter(Boolean);
+    setShowBulkReminder(true);
     setShowBulkModal(false);
   };
 
@@ -382,7 +386,7 @@ export default function Receivables2() {
             <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowScheduleModal(true)}>
               <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setBulkAction('reminder'); setShowBulkModal(true); }}>Send Quick Reminder</Button>
+            <Button size="sm" variant="outline" onClick={handleBulkReminder}>Send Quick Reminder</Button>
             <Button size="sm" variant="outline" onClick={() => { setBulkAction('manager'); setShowBulkModal(true); }}>Assign Manager</Button>
             <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
           </div>
@@ -634,6 +638,15 @@ export default function Receivables2() {
           invoices={[...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean)}
           debtors={debtors}
           onClose={() => { setShowScheduleModal(false); setSelected(new Set()); }}
+        />
+      )}
+
+      {/* Bulk Quick Reminder Modal */}
+      {showBulkReminder && (
+        <QuickBulkReminderModal
+          selectedInvoices={[...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean)}
+          onClose={() => setShowBulkReminder(false)}
+          onSuccess={() => { setSelected(new Set()); setShowBulkReminder(false); }}
         />
       )}
 

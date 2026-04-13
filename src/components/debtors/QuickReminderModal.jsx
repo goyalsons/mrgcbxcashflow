@@ -80,7 +80,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
       const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
       if (s.defaultReminderTemplateId) setSelectedTemplateId(s.defaultReminderTemplateId);
     } catch (e) {}
-  }, []);
+  }, [emailTemplates]);
 
   const applyTemplate = (templateId, invoiceList, totalAmt, contactPerson) => {
     const template = emailTemplates.find(t => t.id === templateId);
@@ -117,13 +117,24 @@ export default function QuickReminderModal({ debtor, onClose }) {
           c.name?.toLowerCase() === debtor.name?.toLowerCase()
         );
         if (match) {
-          if (match.email && !resolvedEmail) setResolvedEmail(match.email);
-          if (match.phone && !resolvedPhone) setResolvedPhone(match.phone);
-          if (match.contact_person) setResolvedContactPerson(match.contact_person);
+          const email = match.email || debtor.email || '';
+          const phone = match.phone || debtor.phone || '';
+          const contact = match.contact_person || debtor.contact_person || debtor.name || '';
+          setResolvedEmail(email);
+          setResolvedPhone(phone);
+          setResolvedContactPerson(contact);
+        } else {
+          setResolvedEmail(debtor.email || '');
+          setResolvedPhone(debtor.phone || '');
+          setResolvedContactPerson(debtor.contact_person || debtor.name || '');
         }
       })
-      .catch(() => {});
-  }, [debtor.name]);
+      .catch(() => {
+        setResolvedEmail(debtor.email || '');
+        setResolvedPhone(debtor.phone || '');
+        setResolvedContactPerson(debtor.contact_person || debtor.name || '');
+      });
+  }, [debtor]);
 
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
