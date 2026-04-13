@@ -15,6 +15,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import PaymentReceiptModal from '@/components/debtors/PaymentReceiptModal';
 import FollowUpForm from '@/components/debtors/FollowUpForm';
 import InvoiceForm from '@/components/debtors/InvoiceForm';
+import BulkReminderModal from '@/components/debtors/BulkReminderModal';
 
 const FOLLOWUP_ICONS = { call: '📞', email: '📧', whatsapp: '💬', visit: '🏢', sms: '📱', note: '📝' };
 
@@ -160,6 +161,7 @@ export default function MyCollections() {
   const [paymentTarget, setPaymentTarget] = useState(null); // debtor
   const [followUpTarget, setFollowUpTarget] = useState(null);
   const [invoiceTarget, setInvoiceTarget] = useState(null);
+  const [showBulkReminder, setShowBulkReminder] = useState(false);
 
   const { data: currentUser } = useQuery({
     queryKey: ['me'],
@@ -308,15 +310,21 @@ export default function MyCollections() {
         </Card>
       </div>
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search debtors..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="pl-9"
-        />
+      {/* Search & Actions */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative max-w-sm flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search debtors..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+        <Button onClick={() => setShowBulkReminder(true)} variant="outline" className="text-xs h-9 gap-1.5">
+          <Mail className="w-4 h-4" />
+          Send Bulk Reminder
+        </Button>
       </div>
 
       {isLoading ? (
@@ -462,6 +470,11 @@ export default function MyCollections() {
         onSave={(data) => createInvoiceMut.mutate(data)}
         debtorId={invoiceTarget?.id}
         debtorName={invoiceTarget?.name}
+      />
+      <BulkReminderModal
+        debtors={myDebtors}
+        onClose={() => setShowBulkReminder(false)}
+        onSuccess={() => setShowBulkReminder(false)}
       />
     </div>
   );
