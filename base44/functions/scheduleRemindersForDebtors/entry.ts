@@ -36,14 +36,18 @@ Deno.serve(async (req) => {
       if (mode === 'email' || mode === 'both') channels.push('email');
       if (mode === 'whatsapp' || mode === 'both') channels.push('whatsapp');
 
+      // Convert Sets to Arrays
+      const daysArray = Array.from(selectedDays);
+      const monthDaysArray = Array.from(selectedMonthlyDays);
+
       // Create campaign record
       const campaign = await base44.entities.ReminderCampaign.create({
         debtor_id: debtorId,
         debtor_name: debtor.name,
         campaign_name: `Payment Reminders - ${debtor.name}`,
         frequency_type: frequencyType,
-        selected_days: frequencyType === 'weekly' ? JSON.stringify(selectedDays) : null,
-        selected_months_days: frequencyType === 'monthly' ? JSON.stringify(selectedMonthlyDays) : null,
+        selected_days: frequencyType === 'weekly' ? JSON.stringify(daysArray) : null,
+        selected_monthly_days: frequencyType === 'monthly' ? JSON.stringify(monthDaysArray) : null,
         start_date: startDate,
         send_time: sendTime,
         status: 'active',
@@ -55,7 +59,7 @@ Deno.serve(async (req) => {
         const template = await base44.entities.MessageTemplate.get(templateId);
         if (!template) continue;
 
-        const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedDays, selectedMonthlyDays);
+        const nextSend = calculateNextSendDateTime(startDate, sendTime, frequencyType, daysArray, monthDaysArray);
 
         await base44.entities.ScheduledReminder.create({
           campaign_id: campaign.id,
@@ -77,6 +81,7 @@ Deno.serve(async (req) => {
 
     return Response.json({ success: true, totalCreated });
   } catch (error) {
+    console.error('[scheduleRemindersForDebtors] Error:', error);
     return Response.json({ error: error.message }, { status: 500 });
   }
 });
@@ -106,7 +111,7 @@ function calculateNextSendDateTime(startDate, sendTime, frequencyType, selectedD
       if (next > now) break;
     } while (true);
   } else if (frequencyType === 'monthly') {
-    const targetDays = Array.from(selectedMonthlyDays).sort((a, b) => a - b);
+    const targetDays = selectedMonthlyDays.sort((a, b) => a - b);
     do {
       const currentDay = next.getDate();
       const nextTargetDay = targetDays.find(d => d > currentDay);
