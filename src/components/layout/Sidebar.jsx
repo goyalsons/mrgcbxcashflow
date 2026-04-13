@@ -67,9 +67,8 @@ const NAV_GROUPS = [
     label: 'System',
     items: [
       { key: 'csv_import', label: 'CSV Import', path: '/csv-import', icon: 'Upload' },
-      { key: 'admin_panel', label: 'Admin Panel', path: '/admin-panel', icon: 'Shield' },
+      { key: 'admin_panel', label: 'User Admin', path: '/admin-panel', icon: 'Shield' },
       { key: 'audit_logs', label: 'Audit Logs', path: '/audit-logs', icon: 'ClipboardList' },
-      { key: 'tally_integration', label: 'Tally Integration', path: '/tally-integration', icon: 'Link2' },
       { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
     ],
   },
