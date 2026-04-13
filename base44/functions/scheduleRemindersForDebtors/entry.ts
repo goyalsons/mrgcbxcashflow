@@ -6,7 +6,7 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { debtorIds, numberOfReminders, frequency, startDate, mode } = await req.json();
+    const { debtorIds, numberOfReminders, frequency, startDate, sendTime, mode } = await req.json();
 
     if (!debtorIds?.length) return Response.json({ error: 'No debtors provided' }, { status: 400 });
 
@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
             .replace(/{amount}/g, debtor.total_outstanding || '')
             .replace(/{due_date}/g, scheduledDate.toISOString().split('T')[0]);
 
+          const sendTimeStr = sendTime || '09:00';
           await base44.entities.ScheduledReminder.create({
             campaign_id: campaign.id,
             debtor_id: debtorId,
@@ -73,6 +74,7 @@ Deno.serve(async (req) => {
             message_subject: messageSubject,
             message_body: messageBody,
             scheduled_send_date: scheduledDate.toISOString().split('T')[0],
+            scheduled_send_time: sendTimeStr,
             status: 'pending',
             send_type: channel,
             reminder_number: i + 1,

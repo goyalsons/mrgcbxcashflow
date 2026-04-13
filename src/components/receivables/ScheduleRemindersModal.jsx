@@ -17,6 +17,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
     numberOfReminders: 3,
     frequency: 'weekly',
     startDate: new Date().toISOString().split('T')[0],
+    sendTime: '09:00',
     mode: 'email',
   });
 
@@ -40,6 +41,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
         numberOfReminders: Number(config.numberOfReminders),
         frequency: config.frequency,
         startDate: config.startDate,
+        sendTime: config.sendTime,
         mode: config.mode,
       });
       if (res.data?.error) throw new Error(res.data.error);
@@ -103,11 +105,24 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
 
             <div className="space-y-1.5">
               <Label>Start Date</Label>
-              <Input
+              <input
                 type="date"
                 value={config.startDate}
+                min={new Date().toISOString().split('T')[0]}
                 onChange={e => setConfig(c => ({ ...c, startDate: e.target.value }))}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Send Time</Label>
+              <input
+                type="time"
+                value={config.sendTime}
+                onChange={e => setConfig(c => ({ ...c, sendTime: e.target.value }))}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              />
+              <p className="text-xs text-muted-foreground">Time reminders will be sent</p>
             </div>
 
             <div className="space-y-1.5">
