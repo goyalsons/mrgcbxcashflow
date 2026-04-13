@@ -12,12 +12,15 @@ import { Calendar, Clock, Mail } from 'lucide-react';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
+const DAYS_OF_MONTH = Array.from({ length: 31 }, (_, i) => i + 1);
+
 export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [frequencyType, setFrequencyType] = useState('weekly');
   const [selectedDays, setSelectedDays] = useState(new Set(['Monday', 'Wednesday', 'Friday']));
+  const [selectedMonthlyDays, setSelectedMonthlyDays] = useState(new Set([1]));
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [sendTime, setSendTime] = useState('09:00');
   const [emailTemplateId, setEmailTemplateId] = useState('');
@@ -41,18 +44,29 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
   const selectedDebtors = useMemo(() => {
     const seen = new Set();
     const result = [];
-    invoices.forEach(inv => {
-      const debtor = debtors.find(d => d.id === inv.debtor_id || d.name === inv.debtor_name);
-      if (debtor && !seen.has(debtor.id)) {
-        seen.add(debtor.id);
-        result.push(debtor);
-      }
-    });
+    if (invoices && invoices.length > 0) {
+      invoices.forEach(inv => {
+        if (!inv) return;
+        const debtor = debtors.find(d => d.id === inv.debtor_id || d.name === inv.debtor_name);
+        if (debtor && !seen.has(debtor.id)) {
+          seen.add(debtor.id);
+          result.push(debtor);
+        }
+      });
+    }
     return result;
-  }, [invoices, debtors]);
+  }, [invoices.length, debtors]);
 
   const toggleDay = (day) => {
     setSelectedDays(prev => {
+      const next = new Set(prev);
+      next.has(day) ? next.delete(day) : next.add(day);
+      return next;
+    });
+  };
+
+  const toggleMonthlyDay = (day) => {
+    setSelectedMonthlyDays(prev => {
       const next = new Set(prev);
       next.has(day) ? next.delete(day) : next.add(day);
       return next;
@@ -81,6 +95,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
         debtorIds: selectedDebtors.map(d => d.id),
         frequencyType,
         selectedDays: [...selectedDays],
+        selectedMonthlyDays: [...selectedMonthlyDays],
         startDate,
         sendTime,
         emailTemplateId: mode === 'email' || mode === 'both' ? emailTemplateId : null,
@@ -199,6 +214,25 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
             </div>
           )}
 
+          {/* Days of Month (for monthly) */}
+          {frequencyType === 'monthly' && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Send on these dates</Label>
+              <div className="grid grid-cols-7 gap-1.5 p-2 bg-muted/30 rounded-lg border">
+                {DAYS_OF_MONTH.map(day => (
+                  <label key={day} className="flex items-center justify-center cursor-pointer">
+                    <Checkbox
+                      checked={selectedMonthlyDays.has(day)}
+                      onCheckedChange={() => toggleMonthlyDay(day)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-xs ml-1 w-6 text-center">{day}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Message Mode */}
           <div className="space-y-2">
             <Label className="text-sm font-semibold">Send via</Label>
@@ -262,7 +296,7 @@ export default function ScheduleRemindersModal({ invoices, debtors, onClose }) {
           {/* Info Box */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 space-y-1">
             <p>
-              <strong>Schedule:</strong> {frequencyType === 'weekly' ? `Every ${[...selectedDays].join(', ')}` : frequencyType.charAt(0).toUpperCase() + frequencyType.slice(1)}
+              <strong>Schedule:</strong> {frequencyType === 'weekly' ? `Every ${[...selectedDays].join(', ')}` : frequencyType === 'monthly' ? `On dates: ${[...selectedMonthlyDays].sort((a, b) => a - b).join(', ')}` : frequencyType.charAt(0).toUpperCase() + frequencyType.slice(1)}
             </p>
             <p><strong>Starting:</strong> {startDate} at {sendTime}</p>
             <p><strong>Debtors:</strong> {selectedDebtors.length}</p>
