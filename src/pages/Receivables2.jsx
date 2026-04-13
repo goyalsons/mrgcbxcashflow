@@ -218,11 +218,11 @@ export default function Receivables2() {
     try {
       await Promise.all([...selected].map(id => {
         const inv = invoices.find(i => i.id === id);
-        const debtor = getDebtorInfo(inv.debtor_id);
-        if (debtor) {
+        const debtor = getDebtorInfo(inv?.debtor_id);
+        if (debtor?.id) {
           return base44.entities.Debtor.update(debtor.id, { assigned_manager: assigningManager });
         }
-      }));
+      }).filter(Boolean));
       queryClient.invalidateQueries({ queryKey: ['invoices', 'debtors'] });
       toast({ title: `Assigned manager to ${selected.size} invoice(s)` });
       setSelected(new Set());
