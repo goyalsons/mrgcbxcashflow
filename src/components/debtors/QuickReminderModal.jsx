@@ -53,6 +53,7 @@ export default function QuickReminderModal({ debtor, onClose }) {
   const [subject, setSubject] = useState(`Payment Reminder - ${debtor.name || ''}`);
   const [body, setBody] = useState(`Dear ${debtor.contact_person || debtor.name || ''},\n\nLoading invoice details...`);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [isInitializing, setIsInitializing] = useState(true);
 
   const { data: emailTemplates = [] } = useQuery({
     queryKey: ['messageTemplates'],
@@ -144,12 +145,15 @@ export default function QuickReminderModal({ debtor, onClose }) {
         } else {
           const attachmentText = buildAttachmentLinks(outstanding);
           const attachmentSection = attachmentText ? `\n\n${attachmentText}` : '';
-          setBody(`Dear ${resolvedContactPerson || debtor.name},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`);
+          const contactName = resolvedContactPerson || debtor.name;
+          setSubject(`Payment Reminder - ${debtor.name || ''}`);
+          setBody(`Dear ${contactName},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`);
         }
+        setIsInitializing(false);
       })
-      .catch(() => {})
+      .catch(() => setIsInitializing(false))
       .finally(() => setLoadingInvoices(false));
-  }, [debtor.id, debtor.name]);
+  }, [debtor.id, debtor.name, resolvedContactPerson]);
 
   const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || debtor.total_outstanding || 0;
 
