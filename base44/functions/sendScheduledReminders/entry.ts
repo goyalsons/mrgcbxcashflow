@@ -53,6 +53,14 @@ Deno.serve(async (req) => {
     const currentDate = now.toISOString().split('T')[0];
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+    // Check if auto reminders are enabled
+    try {
+      const enabledRecords = await base44.asServiceRole.entities.AppSettings.filter({ key: 'auto_reminders_enabled' });
+      if (enabledRecords.length > 0 && enabledRecords[0].value === 'false') {
+        return Response.json({ success: true, skipped: true, reason: 'Auto reminders are disabled' });
+      }
+    } catch (e) { /* if check fails, proceed anyway */ }
+
     // Fetch company settings for signature (once, shared across all reminders)
     let companySettings = null;
     try {

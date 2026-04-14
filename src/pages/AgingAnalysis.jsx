@@ -584,7 +584,6 @@ export default function AgingAnalysis() {
         <TabsList>
           <TabsTrigger value="receivables">Receivables ({unpaidReceivables.length})</TabsTrigger>
           <TabsTrigger value="payables">Payables ({unpaidPayables.length})</TabsTrigger>
-          <TabsTrigger value="credit" className="gap-1"><ShieldAlert className="w-3.5 h-3.5" />Credit Limits</TabsTrigger>
         </TabsList>
 
         <TabsContent value="receivables" className="mt-4 space-y-4">
@@ -594,10 +593,6 @@ export default function AgingAnalysis() {
 
         <TabsContent value="payables" className="mt-4">
           <AgingTable items={unpaidPayables} type="payable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} capitalRate={capitalRate} />
-        </TabsContent>
-
-        <TabsContent value="credit" className="mt-4">
-          <CreditUtilisation debtors={debtors} />
         </TabsContent>
       </Tabs>
     </div>

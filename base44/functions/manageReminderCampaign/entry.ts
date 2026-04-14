@@ -8,7 +8,25 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { action, campaignId, reminderId, newStatus, newSchedule } = await req.json();
+    const { action, campaignId, reminderId, newStatus, newSchedule, automationId } = await req.json();
+
+    if (action === 'getAutoStatus') {
+      const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'auto_reminders_enabled' });
+      const isActive = existing.length > 0 ? existing[0].value !== 'false' : true; // default on
+      return Response.json({ success: true, is_active: isActive });
+    }
+
+    if (action === 'activateAutomation' || action === 'deactivateAutomation') {
+      const isActive = action === 'activateAutomation';
+      // Store the setting in AppSettings so sendScheduledReminders can check it
+      const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'auto_reminders_enabled' });
+      if (existing.length > 0) {
+        await base44.asServiceRole.entities.AppSettings.update(existing[0].id, { value: String(isActive) });
+      } else {
+        await base44.asServiceRole.entities.AppSettings.create({ key: 'auto_reminders_enabled', value: String(isActive) });
+      }
+      return Response.json({ success: true, is_active: isActive });
+    }
 
     if (action === 'pause' || action === 'resume') {
       const newCampaignStatus = action === 'pause' ? 'paused' : 'active';
