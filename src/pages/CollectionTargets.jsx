@@ -388,12 +388,10 @@ export default function CollectionTargets() {
     return map;
   }, [receivables]);
 
-  // Sorted unique customer names from receivables
+  // Sorted unique customer names from the Customer entity
   const receivableCustomers = useMemo(() => {
-    const names = new Set();
-    receivables.forEach(r => { if (r.customer_name) names.add(r.customer_name.trim()); });
-    return [...names].sort();
-  }, [receivables]);
+    return [...customers].map(c => c.name).filter(Boolean).sort();
+  }, [customers]);
 
   // Outstanding for a target record
   const getOutstanding = (t) => {
