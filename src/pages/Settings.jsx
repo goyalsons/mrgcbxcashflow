@@ -669,15 +669,17 @@ export default function Settings() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Template Name *</Label>
-                  {templates.filter(t => t.type === 'whatsapp' && t.meta_template_name).length > 0 ? (
+                  {templates.filter(t => t.type === 'whatsapp').length > 0 ? (
                     <Select value={testMsg.templateName} onValueChange={v => {
-                      const tpl = templates.find(t => t.meta_template_name === v);
+                      const tpl = templates.find(t => (t.meta_template_name || t.name) === v);
                       setTestMsg(f => ({ ...f, templateName: v, variables: tpl?.default_variables || f.variables }));
                     }}>
                       <SelectTrigger><SelectValue placeholder="Select a template..." /></SelectTrigger>
                       <SelectContent>
-                        {templates.filter(t => t.type === 'whatsapp' && t.meta_template_name).map(t => (
-                          <SelectItem key={t.id} value={t.meta_template_name}>{t.name} ({t.meta_template_name})</SelectItem>
+                        {templates.filter(t => t.type === 'whatsapp').map(t => (
+                          <SelectItem key={t.id} value={t.meta_template_name || t.name}>
+                            {t.name}{t.meta_template_name ? ` (${t.meta_template_name})` : ''}
+                          </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
