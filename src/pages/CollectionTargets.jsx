@@ -96,17 +96,22 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
           <DialogTitle>{editData ? 'Edit Target' : 'Assign Collection Target'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Customer — pick from receivable customers */}
+          {/* Customer — only those with positive outstanding */}
           <div className="space-y-1.5">
             <Label>Customer</Label>
             <Select value={form.customer_name} onValueChange={handleCustomerSelect}>
               <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
               <SelectContent className="max-h-60">
-                {receivableCustomers.map(name => (
-                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                {receivableCustomers.map(({ name, outstanding }) => (
+                  <SelectItem key={name} value={name}>
+                    {name} — {formatINR(outstanding)}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {receivableCustomers.length === 0 && (
+              <p className="text-xs text-muted-foreground italic">No customers with outstanding receivables found.</p>
+            )}
             {form.customer_name && (
               <p className="text-xs text-muted-foreground">
                 Outstanding:{' '}
@@ -208,7 +213,6 @@ function UpdateProgressDialog({ open, onClose, target, currentUser, onSave }) {
           <DialogTitle>Update Progress — {target?.manager_name || target?.manager_email}</DialogTitle>
         </DialogHeader>
 
-        {/* Existing notes timeline */}
         {existingNotes.length > 0 && (
           <div className="max-h-52 overflow-y-auto space-y-2 border rounded-lg p-3 bg-muted/30">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Progress History</p>
@@ -424,6 +428,11 @@ export default function CollectionTargets() {
     queryFn: () => base44.entities.Receivable.list(),
   });
 
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
   const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
 
   // Build outstanding map keyed by lowercase customer_name from receivables
@@ -439,22 +448,34 @@ export default function CollectionTargets() {
     return map;
   }, [receivables]);
 
+  // Only customers with positive outstanding, deduplicated, sorted by name
+  const receivableCustomers = useMemo(() => {
+    const seen = new Set();
+    const result = [];
+    // Prefer names from Customer entity; fall back to receivable customer_names
+    const allNames = [
+      ...customers.map(c => c.name),
+      ...receivables.map(r => r.customer_name),
+    ].filter(Boolean);
+
+    allNames.forEach(name => {
+      const key = name.trim().toLowerCase();
+      if (seen.has(key)) return;
+      const outstanding = outstandingByName[key] || 0;
+      if (outstanding > 0) {
+        seen.add(key);
+        result.push({ name: name.trim(), outstanding });
+      }
+    });
+
+    return result.sort((a, b) => a.name.localeCompare(b.name));
+  }, [customers, receivables, outstandingByName]);
+
   // Outstanding for a target record
   const getOutstanding = (t) => {
     if (!t.customer_name) return 0;
     return outstandingByName[t.customer_name.trim().toLowerCase()] || 0;
   };
-
-  // Build manager->customer ids map for payment attribution
-  const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => base44.entities.Customer.list(),
-  });
-
-  // Sorted unique customer names from the Customer entity
-  const receivableCustomers = useMemo(() => {
-    return [...customers].map(c => c.name).filter(Boolean).sort();
-  }, [customers]);
 
   const managerCustomerIds = useMemo(() => {
     const map = {};
@@ -488,7 +509,6 @@ export default function CollectionTargets() {
       updateMut.mutate({ id: editingTarget.id, data });
       return;
     }
-    // Check for duplicate: same customer_name + same month/year
     if (data.customer_name) {
       const existing = await base44.entities.CollectionTarget.filter({
         customer_name: data.customer_name,
@@ -523,7 +543,6 @@ export default function CollectionTargets() {
     toast({ title: `${ids.length} record(s) deleted` });
   };
 
-  // ── Selection helpers ──
   const toggleSelect = (id) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
@@ -537,7 +556,6 @@ export default function CollectionTargets() {
     else setSelectedIds(new Set(targets.map(t => t.id)));
   };
 
-  // ── Leaderboard data ──
   const monthlyTargets = useMemo(() => {
     const filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
     return filtered.map(t => {
@@ -569,7 +587,6 @@ export default function CollectionTargets() {
         onAction={() => { setEditingTarget(null); setShowForm(true); }}
       />
 
-      {/* Period Selector */}
       <div className="flex items-center gap-3 flex-wrap">
         <span className="text-sm font-medium text-muted-foreground">Period:</span>
         <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(parseInt(v))}>
@@ -586,7 +603,6 @@ export default function CollectionTargets() {
         </Select>
       </div>
 
-      {/* Overall Progress */}
       {monthlyTargets.length > 0 && (
         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
           <CardContent className="p-3">
@@ -608,7 +624,6 @@ export default function CollectionTargets() {
           <TabsTrigger value="leaderboard" className="gap-1.5"><Trophy className="w-3.5 h-3.5" />Leaderboard</TabsTrigger>
         </TabsList>
 
-        {/* Leaderboard Tab */}
         <TabsContent value="leaderboard" className="mt-4">
           {monthlyTargets.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">No targets for this period</div>
@@ -654,9 +669,7 @@ export default function CollectionTargets() {
           )}
         </TabsContent>
 
-        {/* All Targets Tab */}
         <TabsContent value="targets" className="mt-4">
-          {/* Bulk action bar */}
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 mb-3 p-2 bg-primary/5 border border-primary/20 rounded-lg">
               <span className="text-sm font-medium text-primary">{selectedIds.size} selected</span>
@@ -705,7 +718,6 @@ export default function CollectionTargets() {
                 </TableHeader>
                 <TableBody>
                   {targets.map(t => {
-                    const outstanding = getOutstanding(t);
                     const customerIds = managerCustomerIds[t.manager_email] || [];
                     const monthPayments = payments.filter(p => {
                       if (!p.payment_date) return false;
