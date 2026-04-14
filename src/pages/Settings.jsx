@@ -40,7 +40,15 @@ function TemplateEditor({ template, onClose, onSave }) {
   const [form, setForm] = useState(template || { name: '', type: 'whatsapp', subject: '', body: '', is_active: true });
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+  const set = (k, v) => {
+    if (k === 'name' && form.type === 'whatsapp') {
+      // Auto-sync meta_template_name from name: lowercase + underscores
+      const metaName = v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+      setForm(f => ({ ...f, [k]: v, meta_template_name: metaName }));
+    } else {
+      setForm(f => ({ ...f, [k]: v }));
+    }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault(); setSaving(true);
     await onSave(form); setSaving(false);
