@@ -236,12 +236,20 @@ const ENTITY_CONFIGS = {
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
     ],
     transform: (row) => {
-      const debtorName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
-      const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
-      const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || '');
+      // Try all possible normKey variants for party name
+      const debtorName = row['partys_name'] || row['party_s_name'] || row['partys_name_'] || row['party_name'] || row['parties_name'] || row['party'] || '';
+      // Try all possible normKey variants for amount (Pending / Pending Amount)
+      const amount = parseIndianAmount(
+        row['pending_amount'] || row['pending_amount_'] || row['pending'] ||
+        row['pendingamount'] || row['amount'] || '0'
+      );
+      // Due on
+      const dueDate = parseIndianDate(row['due_on'] || row['dueon'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
-      const invoiceNumber = row['ref_no'] || row['refno'] || row['invoice_number'] || '';
-      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue'] || '';
+      // Ref. No. → normKey → ref_no or refno or ref_no_
+      const invoiceNumber = row['ref_no'] || row['ref_no_'] || row['refno'] || row['ref'] || row['invoice_number'] || '';
+      // Overdue by (days)
+      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue_by'] || row['overdue'] || row['overdue_days'] || '';
       const overdueDaysNum = parseInt(overdueDays) || 0;
       return {
         debtor_name: debtorName,
@@ -323,12 +331,17 @@ export default function CSVImport() {
     const isXLSX = f.name.match(/\.xlsx?$/i);
 
     const processRows = (rows) => {
+      // Debug: log raw keys from first row so we can diagnose mapping issues
+      if (rows.length > 0) {
+        console.log('[CSVImport] Raw keys from first row:', Object.keys(rows[0]));
+        console.log('[CSVImport] First row values:', rows[0]);
+      }
       const transformed = rows.map(row => {
         const data = config.transform(row);
         const missing = config.required.filter(k => !data[k]);
         return { raw: row, data, missing, valid: missing.length === 0 };
       });
-      setPreview({ rows: transformed });
+      setPreview({ rows: transformed, rawKeys: rows.length > 0 ? Object.keys(rows[0]) : [] });
     };
 
     if (isXLSX) {
@@ -339,21 +352,57 @@ export default function CSVImport() {
 
         if (entityType === 'tally_receivable' || entityType === 'tally_payable') {
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+          // Find header row: must contain both a date-like and party-like cell
           let headerIdx = rawRows.findIndex(r =>
-            r.some(c => /date/i.test(String(c))) && r.some(c => /party/i.test(String(c)))
+            r.some(c => /^date$/i.test(String(c).trim())) && r.some(c => /party/i.test(String(c)))
           );
+          // Fallback: any row with "party" somewhere
+          if (headerIdx < 0) {
+            headerIdx = rawRows.findIndex(r => r.some(c => /party/i.test(String(c))));
+          }
           if (headerIdx < 0) headerIdx = 0;
-          const headers = rawRows[headerIdx].map(h => normKey(String(h)));
-          const rows = rawRows.slice(headerIdx + 1).map(r => {
+
+          // Build headers — use normKey to normalize
+          const rawHeaders = rawRows[headerIdx].map(h => String(h ?? '').trim());
+          const headers = rawHeaders.map(h => normKey(h));
+
+          // Check if next row is a sub-header (e.g. "Amount" under "Pending")
+          // A sub-header row has NO date-like or party-like values and has some short text labels
+          const nextRow = rawRows[headerIdx + 1] || [];
+          const isSubHeader = nextRow.length > 0 &&
+            !nextRow.some(c => /party/i.test(String(c))) &&
+            nextRow.some(c => { const s = String(c).trim(); return s.length > 0 && s.length < 20 && isNaN(Number(s.replace(/,/g, ''))); });
+
+          const dataStart = isSubHeader ? headerIdx + 2 : headerIdx + 1;
+
+          // For "Pending" column, if sub-header says "Amount", merge into "pending_amount"
+          const mergedHeaders = [...headers];
+          if (isSubHeader) {
+            nextRow.forEach((sub, i) => {
+              const s = String(sub ?? '').trim();
+              if (s && mergedHeaders[i]) {
+                mergedHeaders[i] = normKey(`${rawHeaders[i]} ${s}`);
+              }
+            });
+          }
+
+          const rows = rawRows.slice(dataStart).map(r => {
             const row = {};
-            headers.forEach((h, i) => {
+            mergedHeaders.forEach((h, i) => {
               let val = r[i];
               if (val instanceof Date) val = val.toISOString().slice(0, 10);
-              row[h] = String(val ?? '');
+              else if (typeof val === 'number' && h.includes('date')) {
+                // Excel serial date number
+                const excelEpoch = new Date(1899, 11, 30);
+                const d = new Date(excelEpoch.getTime() + val * 86400000);
+                val = d.toISOString().slice(0, 10);
+              }
+              row[h] = String(val ?? '').trim();
             });
             return row;
           }).filter(r => {
-            const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || '';
+            const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || r['partys_name'] || '';
             return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
           });
           processRows(rows);
@@ -668,6 +717,11 @@ export default function CSVImport() {
                 </div>
               </CardHeader>
               <CardContent className="overflow-auto max-h-[500px]">
+                {preview.rawKeys && preview.rawKeys.length > 0 && (entityType === 'tally_receivable' || entityType === 'tally_payable') && (
+                  <div className="mb-3 p-2 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600">
+                    <span className="font-semibold">Detected column keys:</span> {preview.rawKeys.join(', ')}
+                  </div>
+                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
