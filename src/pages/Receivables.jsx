@@ -447,7 +447,7 @@ export default function Receivables() {
             )}
             <Card className="overflow-hidden shadow-sm border">
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
                   <TableRow>
                     <TableHead className="w-8 px-3">
                       <Checkbox
@@ -469,6 +469,7 @@ export default function Receivables() {
                       <SortableHead label="Outstanding" sortKey="outstanding" />
                       <SortableHead label="Status" sortKey="status" />
                       <SortableHead label="Due Date" sortKey="due_date" />
+                      <TableHead className="px-3 text-xs font-semibold">Days Overdue</TableHead>
                       <TableHead className="px-3 text-xs font-semibold">Attachments</TableHead>
                       <TableHead className="px-3 text-xs font-semibold text-right">Credit Limit</TableHead>
                       <TableHead className="px-3 text-xs font-semibold">Manager</TableHead>
@@ -581,6 +582,18 @@ export default function Receivables() {
                            <span className={`text-xs ${dueDate && new Date(dueDate) < new Date() ? 'text-red-600 font-medium' : 'text-foreground'}`}>
                              {dueDate ? format(dueDate, 'dd/MM/yyyy') : '—'}
                            </span>
+                         </TableCell>
+                         <TableCell className="px-3">
+                           {(() => {
+                             if (!dueDate) return '—';
+                             const today = new Date();
+                             today.setHours(0, 0, 0, 0);
+                             const dueDateOnly = new Date(dueDate);
+                             dueDateOnly.setHours(0, 0, 0, 0);
+                             const daysOverdue = Math.floor((today - dueDateOnly) / (1000 * 60 * 60 * 24));
+                             if (daysOverdue <= 0) return '—';
+                             return <span className="text-xs font-medium text-red-600">{daysOverdue}d</span>;
+                           })()}
                          </TableCell>
                          <TableCell className="px-3">
                            <AttachmentCell
