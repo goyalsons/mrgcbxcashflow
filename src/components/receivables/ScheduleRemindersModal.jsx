@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -36,6 +36,14 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
       return all.filter(t => t.type === 'email' && t.is_active !== false);
     },
   });
+
+  // Auto-select "Default reminder" template when templates load
+  useEffect(() => {
+    if (emailTemplates.length > 0 && !emailTemplateId) {
+      const defaultTemplate = emailTemplates.find(t => t.name?.toLowerCase().includes('default')) || emailTemplates[0];
+      if (defaultTemplate) setEmailTemplateId(defaultTemplate.id);
+    }
+  }, [emailTemplates]);
 
   const { data: whatsappTemplates = [] } = useQuery({
     queryKey: ['messageTemplates', 'whatsapp'],
