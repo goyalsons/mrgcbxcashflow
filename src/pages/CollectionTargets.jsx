@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Medal, Target, TrendingUp, Plus, Pencil, Trash2, MoreHorizontal, Award } from 'lucide-react';
+import { Trophy, Medal, Target, TrendingUp, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -31,7 +31,7 @@ const EMPTY = {
   notes: '',
 };
 
-function TargetForm({ open, onClose, onSave, editData, managers, customers }) {
+function TargetForm({ open, onClose, onSave, editData, managers, customers, outstandingByCustomer }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -53,11 +53,13 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers }) {
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return;
     const mgr = managers.find(m => m.email === customer.account_manager);
+    const outstanding = outstandingByCustomer[customerId] || 0;
     setForm(f => ({
       ...f,
       customer_id: customerId,
       manager_email: customer.account_manager || '',
       manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || '',
+      target_amount: outstanding > 0 ? outstanding.toString() : f.target_amount,
     }));
   };
 
@@ -103,6 +105,11 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers }) {
           <div className="space-y-1.5">
             <Label>Target Amount (₹) *</Label>
             <Input type="number" value={form.target_amount} onChange={e => set('target_amount', e.target.value)} required min="1" placeholder="e.g. 500000" />
+            {form.customer_id && outstandingByCustomer[form.customer_id] > 0 && (
+              <p className="text-xs text-muted-foreground">
+                Customer's total outstanding: <span className="font-semibold text-red-600">{formatINR(outstandingByCustomer[form.customer_id])}</span>
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Target Date *</Label>
@@ -129,11 +136,64 @@ function RankIcon({ rank }) {
   return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">#{rank}</span>;
 }
 
+function UpdateProgressDialog({ open, onClose, target, onSave }) {
+  const [notes, setNotes] = useState('');
+  const [addedAmount, setAddedAmount] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  React.useEffect(() => {
+    if (open && target) {
+      setNotes(target.notes || '');
+      setAddedAmount('');
+    }
+  }, [open, target]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    const extra = parseFloat(addedAmount) || 0;
+    await onSave(target.id, {
+      notes,
+      collected_amount: (target.collected_amount || 0) + extra,
+    });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Update Progress</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <Label>Add Collected Amount (₹)</Label>
+            <Input type="number" min="0" value={addedAmount} onChange={e => setAddedAmount(e.target.value)} placeholder="Amount collected..." />
+            {target?.collected_amount > 0 && (
+              <p className="text-xs text-muted-foreground">Already recorded: <span className="font-medium text-emerald-600">{formatINR(target.collected_amount)}</span></p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Notes</Label>
+            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Update notes..." />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function CollectionTargets() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingTarget, setEditingTarget] = useState(null);
+  const [updatingTarget, setUpdatingTarget] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
@@ -157,7 +217,25 @@ export default function CollectionTargets() {
     queryFn: () => base44.entities.Payment.list('-payment_date'),
   });
 
+  const { data: receivables = [] } = useQuery({
+    queryKey: ['allReceivables'],
+    queryFn: () => base44.entities.Receivable.list(),
+  });
+
   const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
+
+  // Outstanding amount per customer_id from receivables
+  const outstandingByCustomer = useMemo(() => {
+    const map = {};
+    receivables.forEach(r => {
+      if (!r.customer_id) return;
+      const outstanding = Math.max(0, (r.amount || 0) - (r.amount_received || 0));
+      if (r.status !== 'paid' && r.status !== 'written_off') {
+        map[r.customer_id] = (map[r.customer_id] || 0) + outstanding;
+      }
+    });
+    return map;
+  }, [receivables]);
 
   // Build a map of manager_email -> customer ids for payment lookups
   const managerCustomerIds = useMemo(() => {
@@ -189,6 +267,10 @@ export default function CollectionTargets() {
   const handleSave = (data) => {
     if (editingTarget) updateMut.mutate({ id: editingTarget.id, data });
     else createMut.mutate(data);
+  };
+
+  const handleProgressSave = (id, data) => {
+    return updateMut.mutateAsync({ id, data });
   };
 
   // Calculate actual collected per manager from payments for the period
@@ -341,9 +423,9 @@ export default function CollectionTargets() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Manager</TableHead>
+                    <TableHead>Customer</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
                     <TableHead className="text-right">Target</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Week</TableHead>
                     <TableHead>Month</TableHead>
                     <TableHead className="text-right">Collected</TableHead>
                     <TableHead>Progress</TableHead>
@@ -353,6 +435,8 @@ export default function CollectionTargets() {
                 </TableHeader>
                 <TableBody>
                   {targets.map(t => {
+                    const customer = customers.find(c => c.id === t.customer_id);
+                    const outstanding = t.customer_id ? (outstandingByCustomer[t.customer_id] || 0) : 0;
                     const customerIds = managerCustomerIds[t.manager_email] || [];
                     const monthPayments = payments.filter(p => {
                       if (!p.payment_date) return false;
@@ -360,7 +444,8 @@ export default function CollectionTargets() {
                       if (d.getMonth() + 1 !== t.period_month || d.getFullYear() !== t.period_year) return false;
                       return customerIds.includes(p.debtor_id);
                     });
-                    const collected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+                    const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+                    const collected = Math.max(autoCollected, t.collected_amount || 0);
                     const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
                     return (
                       <TableRow key={t.id}>
@@ -368,10 +453,17 @@ export default function CollectionTargets() {
                           <div className="font-medium">{t.manager_name || t.manager_email}</div>
                           <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                         </TableCell>
+                        <TableCell className="text-sm">
+                          {customer ? (
+                            <div>
+                              <div className="font-medium">{customer.name}</div>
+                              {customer.contact_person && <div className="text-xs text-muted-foreground">{customer.contact_person}</div>}
+                            </div>
+                          ) : <span className="text-muted-foreground">—</span>}
+                        </TableCell>
+                        <TableCell className="text-right text-sm font-semibold text-red-600">{outstanding > 0 ? formatINR(outstanding) : '—'}</TableCell>
                         <TableCell className="text-right">{formatINR(t.target_amount)}</TableCell>
-                        <TableCell className="text-sm">{t.target_date ? new Date(t.target_date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' }).replace('/', '-') : '-'}</TableCell>
-                        <TableCell className="text-sm">{t.target_date ? `W${Math.ceil(new Date(t.target_date).getDate() / 7)}` : '-'}</TableCell>
-                        <TableCell className="text-sm">{t.period_month ? MONTHS[t.period_month - 1] : '-'}</TableCell>
+                        <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium">{formatINR(collected)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 min-w-24">
@@ -379,15 +471,18 @@ export default function CollectionTargets() {
                             <span className="text-xs font-semibold w-10 text-right">{pct}%</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{t.notes || '-'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate" title={t.notes}>{t.notes || '-'}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setUpdatingTarget(t)}>
+                                <DollarSign className="w-4 h-4 mr-2" />Update Progress
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                                <Pencil className="w-4 h-4 mr-2" />Edit
+                                <Pencil className="w-4 h-4 mr-2" />Edit Target
                               </DropdownMenuItem>
                               <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
                                 <Trash2 className="w-4 h-4 mr-2" />Delete
@@ -412,6 +507,13 @@ export default function CollectionTargets() {
         editData={editingTarget}
         managers={managers}
         customers={customers}
+        outstandingByCustomer={outstandingByCustomer}
+      />
+      <UpdateProgressDialog
+        open={!!updatingTarget}
+        onClose={() => setUpdatingTarget(null)}
+        target={updatingTarget}
+        onSave={handleProgressSave}
       />
     </div>
   );
