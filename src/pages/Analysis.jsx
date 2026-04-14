@@ -123,6 +123,19 @@ export default function Analysis() {
       ? `The following data was extracted from the uploaded files:\n\n${extractedDataText}\n\nUse this actual data for the analysis.`
       : (files.length > 0 ? `Files referenced: ${files.join(', ')}.` : '');
 
+    // Get LLM settings from backend (stored in AppSettings)
+    let llmSettings = {};
+    try {
+      const settings = await base44.entities.AppSettings.filter({ key: 'llm_settings' });
+      if (settings.length > 0) {
+        llmSettings = JSON.parse(settings[0].value || '{}');
+      }
+    } catch (err) {
+      console.warn('Could not load LLM settings:', err);
+    }
+
+    const llmModel = llmSettings.model || 'automatic';
+
     const result = await base44.integrations.Core.InvokeLLM({
       prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
       response_json_schema: {
@@ -138,6 +151,7 @@ export default function Analysis() {
           recommendations: { type: 'array', items: { type: 'string' } },
         },
       },
+      model: llmModel,
     });
 
     setAnalysisResult(result);
