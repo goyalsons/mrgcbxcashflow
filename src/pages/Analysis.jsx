@@ -136,25 +136,33 @@ export default function Analysis() {
 
     const llmModel = llmSettings.model || 'automatic';
 
-    const result = await base44.integrations.Core.InvokeLLM({
-      prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
-      response_json_schema: {
-        type: 'object',
-        properties: {
-          summary: { type: 'string' },
-          key_metrics: { type: 'array', items: { type: 'object' } },
-          insights: { type: 'array', items: { type: 'object' } },
-          chart_data: { type: 'object' },
-          bar_label: { type: 'string' },
-          bar_label2: { type: 'string' },
-          line_label: { type: 'string' },
-          recommendations: { type: 'array', items: { type: 'string' } },
+    try {
+      const result = await base44.integrations.Core.InvokeLLM({
+        prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
+        response_json_schema: {
+          type: 'object',
+          properties: {
+            summary: { type: 'string' },
+            key_metrics: { type: 'array', items: { type: 'object' } },
+            insights: { type: 'array', items: { type: 'object' } },
+            chart_data: { type: 'object' },
+            bar_label: { type: 'string' },
+            bar_label2: { type: 'string' },
+            line_label: { type: 'string' },
+            recommendations: { type: 'array', items: { type: 'string' } },
+          },
         },
-      },
-      model: llmModel,
-    });
+        model: llmModel,
+      });
 
-    setAnalysisResult(result);
+      setAnalysisResult(result);
+    } catch (err) {
+      if (err.message?.includes('limit of integrations')) {
+        setAnalysisResult({ error: 'Integration limit reached', message: 'You have exhausted your monthly integration credits. Please upgrade your plan to continue using AI analysis.' });
+      } else {
+        setAnalysisResult({ error: 'Analysis failed', message: err.message || 'An error occurred during analysis. Please try again.' });
+      }
+    }
     setAnalyzing(false);
   };
 
@@ -286,6 +294,14 @@ export default function Analysis() {
               <BarChart3 className="w-10 h-10 text-muted-foreground/40 mb-3" />
               <p className="text-sm font-medium text-muted-foreground">No analysis yet</p>
               <p className="text-xs text-muted-foreground/70 mt-1">Upload files and write a prompt, then click Run Analysis</p>
+            </div>
+          )}
+
+          {analysisResult?.error && (
+            <div className="flex flex-col items-center justify-center h-64 border rounded-xl bg-red-50 border-red-200 text-center p-8">
+              <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+              <p className="text-sm font-medium text-red-700">{analysisResult.error}</p>
+              <p className="text-xs text-red-600 mt-1">{analysisResult.message}</p>
             </div>
           )}
 
