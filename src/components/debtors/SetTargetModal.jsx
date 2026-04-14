@@ -37,7 +37,8 @@ export default function SetTargetModal({ customer, onClose }) {
     const date = new Date(form.target_date);
     createMut.mutate({
       manager_email: customer.account_manager,
-      manager_name: customer.account_manager,
+      manager_name: customer.account_manager_name || customer.account_manager,
+      customer_name: customer.name,
       target_amount: parseFloat(form.target_amount),
       target_date: form.target_date,
       period_month: date.getMonth() + 1,
@@ -59,7 +60,7 @@ export default function SetTargetModal({ customer, onClose }) {
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <div className="font-medium">{customer?.name}</div>
             <div className="text-muted-foreground mt-0.5">
-              Manager: <span className="font-medium text-foreground">{customer?.account_manager || 'Not assigned'}</span>
+              Manager: <span className="font-medium text-foreground">{customer?.account_manager_name || customer?.account_manager || 'Not assigned'}</span>
             </div>
           </div>
 
