@@ -257,11 +257,12 @@ const ENTITY_CONFIGS = {
   tally_payable: {
     label: 'Tally Bills Payable',
     entity: 'Payable',
-    fields: ['vendor_name', 'bill_number', 'amount', 'bill_date', 'due_date', 'status'],
+    fields: ['Ref. No.', "Party's Name", 'Pending', 'Due on', 'Category'],
+    dataKeys: ['bill_number', 'vendor_name', 'amount', 'due_date', 'category'],
     required: ['vendor_name', 'amount'],
     sampleData: [
-      ['ABC Suppliers', 'TDS', '25000', '17-Apr-21', '17-Apr-21', 'overdue'],
-      ['XYZ Vendors', 'INV-001', '8500', '1-Jun-21', '1-Jun-21', 'overdue'],
+      ['TDS', 'ABC Suppliers', '25000', '17-Apr-21', 'other'],
+      ['INV-001', 'XYZ Vendors', '8500', '1-Jun-21', 'other'],
     ],
     transform: (row) => {
       const vendorName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
