@@ -4,13 +4,11 @@ import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
 import { Landmark, ArrowDownLeft, ArrowUpRight, Receipt, Wallet, Users } from 'lucide-react';
 import StatCard from '@/components/shared/StatCard';
-import CashFlowChart from '@/components/dashboard/CashFlowChart';
 import CollectionTrendsChart from '@/components/dashboard/CollectionTrendsChart';
 import OutstandingReceivablesChart from '@/components/dashboard/OutstandingReceivablesChart';
-import OutstandingByStatusChart from '@/components/dashboard/OutstandingByStatusChart';
-import MonthlyTrendsChart from '@/components/dashboard/MonthlyTrendsChart';
-import AgingReport from '@/components/dashboard/AgingReport';
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
+import ProjectedCashFlow4Weeks from '@/components/dashboard/ProjectedCashFlow4Weeks';
+import ProjectedCashFlow3Months from '@/components/dashboard/ProjectedCashFlow3Months';
 import OverdueAlerts from '@/components/dashboard/OverdueAlerts';
 import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRangePicker';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -127,12 +125,10 @@ export default function Dashboard() {
         <StatCard title="Net Position" value={formatINR(netCashPosition)} icon={Wallet} variant={netCashPosition >= 0 ? 'success' : 'danger'} />
       </div>
 
-      {/* Charts + Alerts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="lg:col-span-2">
-          <CashFlowChart receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} dateRange={dateRange} />
-        </div>
-        <OverdueAlerts receivables={receivables} payables={payables} debtors={debtors} />
+      {/* Projected Cash Flows */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <ProjectedCashFlow4Weeks receivables={receivables} payables={payables} expenses={expenses} />
+        <ProjectedCashFlow3Months receivables={receivables} payables={payables} expenses={expenses} />
       </div>
 
       {/* Collection Trends + Outstanding Receivables */}
@@ -141,14 +137,8 @@ export default function Dashboard() {
         <OutstandingReceivablesChart receivables={receivables} />
       </div>
 
-      {/* Status Breakdown + Monthly Trends */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        <OutstandingByStatusChart receivables={receivables} />
-        <MonthlyTrendsChart receivables={filteredReceivables} payments={filteredPayments} />
-      </div>
-
-      {/* Aging Report */}
-      <AgingReport receivables={receivables} />
+      {/* Overdue Alerts */}
+      <OverdueAlerts receivables={receivables} payables={payables} debtors={debtors} />
 
       {/* Recent Transactions */}
       <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} debtors={debtors} />
