@@ -628,6 +628,12 @@ export default function CSVImport() {
                     <p className="text-blue-800"><strong>Ref. No., Party's Name, Pending, Due on, Category</strong></p>
                     <p className="text-blue-800">Dates: DD/MM/YYYY or Tally format (1-Apr-25). Amounts: ₹1,23,456 or 123456.</p>
                   </>
+                ) : entityType === 'expense' ? (
+                  <>
+                    <p className="text-blue-800"><strong>Note:</strong> Expense export is not directly available from Tally. Please use the <strong>sample CSV file below</strong> as a template and populate it with your expense data.</p>
+                    <p className="text-blue-800">Once you've filled in the sample file with your expenses, upload it here to bulk import all records.</p>
+                    <p className="text-blue-800">Dates: DD/MM/YYYY or YYYY-MM-DD. Amounts: ₹1,23,456 or 123456.</p>
+                  </>
                 ) : (
                   <>
                     <p className="text-blue-800">Dates: DD/MM/YYYY, YYYY-MM-DD, or Tally (1-Apr-25)</p>
