@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
     formData.append('timestamp', String(timestamp));
     formData.append('signature', signature);
 
-    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`;
+    const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
     const response = await fetch(uploadUrl, { method: 'POST', body: formData });
     const data = await response.json();
 
