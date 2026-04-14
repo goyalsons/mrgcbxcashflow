@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,7 @@ function buildAttachmentLinks(invoices) {
         arr.forEach(a => {
           if (a.url) links.push(`  • ${a.name || 'Attachment'} (Inv# ${inv.invoice_number || '-'}): ${a.url}`);
         });
-      } catch (e) { /* ignore parse errors */ }
+      } catch (e) { /* ignore */ }
     }
     if (inv.document_url && !inv.attachments) {
       links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
@@ -41,85 +41,83 @@ function buildAttachmentLinks(invoices) {
   return links.length > 0 ? `Attachments:\n${links.join('\n')}` : '';
 }
 
+function getSignature() {
+  try {
+    const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+    const c = s.company || {};
+    const lines = [];
+    if (c.contact_person) lines.push(c.contact_person);
+    if (c.name) lines.push(c.name);
+    if (c.phone) lines.push(`Phone: ${c.phone}`);
+    if (c.email) lines.push(`Email: ${c.email}`);
+    if (c.website) lines.push(c.website);
+    return lines.length > 0 ? `\n\n--\n${lines.join('\n')}` : '';
+  } catch (e) { return ''; }
+}
+
+function getSettings() {
+  try {
+    return JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
+  } catch (e) { return {}; }
+}
+
+function buildDefaultBody(customer, invoices) {
+  const contactName = customer.contact_person || customer.name;
+  const table = buildInvoiceTable(
+    invoices.length > 0
+      ? invoices
+      : [{ invoice_number: '-', amount: customer.credit_limit || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
+  );
+  const attachmentText = buildAttachmentLinks(invoices);
+  const attachmentSection = attachmentText ? `\n\n${attachmentText}` : '';
+  return `Dear ${contactName},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`;
+}
+
+function applyTemplateToContent(template, customer, invoices, contactPerson) {
+  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
+  const table = buildInvoiceTable(
+    invoices.length > 0
+      ? invoices
+      : [{ invoice_number: '-', amount: total, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
+  );
+  const contact = contactPerson || customer.name || '';
+  const attachmentText = buildAttachmentLinks(invoices);
+  const newSubject = (template.subject || `Payment Reminder - ${customer.name}`)
+    .replace(/\{\{company_name\}\}/g, customer.name || '')
+    .replace(/\{\{contact_person\}\}/g, contact);
+  const newBody = (template.body || '')
+    .replace(/\{\{contact_person\}\}/g, contact)
+    .replace(/\{\{company_name\}\}/g, customer.name || '')
+    .replace(/\{\{outstanding_amount\}\}/g, `₹${total.toLocaleString('en-IN')}`)
+    .replace(/\{\{invoice_table\}\}/g, table)
+    .replace(/\{\{attachments\}\}/g, attachmentText);
+  return { subject: newSubject, body: newBody + getSignature() };
+}
+
 export default function QuickReminderModal({ customer, onClose }) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
   const [invoices, setInvoices] = useState([]);
   const [loadingInvoices, setLoadingInvoices] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
-  const [resolvedEmail] = useState(customer.email || '');
-  const [resolvedPhone] = useState(customer.phone || '');
-  const [resolvedContactPerson] = useState(customer.contact_person || customer.name || '');
+  const resolvedEmail = customer.email || '';
+  const resolvedPhone = customer.phone || '';
+  const resolvedContactPerson = customer.contact_person || customer.name || '';
+
   const [subject, setSubject] = useState(`Payment Reminder - ${customer.name || ''}`);
-  const [body, setBody] = useState(`Dear ${customer.contact_person || customer.name || ''},\n\nLoading invoice details...`);
+  const [body, setBody] = useState(`Dear ${resolvedContactPerson},\n\nLoading invoice details...`);
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-  // Read default template ID from localStorage synchronously so it's available immediately
-  const defaultTemplateId = useMemo(() => {
-    try {
-      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
-      return s.defaultReminderTemplateId || '';
-    } catch (e) { return ''; }
-  }, []);
+  // Track whether we've already applied the initial template so we don't overwrite user edits
+  const initialApplied = useRef(false);
 
-  const [selectedTemplateId, setSelectedTemplateId] = useState(defaultTemplateId);
-
-  const { data: emailTemplates = [] } = useQuery({
+  const { data: emailTemplates = [], isSuccess: templatesLoaded } = useQuery({
     queryKey: ['messageTemplates'],
     queryFn: () => base44.entities.MessageTemplate.list(),
-    select: (data) => data.filter(t => t.type === 'email'),
+    select: (data) => data.filter(t => t.type === 'email' && t.is_active !== false),
   });
 
-  const getSignature = () => {
-    try {
-      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
-      const c = s.company || {};
-      const lines = [];
-      if (c.contact_person) lines.push(c.contact_person);
-      if (c.name) lines.push(c.name);
-      if (c.phone) lines.push(`Phone: ${c.phone}`);
-      if (c.email) lines.push(`Email: ${c.email}`);
-      if (c.website) lines.push(c.website);
-      return lines.length > 0 ? `\n\n--\n${lines.join('\n')}` : '';
-    } catch (e) { return ''; }
-  };
-
-  const applyTemplate = (templateId, invoiceList, totalAmt, contactPerson, templates) => {
-    const tplList = templates || emailTemplates;
-    const template = tplList.find(t => t.id === templateId);
-    if (!template) return false;
-    const table = buildInvoiceTable(invoiceList.length > 0 ? invoiceList :
-      [{ invoice_number: '-', amount: totalAmt, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
-    );
-    const contact = contactPerson || customer.name || '';
-    const newSubject = (template.subject || `Payment Reminder - ${customer.name}`)
-      .replace(/\{\{company_name\}\}/g, customer.name || '')
-      .replace(/\{\{contact_person\}\}/g, contact);
-    const attachmentText = buildAttachmentLinks(invoiceList);
-    const newBody = (template.body || '')
-      .replace(/\{\{contact_person\}\}/g, contact)
-      .replace(/\{\{company_name\}\}/g, customer.name || '')
-      .replace(/\{\{outstanding_amount\}\}/g, `₹${totalAmt.toLocaleString('en-IN')}`)
-      .replace(/\{\{invoice_table\}\}/g, table)
-      .replace(/\{\{attachments\}\}/g, attachmentText);
-    setSubject(newSubject);
-    setBody(newBody + getSignature());
-    return true;
-  };
-
-  const handleTemplateChange = (templateId) => {
-    setSelectedTemplateId(templateId);
-    const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
-    applyTemplate(templateId, invoices, total, resolvedContactPerson);
-  };
-
-  // When templates finish loading, re-apply template with already-loaded invoices if needed
-  useEffect(() => {
-    if (emailTemplates.length > 0 && selectedTemplateId && !loadingInvoices) {
-      const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
-      applyTemplate(selectedTemplateId, invoices, total, resolvedContactPerson, emailTemplates);
-    }
-  }, [emailTemplates]);
-
+  // Fetch invoices once on mount
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
@@ -129,32 +127,56 @@ export default function QuickReminderModal({ customer, onClose }) {
         });
         const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
-        const total = outstanding.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
-
-        // Use the default template ID read at mount time (not from state, to avoid stale closure)
-        const templateIdToUse = defaultTemplateId || selectedTemplateId;
-
-        if (templateIdToUse && emailTemplates.length > 0) {
-          applyTemplate(templateIdToUse, outstanding, total, resolvedContactPerson, emailTemplates);
-        } else if (templateIdToUse) {
-          // Templates not yet loaded — store invoices and wait for templates
-          // Will be handled by the template-loaded effect below
-        } else {
-          const table = buildInvoiceTable(
-            outstanding.length > 0
-              ? outstanding
-              : [{ invoice_number: '-', amount: customer.credit_limit || 0, amount_paid: 0, due_date: null, invoice_date: null, status: 'pending' }]
-          );
-          const attachmentText = buildAttachmentLinks(outstanding);
-          const attachmentSection = attachmentText ? `\n\n${attachmentText}` : '';
-          const contactName = resolvedContactPerson || customer.name;
-          setSubject(`Payment Reminder - ${customer.name || ''}`);
-          setBody(`Dear ${contactName},\n\nThis is a friendly reminder regarding the following outstanding dues:\n\n${table}\n\nKindly arrange payment at the earliest convenience. If you have already made the payment, please disregard this message.${attachmentSection}\n\nThank you.${getSignature()}`);
-        }
       })
       .catch(console.error)
       .finally(() => setLoadingInvoices(false));
   }, [customer.id, customer.name]);
+
+  // Apply template once BOTH invoices and templates are ready
+  useEffect(() => {
+    if (loadingInvoices || !templatesLoaded || initialApplied.current) return;
+
+    initialApplied.current = true;
+
+    // Determine which template to use:
+    // 1. defaultReminderTemplateId from settings
+    // 2. Template named "Default reminder" (case-insensitive)
+    // 3. First available template
+    const settings = getSettings();
+    const savedId = settings.defaultReminderTemplateId || '';
+
+    let chosenTemplate = null;
+    if (savedId) {
+      chosenTemplate = emailTemplates.find(t => t.id === savedId);
+    }
+    if (!chosenTemplate) {
+      chosenTemplate = emailTemplates.find(t => t.name?.toLowerCase().includes('default'));
+    }
+    if (!chosenTemplate && emailTemplates.length > 0) {
+      chosenTemplate = emailTemplates[0];
+    }
+
+    if (chosenTemplate) {
+      setSelectedTemplateId(chosenTemplate.id);
+      const { subject: s, body: b } = applyTemplateToContent(chosenTemplate, customer, invoices, resolvedContactPerson);
+      setSubject(s);
+      setBody(b);
+    } else {
+      // No templates at all — use default body
+      setSubject(`Payment Reminder - ${customer.name || ''}`);
+      setBody(buildDefaultBody(customer, invoices));
+    }
+  }, [loadingInvoices, templatesLoaded, emailTemplates, invoices]);
+
+  const handleTemplateChange = (templateId) => {
+    setSelectedTemplateId(templateId);
+    const template = emailTemplates.find(t => t.id === templateId);
+    if (template) {
+      const { subject: s, body: b } = applyTemplateToContent(template, customer, invoices, resolvedContactPerson);
+      setSubject(s);
+      setBody(b);
+    }
+  };
 
   const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
 
@@ -175,6 +197,8 @@ export default function QuickReminderModal({ customer, onClose }) {
       setSending(false);
     }
   };
+
+  const isLoading = loadingInvoices || !templatesLoaded;
 
   return (
     <Dialog open onOpenChange={onClose}>
@@ -255,7 +279,11 @@ export default function QuickReminderModal({ customer, onClose }) {
             <Input value={subject} onChange={e => setSubject(e.target.value)} className="h-9" disabled={showPreview} />
           </div>
 
-          {showPreview ? (
+          {isLoading ? (
+            <div className="flex items-center gap-2 text-xs text-muted-foreground border rounded-lg p-4">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" /> Preparing email...
+            </div>
+          ) : showPreview ? (
             <div className="border rounded-lg bg-white p-4 text-sm whitespace-pre-wrap font-mono text-foreground max-h-64 overflow-y-auto shadow-inner">
               <div className="text-xs text-muted-foreground mb-2 font-sans border-b pb-2">
                 <strong>To:</strong> {resolvedEmail || '—'}<br />
@@ -269,7 +297,7 @@ export default function QuickReminderModal({ customer, onClose }) {
 
           <div className="flex justify-end gap-2 pt-1">
             <Button variant="outline" size="sm" onClick={onClose}>Cancel</Button>
-            <Button size="sm" onClick={handleSend} disabled={sending || !resolvedEmail}>
+            <Button size="sm" onClick={handleSend} disabled={sending || !resolvedEmail || isLoading}>
               {sending ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Send className="w-3.5 h-3.5 mr-1.5" />}
               {sending ? 'Sending...' : 'Send Reminder'}
             </Button>
