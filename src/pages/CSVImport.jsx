@@ -43,48 +43,45 @@ function normKey(s) {
 }
 
 function parseTallyCSV(text) {
-  // Split into lines, handling both \r\n and \n
   const lines = text.trim().split(/\r?\n/);
+  const splitLine = (l) => l.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
 
-  // Find the header line: must contain 'date' AND 'party' (case-insensitive)
-  let headerIdx = lines.findIndex(l => /date/i.test(l) && /party/i.test(l));
+  // Find the header line: must contain 'party'
+  let headerIdx = lines.findIndex(l => /party/i.test(l));
   if (headerIdx < 0) headerIdx = 0;
 
-  // Parse raw headers and sub-headers
-  const splitLine = (l) => l.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
   const rawHeaders = splitLine(lines[headerIdx]);
-  const nextLine = lines[headerIdx + 1] ? splitLine(lines[headerIdx + 1]) : [];
 
-  // Build merged column names: if sub-header cell is non-empty and doesn't start a new column, append it
-  const MAIN_HEADER_WORDS = /^(date|ref|party|due|overdue|pending)/i;
-  const mergedHeaders = rawHeaders.map((h, i) => {
-    const sub = nextLine[i] || '';
-    // If sub cell has content and it's not a new main header, merge
-    if (sub && !MAIN_HEADER_WORDS.test(sub) && !MAIN_HEADER_WORDS.test(h.trim())) {
-      return normKey(`${h} ${sub}`);
-    }
-    if (sub && h.trim() && !MAIN_HEADER_WORDS.test(sub)) {
-      return normKey(`${h} ${sub}`);
-    }
-    return normKey(h);
-  });
+  // Find column positions by name
+  const findCol = (...patterns) => rawHeaders.findIndex(h => patterns.some(p => p.test(h.trim())));
+  const colDate    = findCol(/^date$/i);
+  const colRef     = findCol(/ref/i);
+  const colParty   = findCol(/party/i);
+  const colPending = findCol(/pending/i);
+  const colDue     = findCol(/due/i);
+  const colOverdue = findCol(/overdue/i);
 
-  // Data starts after header + possible sub-header row
-  const hasSubHeader = nextLine.some(s => s.trim() && !MAIN_HEADER_WORDS.test(s));
-  const dataStart = hasSubHeader ? headerIdx + 2 : headerIdx + 1;
+  // Skip sub-header row if next line has no numeric data
+  let dataStart = headerIdx + 1;
+  const nextLineCells = splitLine(lines[dataStart] || '');
+  const hasNumericData = nextLineCells.some(c => !isNaN(Number(c.replace(/[,₹\s]/g, ''))) && Number(c.replace(/[,₹\s]/g, '')) > 0);
+  if (!hasNumericData && nextLineCells.some(c => c.trim().length > 0)) dataStart++;
 
   const rows = lines.slice(dataStart).map(line => {
     const vals = splitLine(line);
-    const row = {};
-    mergedHeaders.forEach((h, i) => { row[h] = vals[i] || ''; });
-    return row;
-  }).filter(r => {
-    // Must have a non-empty, non-numeric party name
-    const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || '';
-    return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
-  });
+    return {
+      date: vals[colDate] || '',
+      ref_no: vals[colRef] || '',
+      partys_name: vals[colParty] || '',
+      pending_amount: vals[colPending] || '',
+      due_on: vals[colDue] || '',
+      overdue_by_days: vals[colOverdue] || '',
+    };
+  }).filter(r =>
+    r.partys_name.trim().length > 0 && !/^[\d,\.]+$/.test(r.partys_name.trim())
+  );
 
-  return { headers: mergedHeaders, rows };
+  return { headers: ['date','ref_no','partys_name','pending_amount','due_on','overdue_by_days'], rows };
 }
 
 function parseCSV(text) {
@@ -353,7 +350,7 @@ export default function CSVImport() {
         if (entityType === 'tally_receivable' || entityType === 'tally_payable') {
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-          // Find header row: look for "Party" anywhere in a row
+          // Find header row: the row that contains "Party" in one of its cells
           let headerIdx = rawRows.findIndex(r =>
             r.some(c => /party/i.test(String(c).trim()))
           );
@@ -361,32 +358,35 @@ export default function CSVImport() {
 
           const rawHeaders = rawRows[headerIdx].map(h => String(h ?? '').trim());
 
-          // Check next row for sub-headers (e.g. "Amount" under "Pending")
-          const nextRow = rawRows[headerIdx + 1] || [];
-          const nextRowStrings = nextRow.map(c => String(c ?? '').trim());
-          const isSubHeader = nextRowStrings.some(s =>
-            s.length > 0 && s.length < 30 &&
-            isNaN(Number(s.replace(/[,₹\s]/g, ''))) &&
-            !/party/i.test(s) && !/date/i.test(s)
-          );
+          // Find column positions by scanning rawHeaders for known Tally column names
+          const findCol = (...patterns) => {
+            const idx = rawHeaders.findIndex(h => patterns.some(p => p.test(h.trim())));
+            return idx >= 0 ? idx : -1;
+          };
 
-          // Build merged headers: if sub-header has content for a column, merge it
-          const mergedHeaders = rawHeaders.map((h, i) => {
-            const sub = nextRowStrings[i] || '';
-            if (isSubHeader && sub && h) return normKey(`${h} ${sub}`);
-            if (isSubHeader && sub && !h) return normKey(sub);
-            return normKey(h);
+          const colDate    = findCol(/^date$/i);
+          const colRef     = findCol(/ref/i);
+          const colParty   = findCol(/party/i);
+          const colPending = findCol(/pending/i);
+          const colDue     = findCol(/due/i);
+          const colOverdue = findCol(/overdue/i);
+
+          // Data starts at headerIdx+1. Skip a sub-header row if the next row has no numeric data.
+          let dataStart = headerIdx + 1;
+          const candidateRow = rawRows[dataStart] || [];
+          const hasNumericData = candidateRow.some(c => {
+            const n = Number(String(c).replace(/[,₹\s]/g, ''));
+            return !isNaN(n) && n > 0;
           });
+          if (!hasNumericData && candidateRow.some(c => String(c).trim().length > 0)) {
+            dataStart++; // skip sub-header row
+          }
 
-          const dataStart = isSubHeader ? headerIdx + 2 : headerIdx + 1;
-
-          const convertCell = (val, h) => {
+          const convertCell = (val, isDateCol) => {
             if (val instanceof Date) return val.toISOString().slice(0, 10);
             if (typeof val === 'number') {
-              // Could be Excel serial date (large number ~40000+) or a plain number
-              if (val > 25000 && val < 60000 && (h.includes('date') || h.includes('due') || h === 'date')) {
-                const excelEpoch = new Date(1899, 11, 30);
-                const d = new Date(excelEpoch.getTime() + val * 86400000);
+              if (isDateCol && val > 25000 && val < 60000) {
+                const d = new Date(new Date(1899, 11, 30).getTime() + val * 86400000);
                 return d.toISOString().slice(0, 10);
               }
               return String(val);
@@ -394,29 +394,24 @@ export default function CSVImport() {
             return String(val ?? '').trim();
           };
 
-          const rows = rawRows.slice(dataStart).map(r => {
-            const row = {};
-            mergedHeaders.forEach((h, i) => {
-              row[h] = convertCell(r[i], h);
-            });
-            return row;
-          }).filter(r => {
-            // Accept row if ANY key that looks like a name has a non-numeric value
-            const allVals = Object.values(r);
-            const nameVal = Object.entries(r).find(([k]) => /party|name/.test(k))?.[1] || '';
-            if (nameVal.trim().length > 0 && !/^[\d,\.₹\s]+$/.test(nameVal.trim())) return true;
-            // Fallback: at least one string value that looks like a company name
-            return allVals.some(v => v && v.trim().length > 2 && isNaN(Number(v.replace(/[,₹\s]/g, ''))) && !/^[\d\-\/]+$/.test(v.trim()));
-          });
+          const rows = rawRows.slice(dataStart).map(r => ({
+            date:       convertCell(r[colDate], true),
+            ref_no:     convertCell(r[colRef], false),
+            partys_name: convertCell(r[colParty], false),
+            pending_amount: convertCell(r[colPending], false),
+            due_on:     convertCell(r[colDue], true),
+            overdue_by_days: convertCell(r[colOverdue], false),
+          })).filter(r =>
+            r.partys_name.trim().length > 0 &&
+            !/^[\d,\.₹\s]+$/.test(r.partys_name.trim())
+          );
 
           const debugInfo = {
-            totalRawRows: rawRows.length,
             headerIdx,
             rawHeaders,
-            mergedHeaders,
-            isSubHeader,
+            colParty,
+            colPending,
             dataStart,
-            firstDataRow: rawRows[dataStart] || [],
             firstMappedRow: rows[0] || {},
           };
           processRows(rows, debugInfo);
