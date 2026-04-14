@@ -23,9 +23,7 @@ export default function AttachmentCell({ invoice, onUpdate }) {
     setUploading(true);
     try {
       const newItems = await Promise.all(files.map(async (file) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        const res = await base44.functions.invoke('uploadToCloudinary', formData);
+        const res = await base44.functions.invoke('uploadToCloudinary', { file });
         if (!res.data?.url) throw new Error(res.data?.error || 'Upload failed');
         return { name: file.name, url: res.data.url };
       }));
