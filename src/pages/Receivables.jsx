@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mail, Edit, Target, Trash2, CalendarClock, MessageSquare, Phone, Building2, Search, SlidersHorizontal, IndianRupee, Users } from 'lucide-react';
+import { Mail, Edit, Target, Trash2, CalendarClock, MessageSquare, Phone, Building2, Search, SlidersHorizontal, IndianRupee, Users, ArrowUpDown } from 'lucide-react';
 import AttachmentCell from '@/components/receivables/AttachmentCell';
 import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
 import PageHeader from '@/components/shared/PageHeader';
@@ -40,6 +40,7 @@ export default function Receivables() {
   const [targetCustomer, setTargetCustomer] = useState(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBulkReminder, setShowBulkReminder] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -175,8 +176,8 @@ export default function Receivables() {
       let label = '';
 
       if (groupBy === 'company') {
-        key = inv.debtor_name;
-        label = inv.debtor_name;
+        key = inv.customer_name;
+        label = inv.customer_name;
       } else if (groupBy === 'week') {
         key = `W${getWeekNumber(inv.due_date)}`;
         label = `Week ${getWeekNumber(inv.due_date)}`;
@@ -198,6 +199,48 @@ export default function Receivables() {
     return Object.values(groups).sort((a, b) => a.label.localeCompare(b.label));
   }, [filteredData, groupBy]);
 
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const sortItems = (items) => {
+    if (!sortConfig.key) return items;
+    return [...items].sort((a, b) => {
+      let aVal, bVal;
+      if (sortConfig.key === 'company') {
+        aVal = a.customer_name?.toLowerCase() || '';
+        bVal = b.customer_name?.toLowerCase() || '';
+      } else if (sortConfig.key === 'outstanding') {
+        aVal = (a.amount - (a.amount_paid || 0));
+        bVal = (b.amount - (b.amount_paid || 0));
+      } else if (sortConfig.key === 'due_date') {
+        aVal = new Date(a.due_date || '');
+        bVal = new Date(b.due_date || '');
+      } else if (sortConfig.key === 'status') {
+        aVal = a.status || '';
+        bVal = b.status || '';
+      }
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const SortableHead = ({ label, sortKey }) => (
+    <TableHead 
+      className="px-3 text-xs font-semibold cursor-pointer hover:bg-muted/50"
+      onClick={() => handleSort(sortKey)}
+    >
+      <div className="flex items-center gap-1">
+        {label}
+        {sortConfig.key === sortKey && <ArrowUpDown className="w-3 h-3" />}
+      </div>
+    </TableHead>
+  );
+
   const handleBulkDelete = async () => {
     setBulkLoading(true);
     try {
@@ -217,7 +260,7 @@ export default function Receivables() {
     try {
       await Promise.all([...selected].map(id => {
         const inv = invoices.find(i => i.id === id);
-        const customer = getCustomerInfo(inv?.debtor_name);
+        const customer = getCustomerInfo(inv?.customer_name);
         if (customer?.id) {
           return base44.entities.Customer.update(customer.id, { account_manager: assigningManager });
         }
@@ -255,8 +298,9 @@ export default function Receivables() {
   const statusColors = {
     overdue: 'bg-red-50 text-red-700 border-red-200',
     pending: 'bg-amber-50 text-amber-700 border-amber-200',
-    partial: 'bg-blue-50 text-blue-700 border-blue-200',
+    partially_paid: 'bg-blue-50 text-blue-700 border-blue-200',
     paid: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    written_off: 'bg-gray-50 text-gray-700 border-gray-200',
   };
 
   if (isLoading) {
@@ -420,20 +464,21 @@ export default function Receivables() {
                         }}
                       />
                     </TableHead>
-                    <TableHead className="px-3 text-xs font-semibold">Company</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Ref. No.</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold text-right">Outstanding</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Due Date</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Attachments</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold text-right">Credit Limit</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Manager</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Week</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Month</TableHead>
-                     <TableHead className="px-3 text-xs font-semibold">Actions</TableHead>
+                    <SortableHead label="Company" sortKey="company" />
+                      <TableHead className="px-3 text-xs font-semibold">Ref. No.</TableHead>
+                      <SortableHead label="Outstanding" sortKey="outstanding" />
+                      <SortableHead label="Status" sortKey="status" />
+                      <SortableHead label="Due Date" sortKey="due_date" />
+                      <TableHead className="px-3 text-xs font-semibold">Attachments</TableHead>
+                      <TableHead className="px-3 text-xs font-semibold text-right">Credit Limit</TableHead>
+                      <TableHead className="px-3 text-xs font-semibold">Manager</TableHead>
+                      <TableHead className="px-3 text-xs font-semibold">Week</TableHead>
+                      <TableHead className="px-3 text-xs font-semibold">Month</TableHead>
+                      <TableHead className="px-3 text-xs font-semibold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {group.items.map((invoice) => {
+                   {sortItems(group.items).map((invoice) => {
                     const outstanding = invoice.amount - (invoice.amount_paid || 0);
                     const dueDate = invoice.due_date ? parseISO(invoice.due_date) : null;
 
@@ -524,8 +569,10 @@ export default function Receivables() {
                            <span className={`font-semibold text-sm ${invoice.status === 'overdue' ? 'text-red-600' : 'text-foreground'}`}>
                              ₹{outstanding.toLocaleString('en-IN')}
                            </span>
+                         </TableCell>
+                         <TableCell className="px-3">
                            {invoice.status && (
-                             <div className={`mt-0.5 inline-flex ml-1.5 items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium border ${statusColors[invoice.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
+                             <div className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium border ${statusColors[invoice.status] || 'bg-gray-50 text-gray-600 border-gray-200'}`}>
                                {invoice.status}
                              </div>
                            )}
