@@ -9,7 +9,8 @@ import OutstandingReceivablesChart from '@/components/dashboard/OutstandingRecei
 import RecentTransactions from '@/components/dashboard/RecentTransactions';
 import ProjectedCashFlow4Weeks from '@/components/dashboard/ProjectedCashFlow4Weeks';
 import ProjectedCashFlow3Months from '@/components/dashboard/ProjectedCashFlow3Months';
-import OverdueAlerts from '@/components/dashboard/OverdueAlerts';
+import TopOverduePayments from '@/components/dashboard/TopOverduePayments';
+import TopCollectionTargets from '@/components/dashboard/TopCollectionTargets';
 import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRangePicker';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
@@ -137,8 +138,11 @@ export default function Dashboard() {
         <OutstandingReceivablesChart receivables={receivables} />
       </div>
 
-      {/* Overdue Alerts */}
-      <OverdueAlerts receivables={receivables} payables={payables} debtors={debtors} />
+      {/* Top Overdue + Top Targets */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <TopOverduePayments receivables={receivables} />
+        <TopCollectionTargets />
+      </div>
 
       {/* Recent Transactions */}
       <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} debtors={debtors} />
