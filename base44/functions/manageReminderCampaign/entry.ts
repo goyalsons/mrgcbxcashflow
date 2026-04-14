@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
     if (action === 'getAutoStatus') {
       const existing = await base44.asServiceRole.entities.AppSettings.filter({ key: 'auto_reminders_enabled' });
       const isActive = existing.length > 0 ? existing[0].value !== 'false' : true; // default on
+      // Note: Automation is always running; this just controls if sendScheduledReminders skips processing
       return Response.json({ success: true, is_active: isActive });
     }
 
