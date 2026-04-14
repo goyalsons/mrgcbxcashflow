@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { Zap } from 'lucide-react';
+import ReminderLogs from '@/components/paymentreminders/ReminderLogs';
 
 export default function PaymentReminders() {
   const { toast } = useToast();
@@ -91,12 +92,16 @@ export default function PaymentReminders() {
         <TabsList>
           <TabsTrigger value="campaigns">Campaigns</TabsTrigger>
           <TabsTrigger value="scheduled">Scheduled Reminders</TabsTrigger>
+          <TabsTrigger value="logs">Send Logs</TabsTrigger>
         </TabsList>
         <TabsContent value="scheduled" className="mt-4">
           <ScheduledRemindersList key={refreshKey} />
         </TabsContent>
         <TabsContent value="campaigns" className="mt-4">
           <ReminderCampaignList key={refreshKey} />
+        </TabsContent>
+        <TabsContent value="logs" className="mt-4">
+          <ReminderLogs />
         </TabsContent>
       </Tabs>
     </div>

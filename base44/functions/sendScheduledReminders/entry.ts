@@ -130,10 +130,37 @@ Deno.serve(async (req) => {
           sent_time: currentTime,
         });
 
+        // Write success log
+        await base44.asServiceRole.entities.ReminderLog.create({
+          reminder_id: reminder.id,
+          customer_id: reminder.customer_id,
+          customer_name: customer?.name || reminder.customer_name || '',
+          recipient: reminder.customer_email || reminder.customer_phone || '',
+          channel: reminder.send_type || 'email',
+          status: 'sent',
+          subject: subject || '',
+          triggered_by: 'auto',
+        });
+
         sentCount++;
       } catch (e) {
         console.error(`Failed to send reminder ${reminder.id}:`, e.message);
         await base44.entities.ScheduledReminder.update(reminder.id, { status: 'failed' });
+
+        // Write failure log
+        try {
+          await base44.asServiceRole.entities.ReminderLog.create({
+            reminder_id: reminder.id,
+            customer_id: reminder.customer_id,
+            customer_name: reminder.customer_name || '',
+            recipient: reminder.customer_email || reminder.customer_phone || '',
+            channel: reminder.send_type || 'email',
+            status: 'failed',
+            error_message: e.message,
+            triggered_by: 'auto',
+          });
+        } catch (_) { /* don't block on log failure */ }
+
         failedCount++;
       }
     }

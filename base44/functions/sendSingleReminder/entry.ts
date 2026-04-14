@@ -114,9 +114,35 @@ Deno.serve(async (req) => {
       sent_time: currentTime,
     });
 
+    // Write success log
+    await base44.asServiceRole.entities.ReminderLog.create({
+      reminder_id: reminderId,
+      customer_id: reminder.customer_id,
+      customer_name: customer?.name || reminder.customer_name || '',
+      recipient: reminder.customer_email || reminder.customer_phone || '',
+      channel: reminder.send_type || 'email',
+      status: 'sent',
+      subject: subject || '',
+      triggered_by: 'manual',
+    });
+
     return Response.json({ success: true });
   } catch (error) {
     console.error('[sendSingleReminder] Error:', error);
+
+    // Write failure log
+    try {
+      const base44Log = createClientFromRequest(req);
+      await base44Log.asServiceRole.entities.ReminderLog.create({
+        reminder_id: reminderId || '',
+        customer_name: '',
+        channel: 'email',
+        status: 'failed',
+        error_message: error.message,
+        triggered_by: 'manual',
+      });
+    } catch (_) { /* don't block on log failure */ }
+
     return Response.json({ error: error.message }, { status: 500 });
   }
 });

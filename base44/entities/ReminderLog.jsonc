@@ -1,0 +1,61 @@
+{
+  "name": "ReminderLog",
+  "type": "object",
+  "properties": {
+    "reminder_id": {
+      "type": "string",
+      "description": "ID of the ScheduledReminder"
+    },
+    "customer_id": {
+      "type": "string",
+      "description": "ID of the customer"
+    },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer display name"
+    },
+    "recipient": {
+      "type": "string",
+      "description": "Email or phone number the reminder was sent to"
+    },
+    "channel": {
+      "type": "string",
+      "enum": [
+        "email",
+        "whatsapp",
+        "sms"
+      ],
+      "description": "Communication channel used"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "sent",
+        "failed",
+        "skipped"
+      ],
+      "description": "Result of the send attempt"
+    },
+    "error_message": {
+      "type": "string",
+      "description": "Error details if status is failed"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Email subject (for email channel)"
+    },
+    "triggered_by": {
+      "type": "string",
+      "enum": [
+        "auto",
+        "manual"
+      ],
+      "description": "Whether sent automatically or manually"
+    }
+  },
+  "required": [
+    "customer_name",
+    "channel",
+    "status"
+  ]
+}
