@@ -53,10 +53,13 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
     const customer = customers.find(c => c.id === customerId);
     if (!customer) return;
     const mgr = managers.find(m => m.email === customer.account_manager);
-    const outstanding = outstandingByCustomer[customerId] || 0;
+    // Look up outstanding by customer_id first, then by name
+    const outstanding = (outstandingByCustomer.byId?.[customerId]) ||
+      (outstandingByCustomer.byName?.[customer.name?.trim().toLowerCase()]) || 0;
     setForm(f => ({
       ...f,
       customer_id: customerId,
+      customer_name: customer.name,
       manager_email: customer.account_manager || f.manager_email,
       manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || f.manager_name,
       target_amount: outstanding > 0 ? outstanding.toString() : f.target_amount,
@@ -111,15 +114,19 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
           <div className="space-y-1.5">
             <Label>Target Amount (₹) *</Label>
             <Input type="number" value={form.target_amount} onChange={e => set('target_amount', e.target.value)} required min="1" placeholder="e.g. 500000" />
-            {form.customer_id && (
-              <p className="text-xs text-muted-foreground">
-                Customer's total outstanding:{' '}
-                {outstandingByCustomer[form.customer_id] > 0
-                  ? <span className="font-semibold text-red-600">{formatINR(outstandingByCustomer[form.customer_id])}</span>
-                  : <span className="font-semibold text-muted-foreground">No outstanding recorded</span>
-                }
-              </p>
-            )}
+            {form.customer_id && (() => {
+              const amt = (outstandingByCustomer.byId?.[form.customer_id]) ||
+                (outstandingByCustomer.byName?.[form.customer_name?.trim().toLowerCase()]) || 0;
+              return (
+                <p className="text-xs text-muted-foreground">
+                  Customer's total outstanding:{' '}
+                  {amt > 0
+                    ? <span className="font-semibold text-red-600">{formatINR(amt)}</span>
+                    : <span className="font-semibold text-muted-foreground">No outstanding recorded</span>
+                  }
+                </p>
+              );
+            })()}
           </div>
           <div className="space-y-1.5">
             <Label>Target Date *</Label>
@@ -234,18 +241,34 @@ export default function CollectionTargets() {
 
   const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
 
-  // Outstanding amount per customer_id from receivables
+  // Outstanding amount per customer_id AND per customer_name (fallback for receivables without customer_id)
   const outstandingByCustomer = useMemo(() => {
-    const map = {};
+    const byId = {};
+    const byName = {};
     receivables.forEach(r => {
-      if (!r.customer_id) return;
       const outstanding = Math.max(0, (r.amount || 0) - (r.amount_received || 0));
-      if (r.status !== 'paid' && r.status !== 'written_off') {
-        map[r.customer_id] = (map[r.customer_id] || 0) + outstanding;
+      if (r.status === 'paid' || r.status === 'written_off') return;
+      if (r.customer_id) {
+        byId[r.customer_id] = (byId[r.customer_id] || 0) + outstanding;
+      }
+      if (r.customer_name) {
+        const key = r.customer_name.trim().toLowerCase();
+        byName[key] = (byName[key] || 0) + outstanding;
       }
     });
-    return map;
+    return { byId, byName };
   }, [receivables]);
+
+  // Helper: get outstanding for a target record
+  const getOutstanding = (t) => {
+    if (t.customer_id && outstandingByCustomer.byId[t.customer_id]) {
+      return outstandingByCustomer.byId[t.customer_id];
+    }
+    if (t.customer_name) {
+      return outstandingByCustomer.byName[t.customer_name.trim().toLowerCase()] || 0;
+    }
+    return 0;
+  };
 
   // Build a map of manager_email -> customer ids for payment lookups
   const managerCustomerIds = useMemo(() => {
@@ -445,8 +468,9 @@ export default function CollectionTargets() {
                 </TableHeader>
                 <TableBody>
                   {targets.map(t => {
-                    const customer = customers.find(c => c.id === t.customer_id);
-                    const outstanding = t.customer_id ? (outstandingByCustomer[t.customer_id] || 0) : 0;
+                    const customer = t.customer_id ? customers.find(c => c.id === t.customer_id) : null;
+                    const displayName = customer?.name || t.customer_name || null;
+                    const outstanding = getOutstanding(t);
                     const customerIds = managerCustomerIds[t.manager_email] || [];
                     const monthPayments = payments.filter(p => {
                       if (!p.payment_date) return false;
@@ -464,10 +488,10 @@ export default function CollectionTargets() {
                           <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                         </TableCell>
                         <TableCell className="text-sm">
-                          {customer ? (
+                          {displayName ? (
                             <div>
-                              <div className="font-medium">{customer.name}</div>
-                              {customer.contact_person && <div className="text-xs text-muted-foreground">{customer.contact_person}</div>}
+                              <div className="font-medium">{displayName}</div>
+                              {customer?.contact_person && <div className="text-xs text-muted-foreground">{customer.contact_person}</div>}
                             </div>
                           ) : <span className="text-muted-foreground">—</span>}
                         </TableCell>
