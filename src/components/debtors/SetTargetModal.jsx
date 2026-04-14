@@ -18,6 +18,7 @@ export default function SetTargetModal({ customer, onClose }) {
     target_date: today.toISOString().split('T')[0],
     notes: '',
   });
+  const [checking, setChecking] = useState(false);
 
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.CollectionTarget.create(data),
@@ -28,21 +29,42 @@ export default function SetTargetModal({ customer, onClose }) {
     },
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!customer?.account_manager) {
       toast({ title: 'No manager assigned to this customer', variant: 'destructive' });
       return;
     }
     const date = new Date(form.target_date);
+    const month = date.getMonth() + 1;
+    const year = date.getFullYear();
+
+    // Check for duplicate: same customer + same month/year
+    setChecking(true);
+    const existing = await base44.entities.CollectionTarget.filter({
+      customer_name: customer.name,
+      period_month: month,
+      period_year: year,
+    });
+    setChecking(false);
+
+    if (existing.length > 0) {
+      toast({
+        title: 'Duplicate target',
+        description: `A target for ${customer.name} already exists for ${date.toLocaleString('default', { month: 'long' })} ${year}.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     createMut.mutate({
       manager_email: customer.account_manager,
       manager_name: customer.account_manager_name || customer.account_manager,
       customer_name: customer.name,
       target_amount: parseFloat(form.target_amount),
       target_date: form.target_date,
-      period_month: date.getMonth() + 1,
-      period_year: date.getFullYear(),
+      period_month: month,
+      period_year: year,
       notes: form.notes || `Target for ${customer.name} by ${form.target_date}`,
     });
   };
@@ -104,8 +126,8 @@ export default function SetTargetModal({ customer, onClose }) {
 
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={createMut.isPending || !customer?.account_manager}>
-              {createMut.isPending ? 'Saving...' : 'Set Target'}
+            <Button type="submit" disabled={createMut.isPending || checking || !customer?.account_manager}>
+              {checking ? 'Checking...' : createMut.isPending ? 'Saving...' : 'Set Target'}
             </Button>
           </div>
         </form>

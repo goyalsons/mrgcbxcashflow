@@ -483,9 +483,28 @@ export default function CollectionTargets() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['collectionTargets'] }); toast({ title: 'Target deleted' }); },
   });
 
-  const handleSave = (data) => {
-    if (editingTarget) updateMut.mutate({ id: editingTarget.id, data });
-    else createMut.mutate(data);
+  const handleSave = async (data) => {
+    if (editingTarget) {
+      updateMut.mutate({ id: editingTarget.id, data });
+      return;
+    }
+    // Check for duplicate: same customer_name + same month/year
+    if (data.customer_name) {
+      const existing = await base44.entities.CollectionTarget.filter({
+        customer_name: data.customer_name,
+        period_month: data.period_month,
+        period_year: data.period_year,
+      });
+      if (existing.length > 0) {
+        toast({
+          title: 'Duplicate target',
+          description: `A target for ${data.customer_name} already exists for ${MONTHS[data.period_month - 1]} ${data.period_year}.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+    createMut.mutate(data);
   };
 
   const handleProgressSave = (id, data) => updateMut.mutateAsync({ id, data });
