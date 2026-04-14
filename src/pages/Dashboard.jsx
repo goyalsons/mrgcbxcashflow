@@ -77,6 +77,12 @@ export default function Dashboard() {
   // Stat calculations on filtered data
   const totalBankBalance = bankAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
 
+  const totalOutstandingReceivable = receivables
+    .filter(r => !['paid', 'written_off'].includes(r.status))
+    .reduce((sum, r) => sum + ((r.amount || 0) - (r.amount_received || 0)), 0);
+
+  const activeDebtors = receivables.filter(r => !['paid', 'written_off'].includes(r.status)).length;
+
   const totalReceivable = filteredReceivables
     .reduce((sum, r) => sum + (r.amount_received || 0), 0);
 
@@ -85,10 +91,7 @@ export default function Dashboard() {
     .reduce((sum, p) => sum + ((p.amount || 0) - (p.amount_paid || 0)), 0);
 
   const totalExpenses = filteredExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  const netCashPosition = totalBankBalance + totalReceivable - totalPayable;
-
-  const totalDebtorOutstanding = debtors.reduce((sum, d) => sum + (d.total_outstanding || 0), 0);
-  const activeDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0).length;
+  const netCashPosition = totalBankBalance + totalOutstandingReceivable - totalPayable;
 
   if (isLoading) {
     return (
@@ -117,8 +120,8 @@ export default function Dashboard() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
         <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
-        <Link to="/debtors" className="contents">
-          <StatCard title="Receivable" value={formatINR(totalDebtorOutstanding)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
+        <Link to="/receivables" className="contents">
+          <StatCard title="Receivable" value={formatINR(totalOutstandingReceivable)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
         </Link>
         <StatCard title="Received Amount" value={formatINR(totalReceivable)} icon={ArrowDownLeft} variant="success" />
         <StatCard title="Payables" value={formatINR(totalPayable)} icon={ArrowUpRight} variant="danger" />
