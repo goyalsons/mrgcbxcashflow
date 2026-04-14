@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Mail, MessageSquare, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, MoreHorizontal, Copy, Check, Mail, MessageSquare, Star, Sparkles } from 'lucide-react';
 
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
@@ -128,7 +128,7 @@ function SectionHeader({ icon, label, count, colorClass }) {
 export default function TemplatesTab({
   templates, templateTestState, setTemplateTestState,
   setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest,
-  defaultReminderTemplateId, setDefaultReminderTemplateId
+  defaultReminderTemplateId, setDefaultReminderTemplateId, createTemplateMut
 }) {
   const emailTemplates = templates.filter(t => t.type === 'email');
   const whatsappTemplates = templates.filter(t => t.type === 'whatsapp');
@@ -136,9 +136,33 @@ export default function TemplatesTab({
 
   const cardProps = { templateTestState, setTemplateTestState, setEditingTemplate, setShowTemplateEditor, deleteTemplateMut, handleTemplateTest, defaultReminderTemplateId, setDefaultReminderTemplateId };
 
+  const sampleTemplates = [
+    {
+      name: 'Default Reminder',
+      type: 'email',
+      subject: 'Payment Reminder - Invoice {{1}}',
+      body: 'Dear {{1}},\n\nThis is a friendly reminder that payment for invoice {{2}} is due on {{3}}.\n\nAmount Due: {{4}}\n\nPlease arrange payment at your earliest convenience.\n\nThank you!'
+    },
+    {
+      name: 'Friendly Nudge',
+      type: 'whatsapp',
+      body: 'Hi {{1}}, just a friendly reminder that invoice {{2}} is due on {{3}}. Outstanding amount: {{4}}. Please arrange payment soon. Thanks! 😊',
+      default_variables: 'Customer Name, Invoice Number, Due Date, Amount'
+    }
+  ];
+
+  const handleAddSamples = async () => {
+    for (const sample of sampleTemplates) {
+      createTemplateMut.mutate(sample);
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-2">
+        <Button onClick={handleAddSamples} variant="outline" className="gap-2" disabled={createTemplateMut.isPending}>
+          <Sparkles className="w-4 h-4" />Add Sample Templates
+        </Button>
         <Button onClick={() => { setEditingTemplate(null); setShowTemplateEditor(true); }} className="gap-2">
           <Plus className="w-4 h-4" />New Template
         </Button>

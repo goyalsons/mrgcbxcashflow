@@ -936,6 +936,7 @@ export default function Settings() {
             setEditingTemplate={setEditingTemplate}
             setShowTemplateEditor={setShowTemplateEditor}
             deleteTemplateMut={deleteTemplateMut}
+            createTemplateMut={createTemplateMut}
             handleTemplateTest={handleTemplateTest}
             defaultReminderTemplateId={defaultReminderTemplateId}
             setDefaultReminderTemplateId={(id) => { setDefaultReminderTemplateId(id); saveLocalSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId: id }); }}
