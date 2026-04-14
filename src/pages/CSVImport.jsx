@@ -388,7 +388,7 @@ export default function CSVImport() {
     setImporting(true);
     const validRows = preview.rows.filter(r => r.valid);
     let success = 0, updated = 0, duplicates = 0;
-    const BATCH = 25;
+    const BATCH = 15;
 
     if (entityType === 'tally_payable') {
       // Upsert logic for Tally Payables: match on bill_number
@@ -413,11 +413,11 @@ export default function CSVImport() {
         }
       }
       for (let i = 0; i < toCreate.length; i += BATCH) {
-        const batch = toCreate.slice(i, i + BATCH);
-        await base44.entities.Payable.bulkCreate(batch);
-        success += batch.length;
-        await sleep(300);
-      }
+         const batch = toCreate.slice(i, i + BATCH);
+         await base44.entities.Payable.bulkCreate(batch);
+         success += batch.length;
+         await sleep(800);
+       }
     } else if (entityType === 'tally_receivable') {
       // Step 1: Resolve / create Debtor records by company name
       const allDebtors = await base44.entities.Debtor.list().catch(() => []);
@@ -492,7 +492,7 @@ export default function CSVImport() {
          const batch = toCreate.slice(i, i + BATCH);
          await base44.entities.Vendor.bulkCreate(batch);
          success += batch.length;
-         await sleep(300);
+         await sleep(800);
        }
      } else if (entityType === 'customer') {
        // Customer import with duplicate check by company name (Particulars field)
@@ -516,7 +516,7 @@ export default function CSVImport() {
          const batch = toCreate.slice(i, i + BATCH);
          await base44.entities.Customer.bulkCreate(batch);
          success += batch.length;
-         await sleep(300);
+         await sleep(800);
        }
      } else {
       // Standard import with dupCheck
@@ -532,7 +532,7 @@ export default function CSVImport() {
         const batch = toCreate.slice(i, i + BATCH);
         await base44.entities[config.entity].bulkCreate(batch);
         success += batch.length;
-        await sleep(300);
+        await sleep(800);
       }
     }
 
