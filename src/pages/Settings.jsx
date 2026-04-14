@@ -361,8 +361,8 @@ export default function Settings() {
         templateName: testMsg.templateName,
         language: whatsapp.language || 'en',
         templateVariables: vars,
-        api_key: whatsapp.api_key || undefined,
-        phone_id: whatsapp.phone_id || undefined,
+        api_key: whatsapp.api_key || '',
+        phone_id: whatsapp.phone_id || '',
       });
       setTestResult({ success: res.data.success, message: res.data.success ? `✅ Message sent! ID: ${res.data.messageId || 'N/A'}` : `❌ ${res.data.error}` });
     } catch (e) {

@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
 
   const body = await req.json();
   // Accept credentials from frontend payload, fallback to env secrets
-  const apiKey = body.api_key || Deno.env.get('REDLAVA_API_KEY');
-  const phoneId = body.phone_id || Deno.env.get('REDLAVA_PHONE_ID');
+  const apiKey = (body.api_key && body.api_key.trim()) ? body.api_key.trim() : Deno.env.get('REDLAVA_API_KEY');
+  const phoneId = (body.phone_id && body.phone_id.trim()) ? body.phone_id.trim() : Deno.env.get('REDLAVA_PHONE_ID');
 
   if (!apiKey || !phoneId) {
     return Response.json({ error: 'RedLava credentials not configured. Please set API Key and Phone ID in Settings → WhatsApp.' }, { status: 500 });
