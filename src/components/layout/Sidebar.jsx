@@ -5,7 +5,7 @@ import {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt, 
   Landmark, Users, Building2, LogOut, ChevronLeft, ChevronRight,
   IndianRupee, Briefcase, Target, Clock, TrendingUp, Sparkles,
-  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal
+  Bell, FileText, Upload, Shield, ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal, HelpCircle
 } from 'lucide-react';
 import { getRoleLabel, hasPermission } from '@/lib/utils/roles';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ const iconMap = {
   LayoutDashboard, ArrowDownLeft, ArrowUpRight, Receipt,
   Landmark, Users, Building2, Briefcase, Target, Clock,
   TrendingUp, Sparkles, Bell, FileText, Upload, Shield,
-  ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal,
+  ClipboardList, Settings, BarChart3, CalendarClock, Link2, SlidersHorizontal, HelpCircle,
 };
 
 const NAV_GROUPS = [
@@ -66,6 +66,7 @@ const NAV_GROUPS = [
       { key: 'admin_panel', label: 'User Admin', path: '/admin-panel', icon: 'Shield' },
       { key: 'audit_logs', label: 'Audit Logs', path: '/audit-logs', icon: 'ClipboardList' },
       { key: 'settings', label: 'Settings', path: '/settings', icon: 'Settings' },
+      { key: 'instructions', label: 'Instructions & Help', path: '/instructions', icon: 'HelpCircle' },
     ],
   },
 ];

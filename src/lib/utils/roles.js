@@ -8,9 +8,9 @@
  */
 
 const ROLE_PERMISSIONS = {
-  admin: ['dashboard', 'notifications', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'cash_flow_simulator', 'cash_flow_simulator_monthly', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'recurring_expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'tally_integration', 'settings'],
-  user: ['dashboard', 'notifications', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'cash_flow_simulator', 'cash_flow_simulator_monthly', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'recurring_expenses', 'bank_accounts', 'customers', 'vendors', 'reports'],
-  account_manager: ['dashboard', 'notifications', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders', 'follow_up_schedule'],
+  admin: ['dashboard', 'notifications', 'debtors', 'collection_targets', 'aging_analysis', 'cash_flow_forecast', 'cash_flow_simulator', 'cash_flow_simulator_monthly', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'recurring_expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'csv_import', 'admin_panel', 'audit_logs', 'tally_integration', 'settings', 'instructions'],
+  user: ['dashboard', 'notifications', 'debtors', 'aging_analysis', 'cash_flow_forecast', 'cash_flow_simulator', 'cash_flow_simulator_monthly', 'ai_insights', 'analysis', 'payment_reminders', 'follow_up_schedule', 'receivables', 'payables', 'expenses', 'recurring_expenses', 'bank_accounts', 'customers', 'vendors', 'reports', 'instructions'],
+  account_manager: ['dashboard', 'notifications', 'my_collections', 'debtors', 'receivables', 'customers', 'payment_reminders', 'follow_up_schedule', 'instructions'],
 };
 
 export function hasPermission(role, feature) {
