@@ -5,23 +5,27 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pause, Play, Trash2, ChevronDown } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Pause, Play, Trash2, Edit } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
-import ScheduledMessageList from './ScheduledMessageList';
+import EditCampaignModal from './EditCampaignModal';
 
 export default function ReminderCampaignList({ onDuplicateDetected }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [expandedId, setExpandedId] = useState(null);
+  const [editingCampaign, setEditingCampaign] = useState(null);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ['reminderCampaigns'],
     queryFn: async () => {
       const cmpns = await base44.entities.ReminderCampaign.list('-created_date');
       const customers = await base44.entities.Customer.list();
+      const templates = await base44.entities.MessageTemplate.list();
       return cmpns.map(c => {
         const customer = customers.find(cust => cust.id === c.debtor_id);
-        return { ...c, customer };
+        const template = templates.find(t => t.id === c.template_id);
+        return { ...c, customer, template };
       });
     },
   });
@@ -47,8 +51,19 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminderCampaigns'] });
       toast({ title: 'Campaign deleted' });
+      setDeleteConfirm(null);
     },
   });
+
+  const handleDeleteClick = (campaign) => {
+    setDeleteConfirm(campaign);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirm) {
+      deleteMut.mutate(deleteConfirm.id);
+    }
+  };
 
 
 
@@ -57,17 +72,18 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
   }
 
   return (
+    <>
     <Card>
       <CardContent className="p-0">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-8"></TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Contact Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Phone</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Template</TableHead>
               <TableHead>Frequency</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Next Send</TableHead>
@@ -76,61 +92,69 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
           </TableHeader>
           <TableBody>
             {campaigns.map(campaign => (
-              <React.Fragment key={campaign.id}>
-                <TableRow>
-                  <TableCell>
-                    <button
-                      onClick={() => setExpandedId(expandedId === campaign.id ? null : campaign.id)}
-                      className="p-1 hover:bg-muted rounded"
-                    >
-                      <ChevronDown className={`w-4 h-4 transition-transform ${expandedId === campaign.id ? 'rotate-180' : ''}`} />
-                    </button>
-                  </TableCell>
-                  <TableCell className="font-medium">{campaign.debtor_name}</TableCell>
-                  <TableCell>{campaign.customer?.contact_person || '-'}</TableCell>
-                  <TableCell>{campaign.customer?.email || '-'}</TableCell>
-                  <TableCell>{campaign.customer?.phone || '-'}</TableCell>
-                  <TableCell><Badge>{campaign.reminder_type}</Badge></TableCell>
-                  <TableCell className="capitalize">{campaign.frequency}</TableCell>
-                  <TableCell>
-                    <Badge variant={campaign.status === 'active' ? 'default' : campaign.status === 'paused' ? 'secondary' : 'outline'}>
-                      {campaign.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <p className="font-medium">{campaign.next_send_date || '-'}</p>
-                      {campaign.send_time && <p className="text-xs text-muted-foreground">{campaign.send_time}</p>}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right flex items-center justify-end gap-1">
-                    {campaign.status === 'active' && (
-                      <Button size="sm" variant="ghost" onClick={() => pauseResumeMut.mutate({ campaignId: campaign.id, action: 'pause' })}>
-                       <Pause className="w-4 h-4" />
-                      </Button>
-                    )}
-                    {campaign.status === 'paused' && (
-                      <Button size="sm" variant="ghost" onClick={() => pauseResumeMut.mutate({ campaignId: campaign.id, action: 'resume' })}>
-                       <Play className="w-4 h-4" />
-                      </Button>
-                    )}
-                    <Button size="sm" variant="ghost" onClick={() => deleteMut.mutate(campaign.id)}>
-                     <Trash2 className="w-4 h-4" />
+              <TableRow key={campaign.id}>
+                <TableCell className="font-medium">{campaign.debtor_name}</TableCell>
+                <TableCell>{campaign.customer?.contact_person || '-'}</TableCell>
+                <TableCell>{campaign.customer?.email || '-'}</TableCell>
+                <TableCell>{campaign.customer?.phone || '-'}</TableCell>
+                <TableCell><Badge>{campaign.reminder_type}</Badge></TableCell>
+                <TableCell className="text-sm">{campaign.template?.name || '-'}</TableCell>
+                <TableCell className="capitalize">{campaign.frequency}</TableCell>
+                <TableCell>
+                  <Badge variant={campaign.status === 'active' ? 'default' : campaign.status === 'paused' ? 'secondary' : 'outline'}>
+                    {campaign.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-sm">
+                  {campaign.next_send_date || '—'}
+                </TableCell>
+                <TableCell className="text-right flex items-center justify-end gap-1">
+                  <Button size="sm" variant="ghost" onClick={() => setEditingCampaign(campaign)} title="Edit campaign">
+                    <Edit className="w-4 h-4" />
+                  </Button>
+                  {campaign.status === 'active' && (
+                    <Button size="sm" variant="ghost" onClick={() => pauseResumeMut.mutate({ campaignId: campaign.id, action: 'pause' })}>
+                     <Pause className="w-4 h-4" />
                     </Button>
-                  </TableCell>
-                </TableRow>
-                {expandedId === campaign.id && (
-                  <TableRow>
-                    <TableCell colSpan="8" className="p-4 bg-muted/50">
-                      <ScheduledMessageList campaignId={campaign.id} />
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
+                  )}
+                  {campaign.status === 'paused' && (
+                    <Button size="sm" variant="ghost" onClick={() => pauseResumeMut.mutate({ campaignId: campaign.id, action: 'resume' })}>
+                     <Play className="w-4 h-4" />
+                    </Button>
+                  )}
+                  <Button size="sm" variant="ghost" onClick={() => handleDeleteClick(campaign)}>
+                   <Trash2 className="w-4 h-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
+
+      {/* Edit Campaign Modal */}
+    {editingCampaign && (
+      <EditCampaignModal campaign={editingCampaign} onClose={() => setEditingCampaign(null)} />
+    )}
+
+    {/* Delete Confirmation Dialog */}
+    <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Campaign</DialogTitle>
+        </DialogHeader>
+        <p className="text-sm text-muted-foreground">
+          Are you sure you want to delete the campaign <strong>"{deleteConfirm?.campaign_name}"</strong>? This will also delete all associated scheduled reminders. This cannot be undone.
+        </p>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={confirmDelete} disabled={deleteMut.isPending}>
+            {deleteMut.isPending ? 'Deleting...' : 'Delete Campaign'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
