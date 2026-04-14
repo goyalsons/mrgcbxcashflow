@@ -116,8 +116,13 @@ export default function QuickReminderModal({ customer, onClose }) {
 
   const { data: emailTemplates = [], isSuccess: templatesLoaded } = useQuery({
     queryKey: ['messageTemplates'],
-    queryFn: () => base44.entities.MessageTemplate.list(),
-    select: (data) => data.filter(t => t.type === 'email' && t.is_active !== false),
+    queryFn: async () => {
+      const all = await base44.entities.MessageTemplate.list();
+      console.log('[QuickReminderModal] All templates:', all.length);
+      const filtered = all.filter(t => t.type === 'email' && t.is_active !== false);
+      console.log('[QuickReminderModal] Email templates:', filtered.length);
+      return filtered;
+    },
   });
 
   // Keep ref in sync with state
@@ -172,8 +177,9 @@ export default function QuickReminderModal({ customer, onClose }) {
   // If templates load AFTER invoices are already fetched, apply then
   useEffect(() => {
     if (!templatesLoaded || loadingInvoices) return;
+    console.log('[QuickReminderModal] Templates loaded, applying initial template');
     applyInitialTemplate(invoicesRef.current, emailTemplates);
-  }, [templatesLoaded]);
+  }, [templatesLoaded, emailTemplates]);
 
   const handleTemplateChange = (templateId) => {
     setSelectedTemplateId(templateId);
