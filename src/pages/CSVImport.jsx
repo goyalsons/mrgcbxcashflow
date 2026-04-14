@@ -97,65 +97,6 @@ function parseCSV(text) {
 }
 
 const ENTITY_CONFIGS = {
-  payable: {
-    label: 'Payables',
-    entity: 'Payable',
-    fields: ['vendor_name', 'bill_number', 'amount', 'due_date', 'category'],
-    required: ['vendor_name', 'amount'],
-    sampleData: [
-      ['ABC Suppliers', 'BILL-001', '25000', '30/04/2025', 'raw_materials'],
-      ['Cloud Services Inc', 'INV-2025', '8500', '15/04/2025', 'services'],
-    ],
-    transform: (row) => ({
-      vendor_name: row.vendor_name || row.vendor || row.supplier,
-      bill_number: row.bill_number || row.bill_no || row.invoice_number,
-      amount: parseIndianAmount(row.amount || row.total),
-      amount_paid: 0,
-      due_date: parseIndianDate(row.due_date || row.payment_due),
-      bill_date: parseIndianDate(row.bill_date || row.date),
-      category: row.category || 'other',
-      status: 'pending',
-      notes: row.notes || row.remarks || '',
-    }),
-  },
-  expense: {
-    label: 'Expenses',
-    entity: 'Expense',
-    fields: ['description', 'amount', 'expense_date', 'category', 'payment_mode'],
-    required: ['description', 'amount'],
-    sampleData: [
-      ['Office Stationery', '5000', '15/03/2025', 'office_supplies', 'cash'],
-      ['Internet Bill', '2500', '01/03/2025', 'utilities', 'bank_transfer'],
-      ['Client Meeting Travel', '8500', '20/03/2025', 'travel', 'upi'],
-    ],
-    transform: (row) => ({
-      description: row.description || row.narration || row.particulars,
-      amount: parseIndianAmount(row.amount || row.total),
-      expense_date: parseIndianDate(row.expense_date || row.date),
-      category: row.category || 'miscellaneous',
-      payment_mode: row.payment_mode || row.mode || 'bank_transfer',
-      notes: row.notes || row.remarks || '',
-      approval_status: 'not_required',
-    }),
-  },
-  bank_account: {
-    label: 'Bank Accounts',
-    entity: 'BankAccount',
-    fields: ['name', 'type', 'account_number', 'balance', 'snapshot_date'],
-    required: ['name', 'balance'],
-    sampleData: [
-      ['HDFC Current Account', 'bank', '001234567890', '500000', '01/04/2025'],
-      ['Petty Cash', 'cash', '', '15000', '01/04/2025'],
-    ],
-    transform: (row) => ({
-      name: row.name || row.account_name,
-      type: row.type === 'cash' ? 'cash' : 'bank',
-      account_number: row.account_number || row.acc_no || '',
-      balance: parseIndianAmount(row.balance || row.amount),
-      snapshot_date: parseIndianDate(row.snapshot_date || row.date),
-      is_active: true,
-    }),
-  },
   customer: {
     label: 'Customers',
     entity: 'Customer',
@@ -192,6 +133,109 @@ const ENTITY_CONFIGS = {
       return existing.length > 0;
     },
   },
+  expense: {
+    label: 'Expenses',
+    entity: 'Expense',
+    fields: ['description', 'amount', 'expense_date', 'category', 'payment_mode'],
+    required: ['description', 'amount'],
+    sampleData: [
+      ['Office Stationery', '5000', '15/03/2025', 'office_supplies', 'cash'],
+      ['Internet Bill', '2500', '01/03/2025', 'utilities', 'bank_transfer'],
+      ['Client Meeting Travel', '8500', '20/03/2025', 'travel', 'upi'],
+    ],
+    transform: (row) => ({
+      description: row.description || row.narration || row.particulars,
+      amount: parseIndianAmount(row.amount || row.total),
+      expense_date: parseIndianDate(row.expense_date || row.date),
+      category: row.category || 'miscellaneous',
+      payment_mode: row.payment_mode || row.mode || 'bank_transfer',
+      notes: row.notes || row.remarks || '',
+      approval_status: 'not_required',
+    }),
+  },
+  payable: {
+    label: 'Payables',
+    entity: 'Payable',
+    fields: ['vendor_name', 'bill_number', 'amount', 'due_date', 'category'],
+    required: ['vendor_name', 'amount'],
+    sampleData: [
+      ['ABC Suppliers', 'BILL-001', '25000', '30/04/2025', 'raw_materials'],
+      ['Cloud Services Inc', 'INV-2025', '8500', '15/04/2025', 'services'],
+    ],
+    transform: (row) => ({
+      vendor_name: row.vendor_name || row.vendor || row.supplier,
+      bill_number: row.bill_number || row.bill_no || row.invoice_number,
+      amount: parseIndianAmount(row.amount || row.total),
+      amount_paid: 0,
+      due_date: parseIndianDate(row.due_date || row.payment_due),
+      bill_date: parseIndianDate(row.bill_date || row.date),
+      category: row.category || 'other',
+      status: 'pending',
+      notes: row.notes || row.remarks || '',
+    }),
+  },
+  receivable: {
+    label: 'Receivables',
+    entity: 'Receivable',
+    // Display fields for preview table — maps to dataKeys below
+    fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
+    // Internal data keys corresponding to each display field (used for preview rendering)
+    dataKeys: ['invoice_date', 'invoice_number', 'customer_name', 'amount', 'due_date', 'notes'],
+    required: ['customer_name', 'amount'],
+    sampleData: [
+      ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
+      ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
+    ],
+    transform: (row) => {
+      const customerName = row['partys_name'] || '';
+      const amount = parseIndianAmount(row['pending_amount'] || '0');
+      const dueDate = parseIndianDate(row['due_on'] || '');
+      const invoiceDate = parseIndianDate(row['date'] || '');
+      const invoiceNumber = row['ref_no'] || '';
+      const overdueDaysNum = parseInt(row['overdue_by_days'] || '0') || 0;
+      return {
+        customer_name: customerName,
+        invoice_number: invoiceNumber,
+        amount,
+        amount_received: 0,
+        invoice_date: invoiceDate,
+        due_date: dueDate || invoiceDate,
+        status: overdueDaysNum > 0 ? 'overdue' : 'pending',
+        notes: overdueDaysNum > 0 ? `Overdue by ${overdueDaysNum} days` : '',
+      };
+    },
+  },
+  payables_tally: {
+    label: 'Payables',
+    entity: 'Payable',
+    fields: ['Ref. No.', "Party's Name", 'Pending', 'Due on', 'Category'],
+    dataKeys: ['bill_number', 'vendor_name', 'amount', 'due_date', 'category'],
+    required: ['vendor_name', 'amount'],
+    sampleData: [
+      ['TDS', 'ABC Suppliers', '25000', '17-Apr-21', 'other'],
+      ['INV-001', 'XYZ Vendors', '8500', '1-Jun-21', 'other'],
+    ],
+    transform: (row) => {
+      const vendorName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
+      const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
+      const billDate = parseIndianDate(row['date'] || '');
+      const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || row['date'] || '');
+      const billNumber = row['ref_no'] || row['refno'] || row['bill_number'] || '';
+      const overdueDays = parseInt(row['overdue_by_days'] || row['overdueby_days'] || row['overdue'] || '0');
+      const status = overdueDays > 0 ? 'overdue' : 'pending';
+      return {
+        vendor_name: vendorName,
+        bill_number: billNumber,
+        amount,
+        amount_paid: 0,
+        bill_date: billDate,
+        due_date: dueDate || billDate,
+        category: 'other',
+        status,
+        notes: overdueDays > 0 ? `Overdue by ${overdueDays} days` : '',
+      };
+    },
+  },
   vendor: {
     label: 'Vendors',
     entity: 'Vendor',
@@ -223,78 +267,15 @@ const ENTITY_CONFIGS = {
       return existing.length > 0;
     },
   },
-  tally_receivable: {
-    label: 'Tally Bills Receivable',
-    entity: 'Receivable',
-    // Display fields for preview table — maps to dataKeys below
-    fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
-    // Internal data keys corresponding to each display field (used for preview rendering)
-    dataKeys: ['invoice_date', 'invoice_number', 'customer_name', 'amount', 'due_date', 'notes'],
-    required: ['customer_name', 'amount'],
-    sampleData: [
-      ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
-      ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
-    ],
-    transform: (row) => {
-      const customerName = row['partys_name'] || '';
-      const amount = parseIndianAmount(row['pending_amount'] || '0');
-      const dueDate = parseIndianDate(row['due_on'] || '');
-      const invoiceDate = parseIndianDate(row['date'] || '');
-      const invoiceNumber = row['ref_no'] || '';
-      const overdueDaysNum = parseInt(row['overdue_by_days'] || '0') || 0;
-      return {
-        customer_name: customerName,
-        invoice_number: invoiceNumber,
-        amount,
-        amount_received: 0,
-        invoice_date: invoiceDate,
-        due_date: dueDate || invoiceDate,
-        status: overdueDaysNum > 0 ? 'overdue' : 'pending',
-        notes: overdueDaysNum > 0 ? `Overdue by ${overdueDaysNum} days` : '',
-      };
-    },
-  },
-  tally_payable: {
-    label: 'Tally Bills Payable',
-    entity: 'Payable',
-    fields: ['Ref. No.', "Party's Name", 'Pending', 'Due on', 'Category'],
-    dataKeys: ['bill_number', 'vendor_name', 'amount', 'due_date', 'category'],
-    required: ['vendor_name', 'amount'],
-    sampleData: [
-      ['TDS', 'ABC Suppliers', '25000', '17-Apr-21', 'other'],
-      ['INV-001', 'XYZ Vendors', '8500', '1-Jun-21', 'other'],
-    ],
-    transform: (row) => {
-      const vendorName = row['partys_name'] || row['party_s_name'] || row['party_name'] || row['party'] || '';
-      const amount = parseIndianAmount(row['pending_amount'] || row['pending'] || row['amount'] || '0');
-      const billDate = parseIndianDate(row['date'] || '');
-      const dueDate = parseIndianDate(row['due_on'] || row['due_date'] || row['date'] || '');
-      const billNumber = row['ref_no'] || row['refno'] || row['bill_number'] || '';
-      const overdueDays = parseInt(row['overdue_by_days'] || row['overdueby_days'] || row['overdue'] || '0');
-      const status = overdueDays > 0 ? 'overdue' : 'pending';
-      return {
-        vendor_name: vendorName,
-        bill_number: billNumber,
-        amount,
-        amount_paid: 0,
-        bill_date: billDate,
-        due_date: dueDate || billDate,
-        category: 'other',
-        status,
-        notes: overdueDays > 0 ? `Overdue by ${overdueDays} days` : '',
-      };
-    },
-  },
 };
 
 const PAGE_MAP = {
-  payable: '/payables',
-  expense: '/expenses',
-  bank_account: '/bank-accounts',
   customer: '/customers',
+  expense: '/expenses',
+  payable: '/payables',
+  receivable: '/receivables',
+  payables_tally: '/payables',
   vendor: '/vendors',
-  tally_receivable: '/receivables',
-  tally_payable: '/payables',
 };
 
 export default function CSVImport() {
@@ -304,7 +285,7 @@ export default function CSVImport() {
   const fileRef = useRef();
 
   const urlParams = new URLSearchParams(window.location.search);
-  const defaultType = urlParams.get('type') || 'payable';
+  const defaultType = urlParams.get('type') || 'receivable';
 
   const [entityType, setEntityType] = useState(ENTITY_CONFIGS[defaultType] ? defaultType : 'payable');
   const [file, setFile] = useState(null);
@@ -342,7 +323,7 @@ export default function CSVImport() {
         const workbook = XLSX.read(ev.target.result, { type: 'array', cellDates: true });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
-        if (entityType === 'tally_receivable' || entityType === 'tally_payable') {
+        if (entityType === 'receivable' || entityType === 'payables_tally') {
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
           // Find header row: the row that contains "Party" in one of its cells
@@ -428,7 +409,7 @@ export default function CSVImport() {
     } else {
       const reader = new FileReader();
       reader.onload = (ev) => {
-        const parser = (entityType === 'tally_receivable' || entityType === 'tally_payable') ? parseTallyCSV : parseCSV;
+        const parser = (entityType === 'receivable' || entityType === 'payables_tally') ? parseTallyCSV : parseCSV;
         const { rows } = parser(ev.target.result);
         processRows(rows);
       };
@@ -443,7 +424,7 @@ export default function CSVImport() {
     let success = 0, updated = 0, duplicates = 0;
     const BATCH = 10;
 
-    if (entityType === 'tally_payable') {
+    if (entityType === 'payables_tally') {
       // Upsert logic for Tally Payables: match on bill_number
       const existingPayables = await base44.entities.Payable.list().catch(() => []);
       const existingMap = {};
@@ -471,7 +452,7 @@ export default function CSVImport() {
          success += batch.length;
          await sleep(1200);
        }
-    } else if (entityType === 'tally_receivable') {
+    } else if (entityType === 'receivable') {
       // Upsert Receivables — match by invoice_number (Ref. No.)
       const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
       const receivableByRefNo = {};
@@ -656,10 +637,16 @@ export default function CSVImport() {
                     <p className="text-blue-800">This import is designed for the "Ledger Contact Details" report exported from Tally.</p>
                     <p className="text-blue-800">If both Mobile and Phone numbers are provided, the mobile number will be used.</p>
                   </>
-                ) : entityType === 'tally_receivable' ? (
+                ) : entityType === 'receivable' ? (
                   <>
                     <p className="text-blue-800">Export the <strong>"Bills Receivable"</strong> report from Tally and upload the file directly (CSV or XLSX).</p>
-                    <p className="text-blue-800">Required columns: <strong>Date, Ref. No., Party's Name, Pending Amount, Due on, Overdue by days</strong></p>
+                    <p className="text-blue-800"><strong>Date, Ref. No., Party's Name, Pending Amount, Due on, Overdue by days</strong></p>
+                    <p className="text-blue-800">Dates: DD/MM/YYYY or Tally format (1-Apr-25). Amounts: ₹1,23,456 or 123456.</p>
+                  </>
+                ) : entityType === 'payables_tally' ? (
+                  <>
+                    <p className="text-blue-800">Export the <strong>"Payable-DL" (or similar)</strong> report from Tally and upload the file directly (CSV or XLSX).</p>
+                    <p className="text-blue-800"><strong>Ref. No., Party's Name, Pending, Due on, Category</strong></p>
                     <p className="text-blue-800">Dates: DD/MM/YYYY or Tally format (1-Apr-25). Amounts: ₹1,23,456 or 123456.</p>
                   </>
                 ) : (
@@ -673,7 +660,6 @@ export default function CSVImport() {
               <div className="p-3 rounded-lg bg-muted/40 text-xs space-y-2">
                 <p className="font-medium">Expected columns for {config.label}:</p>
                 <p className="text-muted-foreground">{config.fields.join(', ')}</p>
-                <p className="text-muted-foreground">Required: <span className="text-red-600">{config.required.join(', ')}</span></p>
                 <Button onClick={downloadSampleCSV} variant="outline" size="sm" className="w-full gap-2 mt-2">
                   <Download className="w-3.5 h-3.5" /> Download Sample CSV
                 </Button>
