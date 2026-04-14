@@ -74,6 +74,7 @@ export default function ScheduledMessageList({ campaignId }) {
             <TableHead>Scheduled Date</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Sent Date</TableHead>
+            <TableHead>Sent Time</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -102,6 +103,7 @@ export default function ScheduledMessageList({ campaignId }) {
                 </div>
               </TableCell>
               <TableCell>{reminder.sent_date || '-'}</TableCell>
+              <TableCell className="text-sm text-muted-foreground">{reminder.sent_time || '-'}</TableCell>
               <TableCell className="text-right space-x-2">
                 {reminder.status === 'pending' && editingId !== reminder.id && (
                   <Button size="sm" variant="ghost" onClick={() => handleScheduleEdit(reminder)}>

@@ -1,0 +1,17 @@
+{
+  "name": "AppSettings",
+  "type": "object",
+  "properties": {
+    "key": {
+      "type": "string",
+      "description": "Settings key (e.g. 'company_profile')"
+    },
+    "value": {
+      "type": "string",
+      "description": "JSON-serialized settings value"
+    }
+  },
+  "required": [
+    "key"
+  ]
+}

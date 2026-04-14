@@ -226,8 +226,20 @@ export default function Settings() {
 
   useEffect(() => { checkGmailStatus(); }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId, testEmailForReminders, testPhoneForReminders });
+    // Also persist company profile to DB so backend functions (email sender) can read it
+    try {
+      const existing = await base44.entities.AppSettings.filter({ key: 'company_profile' });
+      const payload = { key: 'company_profile', value: JSON.stringify(company) };
+      if (existing.length > 0) {
+        await base44.entities.AppSettings.update(existing[0].id, payload);
+      } else {
+        await base44.entities.AppSettings.create(payload);
+      }
+    } catch (e) {
+      console.warn('Could not persist company settings to DB:', e.message);
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
     toast({ title: 'Settings saved successfully' });

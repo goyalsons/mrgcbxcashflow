@@ -53,8 +53,15 @@ export default function ScheduledRemindersList() {
     queryFn: () => base44.entities.MessageTemplate.list(),
   });
 
+  // Also fetch campaigns to get template_id per reminder
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['reminderCampaigns'],
+    queryFn: () => base44.entities.ReminderCampaign.list(),
+  });
+
   const customerMap = Object.fromEntries(customers.map(c => [c.id, c]));
   const templateMap = Object.fromEntries(templates.map(t => [t.id, t]));
+  const campaignMap = Object.fromEntries(campaigns.map(c => [c.id, c]));
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => base44.entities.ScheduledReminder.update(id, data),
@@ -187,16 +194,14 @@ export default function ScheduledRemindersList() {
           </Select>
         </div>
 
-        {overdueCount > 0 && (
-          <Button
-            onClick={handleSendOverdue}
-            disabled={sendingOverdue}
-            className="bg-orange-600 hover:bg-orange-700 text-white gap-2"
-          >
-            <Zap className="w-4 h-4" />
-            {sendingOverdue ? 'Sending...' : `Send Now (${overdueCount} overdue)`}
-          </Button>
-        )}
+        <Button
+          onClick={handleSendOverdue}
+          disabled={sendingOverdue || overdueCount === 0}
+          className="bg-orange-600 hover:bg-orange-700 text-white gap-2 disabled:opacity-50"
+        >
+          <Zap className="w-4 h-4" />
+          {sendingOverdue ? 'Sending...' : overdueCount > 0 ? `Send Now (${overdueCount} overdue)` : 'Send Now'}
+        </Button>
       </div>
 
       {filtered.length === 0 ? (
@@ -226,9 +231,9 @@ export default function ScheduledRemindersList() {
                 .sort((a, b) => (a.scheduled_send_date || '').localeCompare(b.scheduled_send_date || ''))
                 .map(reminder => {
                   const customer = customerMap[reminder.customer_id];
-                  const templateName = reminder.campaign_id
-                    ? (templates.find(t => t.id === reminder.message_subject) ? reminder.message_subject : null)
-                    : null;
+                  const campaign = campaignMap[reminder.campaign_id];
+                  const template = campaign ? templateMap[campaign.template_id] : null;
+                  const templateName = template?.name || '—';
                   const overdue = isOverdue(reminder);
 
                   return (
@@ -251,7 +256,7 @@ export default function ScheduledRemindersList() {
                       {/* Template Name */}
                       <TableCell>
                         <div className="text-sm text-muted-foreground truncate max-w-[160px]">
-                          {reminder.message_subject || '—'}
+                          {templateName}
                         </div>
                       </TableCell>
 
