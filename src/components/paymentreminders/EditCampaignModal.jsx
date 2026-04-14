@@ -17,24 +17,40 @@ export default function EditCampaignModal({ campaign, onClose }) {
   const [loading, setLoading] = useState(false);
   const [reminderType, setReminderType] = useState(campaign.reminder_type);
   const [frequency, setFrequency] = useState(campaign.frequency);
-  const [templateId, setTemplateId] = useState(campaign.template_id);
+  const [mode, setMode] = useState(campaign.reminder_type === 'email' && campaign.reminder_type === 'whatsapp' ? 'both' : campaign.reminder_type);
+  const [emailTemplateId, setEmailTemplateId] = useState(campaign.reminder_type === 'email' || campaign.reminder_type === 'whatsapp' ? campaign.template_id : '');
+  const [whatsappTemplateId, setWhatsappTemplateId] = useState(campaign.reminder_type === 'whatsapp' || campaign.reminder_type === 'email' ? campaign.template_id : '');
   const [selectedDays, setSelectedDays] = useState(new Set());
   const [selectedMonthlyDays, setSelectedMonthlyDays] = useState(new Set([1]));
   const [sendTime, setSendTime] = useState('09:00');
 
-  const { data: templates = [] } = useQuery({
-    queryKey: ['messageTemplates', reminderType],
+  const { data: emailTemplates = [] } = useQuery({
+    queryKey: ['messageTemplates', 'email'],
     queryFn: async () => {
       const all = await base44.entities.MessageTemplate.list();
-      return all.filter(t => t.type === reminderType && t.is_active !== false);
+      return all.filter(t => t.type === 'email' && t.is_active !== false);
+    },
+  });
+
+  const { data: whatsappTemplates = [] } = useQuery({
+    queryKey: ['messageTemplates', 'whatsapp'],
+    queryFn: async () => {
+      const all = await base44.entities.MessageTemplate.list();
+      return all.filter(t => t.type === 'whatsapp' && t.is_active !== false);
     },
   });
 
   useEffect(() => {
-    if (templates.length > 0 && !templateId) {
-      setTemplateId(templates[0].id);
+    if (emailTemplates.length > 0 && !emailTemplateId && (mode === 'email' || mode === 'both')) {
+      setEmailTemplateId(emailTemplates[0].id);
     }
-  }, [templates]);
+  }, [emailTemplates]);
+
+  useEffect(() => {
+    if (whatsappTemplates.length > 0 && !whatsappTemplateId && (mode === 'whatsapp' || mode === 'both')) {
+      setWhatsappTemplateId(whatsappTemplates[0].id);
+    }
+  }, [whatsappTemplates]);
 
   const toggleDay = (day) => {
     setSelectedDays(prev => {
@@ -53,8 +69,13 @@ export default function EditCampaignModal({ campaign, onClose }) {
   };
 
   const handleSave = async () => {
-    if (!templateId) {
-      toast({ title: 'Please select a template', variant: 'destructive' });
+    if ((mode === 'email' || mode === 'both') && !emailTemplateId) {
+      toast({ title: 'Please select email template', variant: 'destructive' });
+      return;
+    }
+
+    if ((mode === 'whatsapp' || mode === 'both') && !whatsappTemplateId) {
+      toast({ title: 'Please select WhatsApp template', variant: 'destructive' });
       return;
     }
 
@@ -71,10 +92,9 @@ export default function EditCampaignModal({ campaign, onClose }) {
     setLoading(true);
     try {
       await base44.entities.ReminderCampaign.update(campaign.id, {
-        reminder_type: reminderType,
+        reminder_type: mode === 'both' ? 'both' : mode,
         frequency,
-        template_id: templateId,
-        next_send_date: campaign.next_send_date,
+        template_id: mode === 'email' ? emailTemplateId : mode === 'whatsapp' ? whatsappTemplateId : emailTemplateId,
       });
       queryClient.invalidateQueries({ queryKey: ['reminderCampaigns'] });
       toast({ title: 'Campaign updated successfully' });
@@ -106,16 +126,17 @@ export default function EditCampaignModal({ campaign, onClose }) {
             </div>
           </div>
 
-          {/* Reminder Type */}
+          {/* Send Via */}
           <div className="space-y-2">
-            <Label className="text-sm font-semibold">Reminder Type</Label>
-            <Select value={reminderType} onValueChange={setReminderType}>
+            <Label className="text-sm font-semibold">Send via</Label>
+            <Select value={mode} onValueChange={setMode}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="email">📧 Email</SelectItem>
-                <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
+                <SelectItem value="email">📧 Email only</SelectItem>
+                <SelectItem value="whatsapp">💬 WhatsApp only</SelectItem>
+                <SelectItem value="both">📧💬 Both</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -191,25 +212,49 @@ export default function EditCampaignModal({ campaign, onClose }) {
             />
           </div>
 
-          {/* Message Template */}
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold">Message Template</Label>
-            <Select value={templateId} onValueChange={setTemplateId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select template..." />
-              </SelectTrigger>
-              <SelectContent>
-                {templates.map(t => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {templates.length === 0 && (
-              <p className="text-xs text-amber-600 mt-2">No templates available for this type.</p>
-            )}
-          </div>
+          {/* Email Template */}
+          {(mode === 'email' || mode === 'both') && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">Email Template</Label>
+              <Select value={emailTemplateId} onValueChange={setEmailTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {emailTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {emailTemplates.length === 0 && (
+                <p className="text-xs text-amber-600 mt-2">No templates available for this type.</p>
+              )}
+            </div>
+          )}
+
+          {/* WhatsApp Template */}
+          {(mode === 'whatsapp' || mode === 'both') && (
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold">WhatsApp Template</Label>
+              <Select value={whatsappTemplateId} onValueChange={setWhatsappTemplateId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {whatsappTemplates.map(t => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {whatsappTemplates.length === 0 && (
+                <p className="text-xs text-amber-600 mt-2">No templates available for this type.</p>
+              )}
+            </div>
+          )}
 
           {/* Summary */}
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700 space-y-1">
@@ -217,13 +262,13 @@ export default function EditCampaignModal({ campaign, onClose }) {
               <strong>Schedule:</strong> {frequency === 'daily' ? 'Daily' : frequency === 'weekly' ? `Every ${Array.from(selectedDays).length > 0 ? Array.from(selectedDays).join(', ') : '(select days)'}` : `Dates: ${Array.from(selectedMonthlyDays).sort((a, b) => a - b).join(', ')}`}
             </p>
             <p><strong>Send Time:</strong> {sendTime}</p>
-            <p><strong>Type:</strong> {reminderType.charAt(0).toUpperCase() + reminderType.slice(1)}</p>
+            <p><strong>Send via:</strong> {mode === 'both' ? 'Email & WhatsApp' : mode === 'email' ? 'Email' : 'WhatsApp'}</p>
           </div>
         </div>
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={loading || (frequency === 'weekly' && selectedDays.size === 0) || (frequency === 'monthly' && selectedMonthlyDays.size === 0)}>
+          <Button onClick={handleSave} disabled={loading || (frequency === 'weekly' && selectedDays.size === 0) || (frequency === 'monthly' && selectedMonthlyDays.size === 0) || !((mode === 'email' || mode === 'both') ? emailTemplateId : true) || !((mode === 'whatsapp' || mode === 'both') ? whatsappTemplateId : true)}>
             {loading ? 'Saving...' : 'Save Changes'}
           </Button>
         </DialogFooter>

@@ -85,6 +85,7 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
               <TableHead>Type</TableHead>
               <TableHead>Template</TableHead>
               <TableHead>Frequency</TableHead>
+              <TableHead>Time</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Next Send</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -100,13 +101,14 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
                 <TableCell><Badge>{campaign.reminder_type}</Badge></TableCell>
                 <TableCell className="text-sm">{campaign.template?.name || '-'}</TableCell>
                 <TableCell className="capitalize">{campaign.frequency}</TableCell>
+                <TableCell className="text-sm">09:00</TableCell>
                 <TableCell>
                   <Badge variant={campaign.status === 'active' ? 'default' : campaign.status === 'paused' ? 'secondary' : 'outline'}>
                     {campaign.status}
                   </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
-                  {campaign.next_send_date || '—'}
+                  {campaign.start_date || '—'}
                 </TableCell>
                 <TableCell className="text-right flex items-center justify-end gap-1">
                   <Button size="sm" variant="ghost" onClick={() => setEditingCampaign(campaign)} title="Edit campaign">
