@@ -626,8 +626,6 @@ export default function CollectionTargets() {
                       />
                     </TableHead>
                     <TableHead>Manager</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Outstanding</TableHead>
                     <TableHead className="text-right">Target</TableHead>
                     <TableHead>Month</TableHead>
                     <TableHead className="text-right">Collected</TableHead>
@@ -657,14 +655,6 @@ export default function CollectionTargets() {
                         <TableCell>
                           <div className="font-medium text-sm">{t.manager_name || t.manager_email}</div>
                           <div className="text-xs text-muted-foreground">{t.manager_email}</div>
-                        </TableCell>
-                        <TableCell className="text-sm">
-                          {t.customer_name
-                            ? <div className="font-medium max-w-[160px] truncate" title={t.customer_name}>{t.customer_name}</div>
-                            : <span className="text-muted-foreground">—</span>}
-                        </TableCell>
-                        <TableCell className="text-right text-sm font-semibold text-red-600">
-                          {outstanding > 0 ? formatINR(outstanding) : '—'}
                         </TableCell>
                         <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
                         <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
