@@ -147,7 +147,8 @@ export default function QuickReminderModal({ customer, onClose }) {
     base44.entities.Receivable.list('-created_date', 500)
       .then(all => {
         const forThisCustomer = all.filter(inv => {
-          if (customer.id) return inv.customer_id === customer.id;
+          // Match by customer_id or customer_name (Receivable fields)
+          if (customer.id) return inv.customer_id === customer.id || inv.customer_name?.toLowerCase() === customer.name?.toLowerCase();
           return inv.customer_name?.toLowerCase() === customer.name?.toLowerCase();
         });
         const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
