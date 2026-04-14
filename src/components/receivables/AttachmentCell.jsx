@@ -17,21 +17,9 @@ export default function AttachmentCell({ invoice, onUpdate }) {
     } catch { return []; }
   })();
 
-  const getCloudinaryCreds = () => {
-    try {
-      const s = JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}');
-      return s.cloudinary || {};
-    } catch { return {}; }
-  };
-
   const handleUpload = async (e) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
-    const creds = getCloudinaryCreds();
-    if (!creds.cloud_name || !creds.api_key || !creds.api_secret) {
-      toast({ title: 'Cloudinary not configured', description: 'Please set up Cloudinary in Settings → Storage', variant: 'destructive' });
-      return;
-    }
     setUploading(true);
     try {
       const newItems = await Promise.all(files.map(async (file) => {
@@ -43,9 +31,6 @@ export default function AttachmentCell({ invoice, onUpdate }) {
           reader.readAsDataURL(file);
         });
         const res = await base44.functions.invoke('uploadToCloudinary', {
-          cloud_name: creds.cloud_name,
-          api_key: creds.api_key,
-          api_secret: creds.api_secret,
           file: base64,
           file_name: file.name,
         });

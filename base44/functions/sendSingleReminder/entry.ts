@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
 
     const invoiceTable = buildInvoiceTable(invoices);
     const attachmentText = buildAttachmentLinks(invoices);
-    const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0);
+    const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_received || i.amount_paid || 0), 0);
     const signature = buildSignature(companySettings);
 
     // Replace all placeholders in subject
