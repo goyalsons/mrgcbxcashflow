@@ -1,4 +1,4 @@
-import { createClientFromRequest } from 'npm:@base44/sdk@0.8.23';
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 Deno.serve(async (req) => {
   try {
@@ -10,10 +10,22 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    // Accept credentials from request body (Settings page test) OR fall back to env secrets
-    const cloudName = (body.cloud_name || Deno.env.get('CLOUDINARY_CLOUD_NAME') || '').trim();
-    const apiKey    = (body.api_key    || Deno.env.get('CLOUDINARY_API_KEY')    || '').trim();
-    const apiSecret = (body.api_secret || Deno.env.get('CLOUDINARY_API_SECRET') || '').trim();
+
+    // Load credentials: body (Settings test) > DB app_settings > env secrets
+    let dbCloudName = '', dbApiKey = '', dbApiSecret = '';
+    try {
+      const settingsRecords = await base44.asServiceRole.entities.AppSettings.filter({ key: 'app_settings_v1' });
+      if (settingsRecords.length > 0) {
+        const s = JSON.parse(settingsRecords[0].value || '{}');
+        dbCloudName = s.cloudinary?.cloud_name || '';
+        dbApiKey    = s.cloudinary?.api_key    || '';
+        dbApiSecret = s.cloudinary?.api_secret || '';
+      }
+    } catch (e) { /* ignore */ }
+
+    const cloudName = (body.cloud_name || dbCloudName || Deno.env.get('CLOUDINARY_CLOUD_NAME') || '').trim();
+    const apiKey    = (body.api_key    || dbApiKey    || Deno.env.get('CLOUDINARY_API_KEY')    || '').trim();
+    const apiSecret = (body.api_secret || dbApiSecret || Deno.env.get('CLOUDINARY_API_SECRET') || '').trim();
 
     console.log('[uploadToCloudinary] Using cloud_name:', cloudName || '(empty)');
 
