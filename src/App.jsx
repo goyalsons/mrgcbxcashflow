@@ -32,7 +32,6 @@ import CashFlowSimulator from '@/pages/CashFlowSimulator';
 
 import VendorProfile from '@/pages/VendorProfile';
 import PaymentReminders from '@/pages/PaymentReminders';
-import Instructions from '@/pages/Instructions';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, user } = useAuth();
@@ -84,7 +83,6 @@ const AuthenticatedApp = () => {
         <Route path="/cash-flow-simulator" element={<CashFlowSimulator />} />
 
         <Route path="/vendor/:id" element={<VendorProfile />} />
-        <Route path="/instructions" element={<Instructions />} />
       </Route>
       <Route path="*" element={<PageNotFound />} />
     </Routes>
