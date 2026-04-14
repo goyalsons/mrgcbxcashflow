@@ -19,11 +19,12 @@ import { base44 } from '@/api/base44Client';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const SETTINGS_KEY = 'cashflow_pro_settings';
+const DB_SETTINGS_KEY = 'app_settings_v1';
 
-function loadSettings() {
+function loadLocalSettings() {
   try { return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}'); } catch { return {}; }
 }
-function saveSettings(data) {
+function saveLocalSettings(data) {
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
 }
 
@@ -175,6 +176,12 @@ export default function Settings() {
     queryFn: () => base44.entities.MessageTemplate.list(),
   });
 
+  // Load all settings from DB on mount
+  const { data: dbSettingsRecords = [] } = useQuery({
+    queryKey: ['appSettings'],
+    queryFn: () => base44.entities.AppSettings.list(),
+  });
+
   const createTemplateMut = useMutation({
     mutationFn: (data) => base44.entities.MessageTemplate.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['messageTemplates'] }); setShowTemplateEditor(false); setEditingTemplate(null); toast({ title: 'Template saved' }); },
@@ -194,7 +201,16 @@ export default function Settings() {
   };
 
   useEffect(() => {
-    const s = loadSettings();
+    // Try DB first, fall back to localStorage
+    const dbRecord = dbSettingsRecords.find(r => r.key === DB_SETTINGS_KEY);
+    let s = {};
+    if (dbRecord?.value) {
+      try { s = JSON.parse(dbRecord.value); } catch {}
+    }
+    // Merge with localStorage as fallback for any missing keys
+    const local = loadLocalSettings();
+    s = { ...local, ...s };
+
     if (s.company) setCompany(s.company);
     if (s.gmailFromName) setGmailFromName(s.gmailFromName);
     if (s.whatsapp) setWhatsapp(prev => ({ ...prev, ...s.whatsapp, wa_templates: s.whatsapp.wa_templates || [] }));
@@ -206,7 +222,7 @@ export default function Settings() {
     if (s.defaultReminderTemplateId) setDefaultReminderTemplateId(s.defaultReminderTemplateId);
     if (s.testEmailForReminders) setTestEmailForReminders(s.testEmailForReminders);
     if (s.testPhoneForReminders) setTestPhoneForReminders(s.testPhoneForReminders);
-  }, []);
+  }, [dbSettingsRecords]);
 
   const checkGmailStatus = async () => {
     setGmailChecking(true);
@@ -227,8 +243,22 @@ export default function Settings() {
   useEffect(() => { checkGmailStatus(); }, []);
 
   const handleSave = async () => {
-    saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId, testEmailForReminders, testPhoneForReminders });
-    // Also persist company profile to DB so backend functions (email sender) can read it
+    const allSettings = { company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId, testEmailForReminders, testPhoneForReminders };
+    // Save to localStorage as cache
+    saveLocalSettings(allSettings);
+    // Save all settings to DB
+    try {
+      const existing = await base44.entities.AppSettings.filter({ key: DB_SETTINGS_KEY });
+      const payload = { key: DB_SETTINGS_KEY, value: JSON.stringify(allSettings) };
+      if (existing.length > 0) {
+        await base44.entities.AppSettings.update(existing[0].id, payload);
+      } else {
+        await base44.entities.AppSettings.create(payload);
+      }
+    } catch (e) {
+      console.warn('Could not persist settings to DB:', e.message);
+    }
+    // Also persist company profile separately for backend functions
     try {
       const existing = await base44.entities.AppSettings.filter({ key: 'company_profile' });
       const payload = { key: 'company_profile', value: JSON.stringify(company) };
@@ -238,7 +268,7 @@ export default function Settings() {
         await base44.entities.AppSettings.create(payload);
       }
     } catch (e) {
-      console.warn('Could not persist company settings to DB:', e.message);
+      console.warn('Could not persist company profile to DB:', e.message);
     }
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -951,7 +981,7 @@ export default function Settings() {
             deleteTemplateMut={deleteTemplateMut}
             handleTemplateTest={handleTemplateTest}
             defaultReminderTemplateId={defaultReminderTemplateId}
-            setDefaultReminderTemplateId={(id) => { setDefaultReminderTemplateId(id); saveSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId: id }); }}
+            setDefaultReminderTemplateId={(id) => { setDefaultReminderTemplateId(id); saveLocalSettings({ company, gmailFromName, whatsapp, cloudinary, paymentGateway, reminderSchedule, digest, approvalThreshold, defaultReminderTemplateId: id }); }}
           />
         </TabsContent>
         {/* LLM Settings */}
