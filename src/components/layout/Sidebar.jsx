@@ -30,10 +30,9 @@ const NAV_GROUPS = [
   {
     label: 'Collections',
     items: [
-      { key: 'collection_targets', label: 'Targets', path: '/collection-targets', icon: 'Target' },
+      { key: 'collection_targets', label: 'Collection Targets', path: '/collection-targets', icon: 'Target' },
       { key: 'aging_analysis', label: 'Aging Analysis', path: '/aging-analysis', icon: 'Clock' },
       { key: 'payment_reminders', label: 'Payment Reminders', path: '/payment-reminders', icon: 'Clock' },
-      { key: 'follow_up_schedule', label: 'Follow-Up Schedule', path: '/follow-up-schedule', icon: 'CalendarClock' },
     ],
   },
   {
