@@ -108,8 +108,8 @@ export default function QuickReminderModal({ customer, onClose }) {
   const [body, setBody] = useState(`Dear ${resolvedContactPerson},\n\nLoading invoice details...`);
   const [selectedTemplateId, setSelectedTemplateId] = useState('');
 
-  // Track whether we've already applied the initial template so we don't overwrite user edits
-  const initialApplied = useRef(false);
+  // Store fetched invoices in a ref so the template-apply logic always reads the latest value
+  const invoicesRef = useRef([]);
 
   const { data: emailTemplates = [], isSuccess: templatesLoaded } = useQuery({
     queryKey: ['messageTemplates'],
@@ -117,7 +117,30 @@ export default function QuickReminderModal({ customer, onClose }) {
     select: (data) => data.filter(t => t.type === 'email' && t.is_active !== false),
   });
 
-  // Fetch invoices once on mount
+  // Keep ref in sync with state
+  useEffect(() => { invoicesRef.current = invoices; }, [invoices]);
+
+  const applyInitialTemplate = (loadedInvoices, templates) => {
+    const settings = getSettings();
+    const savedId = settings.defaultReminderTemplateId || '';
+
+    let chosenTemplate = null;
+    if (savedId) chosenTemplate = templates.find(t => t.id === savedId);
+    if (!chosenTemplate) chosenTemplate = templates.find(t => t.name?.toLowerCase().includes('default'));
+    if (!chosenTemplate && templates.length > 0) chosenTemplate = templates[0];
+
+    if (chosenTemplate) {
+      setSelectedTemplateId(chosenTemplate.id);
+      const { subject: s, body: b } = applyTemplateToContent(chosenTemplate, customer, loadedInvoices, resolvedContactPerson);
+      setSubject(s);
+      setBody(b);
+    } else {
+      setSubject(`Payment Reminder - ${customer.name || ''}`);
+      setBody(buildDefaultBody(customer, loadedInvoices));
+    }
+  };
+
+  // Fetch invoices once on mount; apply template immediately after with real invoice data
   useEffect(() => {
     base44.entities.Invoice.list('-created_date', 500)
       .then(all => {
@@ -127,46 +150,23 @@ export default function QuickReminderModal({ customer, onClose }) {
         });
         const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
         setInvoices(outstanding);
+        invoicesRef.current = outstanding;
+
+        // If templates already loaded, apply now with real invoice data
+        if (templatesLoaded && emailTemplates.length > 0) {
+          applyInitialTemplate(outstanding, emailTemplates);
+        }
+        // else: templatesEffect below will fire when templates arrive
       })
       .catch(console.error)
       .finally(() => setLoadingInvoices(false));
   }, [customer.id, customer.name]);
 
-  // Apply template once BOTH invoices and templates are ready
+  // If templates load AFTER invoices are already fetched, apply then
   useEffect(() => {
-    if (loadingInvoices || !templatesLoaded || initialApplied.current) return;
-
-    initialApplied.current = true;
-
-    // Determine which template to use:
-    // 1. defaultReminderTemplateId from settings
-    // 2. Template named "Default reminder" (case-insensitive)
-    // 3. First available template
-    const settings = getSettings();
-    const savedId = settings.defaultReminderTemplateId || '';
-
-    let chosenTemplate = null;
-    if (savedId) {
-      chosenTemplate = emailTemplates.find(t => t.id === savedId);
-    }
-    if (!chosenTemplate) {
-      chosenTemplate = emailTemplates.find(t => t.name?.toLowerCase().includes('default'));
-    }
-    if (!chosenTemplate && emailTemplates.length > 0) {
-      chosenTemplate = emailTemplates[0];
-    }
-
-    if (chosenTemplate) {
-      setSelectedTemplateId(chosenTemplate.id);
-      const { subject: s, body: b } = applyTemplateToContent(chosenTemplate, customer, invoices, resolvedContactPerson);
-      setSubject(s);
-      setBody(b);
-    } else {
-      // No templates at all — use default body
-      setSubject(`Payment Reminder - ${customer.name || ''}`);
-      setBody(buildDefaultBody(customer, invoices));
-    }
-  }, [loadingInvoices, templatesLoaded, emailTemplates, invoices]);
+    if (!templatesLoaded || loadingInvoices) return;
+    applyInitialTemplate(invoicesRef.current, emailTemplates);
+  }, [templatesLoaded]);
 
   const handleTemplateChange = (templateId) => {
     setSelectedTemplateId(templateId);
