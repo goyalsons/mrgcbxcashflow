@@ -1,49 +1,57 @@
 {
-  "name": "Invoice",
+  "name": "Receivable",
   "type": "object",
   "properties": {
     "invoice_number": {
       "type": "string",
       "description": "Invoice number"
     },
-    "debtor_id": {
+    "customer_id": {
       "type": "string",
-      "description": "Reference to Debtor"
+      "description": "Reference to customer"
     },
-    "debtor_name": {
+    "customer_name": {
       "type": "string",
-      "description": "Debtor name for display"
+      "description": "Customer name for display"
+    },
+    "customer_email": {
+      "type": "string",
+      "description": "Customer email (auto-filled from Customer)"
+    },
+    "customer_phone": {
+      "type": "string",
+      "description": "Customer phone (auto-filled from Customer)"
     },
     "amount": {
       "type": "number",
       "description": "Total invoice amount in INR"
     },
-    "amount_paid": {
+    "amount_received": {
       "type": "number",
       "default": 0,
-      "description": "Total amount paid against this invoice"
-    },
-    "invoice_date": {
-      "type": "string",
-      "format": "date",
-      "description": "Invoice date"
+      "description": "Amount received so far"
     },
     "due_date": {
       "type": "string",
       "format": "date",
       "description": "Payment due date"
     },
+    "invoice_date": {
+      "type": "string",
+      "format": "date",
+      "description": "Invoice date"
+    },
     "status": {
       "type": "string",
       "enum": [
         "pending",
-        "partial",
+        "partially_paid",
         "paid",
         "overdue",
         "written_off"
       ],
       "default": "pending",
-      "description": "Invoice payment status"
+      "description": "Payment status"
     },
     "description": {
       "type": "string",
@@ -51,7 +59,7 @@
     },
     "notes": {
       "type": "string",
-      "description": "Internal notes"
+      "description": "Additional notes"
     },
     "bank_account_id": {
       "type": "string",
@@ -67,8 +75,7 @@
     }
   },
   "required": [
-    "debtor_id",
-    "debtor_name",
+    "customer_name",
     "amount",
     "due_date"
   ]

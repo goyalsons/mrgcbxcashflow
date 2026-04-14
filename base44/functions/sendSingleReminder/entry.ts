@@ -60,12 +60,12 @@ Deno.serve(async (req) => {
     const currentDate = now.toISOString().split('T')[0];
     const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    // Fetch customer and their outstanding invoices
+    // Fetch customer and their outstanding receivables
     const customer = await base44.entities.Customer.get(reminder.customer_id);
     let invoices = [];
     if (customer) {
-      const allInvoices = await base44.entities.Invoice.filter({ debtor_id: reminder.customer_id });
-      invoices = allInvoices.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
+      const allInvoices = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
+      invoices = allInvoices.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
     }
 
     // Fetch company settings for signature

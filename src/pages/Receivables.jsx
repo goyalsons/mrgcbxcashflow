@@ -46,7 +46,7 @@ export default function Receivables() {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      return await base44.entities.Invoice.list('-created_date', 100);
+      return await base44.entities.Receivable.list('-created_date', 100);
     },
   });
 
@@ -63,12 +63,12 @@ export default function Receivables() {
   });
 
   const deleteMut = useMutation({
-    mutationFn: (id) => base44.entities.Invoice.delete(id),
+    mutationFn: (id) => base44.entities.Receivable.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
   });
 
   const updateInvoiceMut = useMutation({
-    mutationFn: ({ id, data }) => base44.entities.Invoice.update(id, data),
+    mutationFn: ({ id, data }) => base44.entities.Receivable.update(id, data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
   });
 
@@ -78,7 +78,7 @@ export default function Receivables() {
   };
 
   const getResolvedManager = (invoice) => {
-    const customer = getCustomerInfo(invoice.debtor_name);
+    const customer = getCustomerInfo(invoice.customer_name);
     return customer?.account_manager || '';
   };
 
@@ -110,12 +110,12 @@ export default function Receivables() {
 
     if (searchTerm) {
       result = result.filter(inv =>
-        inv.debtor_name?.toLowerCase().includes(searchTerm.toLowerCase())
+        inv.customer_name?.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (filters.company) {
-      result = result.filter(inv => inv.debtor_name === filters.company);
+      result = result.filter(inv => inv.customer_name === filters.company);
     }
 
     if (filters.dueWeek) {
@@ -124,17 +124,17 @@ export default function Receivables() {
 
     if (filters.dueMonth) {
       result = result.filter(inv => getMonthKey(inv.due_date) === filters.dueMonth);
-    }
+      }
 
-    if (filters.manager) {
+      if (filters.manager) {
       result = result.filter(inv => getResolvedManager(inv) === filters.manager);
-    }
+      }
 
-    return result;
+      return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
   }, [invoices, searchTerm, filters]);
 
   const uniqueCompanies = useMemo(() => {
-    return [...new Set(invoices.map(inv => inv.debtor_name))].sort();
+    return [...new Set(invoices.map(inv => inv.customer_name))].sort();
   }, [invoices]);
 
   const uniqueWeeks = useMemo(() => {
@@ -201,7 +201,7 @@ export default function Receivables() {
   const handleBulkDelete = async () => {
     setBulkLoading(true);
     try {
-      await Promise.all([...selected].map(id => base44.entities.Invoice.delete(id)));
+      await Promise.all([...selected].map(id => base44.entities.Receivable.delete(id)));
       queryClient.invalidateQueries({ queryKey: ['invoices'] });
       toast({ title: `Deleted ${selected.size} invoice(s)` });
       setSelected(new Set());
@@ -446,7 +446,7 @@ export default function Receivables() {
                         </TableCell>
                         <TableCell className="px-3 font-medium">
                           {(() => {
-                                     const customer = getCustomerInfo(invoice.debtor_name);
+                                     const customer = getCustomerInfo(invoice.customer_name);
                                      const phone = customer.phone || '';
                                      const email = customer.email || '';
                                      const contactPerson = customer.contact_person || '';
@@ -454,14 +454,14 @@ export default function Receivables() {
                               <HoverCard openDelay={200} closeDelay={100}>
                                 <HoverCardTrigger asChild>
                                   <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-primary transition-colors">
-                                    {invoice.debtor_name}
+                                    {invoice.customer_name}
                                   </span>
                                 </HoverCardTrigger>
                                 <HoverCardContent className="w-72 p-0 overflow-hidden" align="start">
                                   <div className="bg-primary/5 border-b px-4 py-3 flex items-center gap-2">
                                     <Building2 className="w-4 h-4 text-primary shrink-0" />
                                     <div>
-                                      <p className="font-semibold text-sm">{invoice.debtor_name}</p>
+                                      <p className="font-semibold text-sm">{invoice.customer_name}</p>
                                       {contactPerson && <p className="text-xs text-muted-foreground">{contactPerson}</p>}
                                     </div>
                                   </div>
@@ -542,7 +542,7 @@ export default function Receivables() {
                            />
                          </TableCell>
                          <TableCell className="px-3 text-right text-xs text-muted-foreground">
-                           {(() => { const cust = getCustomerInfo(invoice.debtor_name); return cust?.credit_limit ? `₹${(cust.credit_limit).toLocaleString('en-IN')}` : '—'; })()}
+                           {(() => { const cust = getCustomerInfo(invoice.customer_name); return cust?.credit_limit ? `₹${(cust.credit_limit).toLocaleString('en-IN')}` : '—'; })()}
                          </TableCell>
                          <TableCell className="px-3">
                            <span className="text-xs text-muted-foreground">{(() => { const m = getResolvedManager(invoice); return m ? m.split('@')[0] : '—'; })()}</span>
@@ -569,16 +569,16 @@ export default function Receivables() {
                                size="icon"
                                className="h-7 w-7 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                                title="Set Target"
-                               onClick={() => setTargetCustomer(getCustomerInfo(invoice.debtor_name))}
-                             >
+                               onClick={() => setTargetCustomer(getCustomerInfo(invoice.customer_name))}
+                               >
                                <Target className="w-3.5 h-3.5" />
-                             </Button>
-                             <Button
+                               </Button>
+                               <Button
                                variant="ghost"
                                size="icon"
                                className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
                                title="Send Reminder Email"
-                               onClick={() => setReminderCustomer(getCustomerInfo(invoice.debtor_name) || { id: invoice.debtor_id, name: invoice.debtor_name, email: '', phone: '' })}
+                               onClick={() => setReminderCustomer(getCustomerInfo(invoice.customer_name) || { id: invoice.customer_id, name: invoice.customer_name, email: '', phone: '' })}
                              >
                                <Mail className="w-3.5 h-3.5" />
                              </Button>
