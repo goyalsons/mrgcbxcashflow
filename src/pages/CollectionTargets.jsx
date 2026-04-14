@@ -57,8 +57,8 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
     setForm(f => ({
       ...f,
       customer_id: customerId,
-      manager_email: customer.account_manager || '',
-      manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || '',
+      manager_email: customer.account_manager || f.manager_email,
+      manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || f.manager_name,
       target_amount: outstanding > 0 ? outstanding.toString() : f.target_amount,
     }));
   };
@@ -98,16 +98,26 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
           )}
           <div className="space-y-1.5">
             <Label>Account Manager *</Label>
-            <div className="flex h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-1 text-sm items-center">
-              {form.manager_name || form.manager_email || <span className="text-muted-foreground">Auto-filled from customer</span>}
-            </div>
+            <Input
+              value={form.manager_name || form.manager_email}
+              onChange={e => set('manager_name', e.target.value)}
+              placeholder="Enter account manager name..."
+              required
+            />
+            {form.manager_email && (
+              <p className="text-xs text-muted-foreground">{form.manager_email}</p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Target Amount (₹) *</Label>
             <Input type="number" value={form.target_amount} onChange={e => set('target_amount', e.target.value)} required min="1" placeholder="e.g. 500000" />
-            {form.customer_id && outstandingByCustomer[form.customer_id] > 0 && (
+            {form.customer_id && (
               <p className="text-xs text-muted-foreground">
-                Customer's total outstanding: <span className="font-semibold text-red-600">{formatINR(outstandingByCustomer[form.customer_id])}</span>
+                Customer's total outstanding:{' '}
+                {outstandingByCustomer[form.customer_id] > 0
+                  ? <span className="font-semibold text-red-600">{formatINR(outstandingByCustomer[form.customer_id])}</span>
+                  : <span className="font-semibold text-muted-foreground">No outstanding recorded</span>
+                }
               </p>
             )}
           </div>
@@ -121,7 +131,7 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving || !form.manager_email}>{saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}</Button>
+            <Button type="submit" disabled={saving || (!form.manager_email && !form.manager_name)}>{saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}</Button>
           </div>
         </form>
       </DialogContent>
