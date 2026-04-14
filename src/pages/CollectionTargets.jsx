@@ -5,25 +5,25 @@ import { formatINR } from '@/lib/utils/currency';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Medal, Target, TrendingUp, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign } from 'lucide-react';
+import { Trophy, Medal, Target, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign, StickyNote, CheckSquare, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
-const EMPTY = {
-  customer_id: '',
+const EMPTY_FORM = {
+  customer_name: '',
   manager_email: '',
   manager_name: '',
   target_amount: '',
@@ -31,8 +31,9 @@ const EMPTY = {
   notes: '',
 };
 
-function TargetForm({ open, onClose, onSave, editData, managers, customers, outstandingByCustomer }) {
-  const [form, setForm] = useState(EMPTY);
+// ─── TargetForm ────────────────────────────────────────────────────────────────
+function TargetForm({ open, onClose, onSave, editData, managers, receivableCustomers, outstandingByName }) {
+  const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
@@ -43,26 +44,27 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
         target_date: editData.target_date || new Date().toISOString().split('T')[0],
       });
     } else {
-      setForm({ ...EMPTY, target_date: new Date().toISOString().split('T')[0] });
+      setForm({ ...EMPTY_FORM, target_date: new Date().toISOString().split('T')[0] });
     }
   }, [editData, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleCustomerSelect = (customerId) => {
-    const customer = customers.find(c => c.id === customerId);
-    if (!customer) return;
-    const mgr = managers.find(m => m.email === customer.account_manager);
-    // Look up outstanding by customer_id first, then by name
-    const outstanding = (outstandingByCustomer.byId?.[customerId]) ||
-      (outstandingByCustomer.byName?.[customer.name?.trim().toLowerCase()]) || 0;
+  const handleCustomerSelect = (name) => {
+    const outstanding = outstandingByName[name.trim().toLowerCase()] || 0;
     setForm(f => ({
       ...f,
-      customer_id: customerId,
-      customer_name: customer.name,
-      manager_email: customer.account_manager || f.manager_email,
-      manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || f.manager_name,
+      customer_name: name,
       target_amount: outstanding > 0 ? outstanding.toString() : f.target_amount,
+    }));
+  };
+
+  const handleManagerSelect = (email) => {
+    const mgr = managers.find(m => m.email === email);
+    setForm(f => ({
+      ...f,
+      manager_email: email,
+      manager_name: mgr?.full_name || f.manager_name,
     }));
   };
 
@@ -79,6 +81,10 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
     setSaving(false);
   };
 
+  const selectedOutstanding = form.customer_name
+    ? (outstandingByName[form.customer_name.trim().toLowerCase()] || 0)
+    : 0;
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-md">
@@ -86,47 +92,55 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
           <DialogTitle>{editData ? 'Edit Target' : 'Assign Collection Target'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {!editData && (
-            <div className="space-y-1.5">
-              <Label>Customer</Label>
-              <Select value={form.customer_id} onValueChange={handleCustomerSelect}>
-                <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
+          {/* Customer — pick from receivable customers */}
+          <div className="space-y-1.5">
+            <Label>Customer</Label>
+            <Select value={form.customer_name} onValueChange={handleCustomerSelect}>
+              <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
+              <SelectContent className="max-h-60">
+                {receivableCustomers.map(name => (
+                  <SelectItem key={name} value={name}>{name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {form.customer_name && (
+              <p className="text-xs text-muted-foreground">
+                Outstanding:{' '}
+                {selectedOutstanding > 0
+                  ? <span className="font-semibold text-red-600">{formatINR(selectedOutstanding)}</span>
+                  : <span className="text-muted-foreground">No outstanding recorded</span>
+                }
+              </p>
+            )}
+          </div>
+
+          {/* Account Manager */}
+          <div className="space-y-1.5">
+            <Label>Account Manager *</Label>
+            {managers.length > 0 ? (
+              <Select value={form.manager_email} onValueChange={handleManagerSelect}>
+                <SelectTrigger><SelectValue placeholder="Select manager..." /></SelectTrigger>
                 <SelectContent>
-                  {customers.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  {managers.map(m => (
+                    <SelectItem key={m.email} value={m.email}>{m.full_name || m.email}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          )}
-          <div className="space-y-1.5">
-            <Label>Account Manager *</Label>
-            <Input
-              value={form.manager_name || form.manager_email}
-              onChange={e => set('manager_name', e.target.value)}
-              placeholder="Enter account manager name..."
-              required
-            />
-            {form.manager_email && (
+            ) : (
+              <Input
+                value={form.manager_name || form.manager_email}
+                onChange={e => set('manager_name', e.target.value)}
+                placeholder="Enter account manager name..."
+              />
+            )}
+            {form.manager_email && managers.length > 0 && (
               <p className="text-xs text-muted-foreground">{form.manager_email}</p>
             )}
           </div>
+
           <div className="space-y-1.5">
             <Label>Target Amount (₹) *</Label>
             <Input type="number" value={form.target_amount} onChange={e => set('target_amount', e.target.value)} required min="1" placeholder="e.g. 500000" />
-            {form.customer_id && (() => {
-              const amt = (outstandingByCustomer.byId?.[form.customer_id]) ||
-                (outstandingByCustomer.byName?.[form.customer_name?.trim().toLowerCase()]) || 0;
-              return (
-                <p className="text-xs text-muted-foreground">
-                  Customer's total outstanding:{' '}
-                  {amt > 0
-                    ? <span className="font-semibold text-red-600">{formatINR(amt)}</span>
-                    : <span className="font-semibold text-muted-foreground">No outstanding recorded</span>
-                  }
-                </p>
-              );
-            })()}
           </div>
           <div className="space-y-1.5">
             <Label>Target Date *</Label>
@@ -138,7 +152,9 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
           </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving || (!form.manager_email && !form.manager_name)}>{saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}</Button>
+            <Button type="submit" disabled={saving || (!form.manager_email && !form.manager_name)}>
+              {saving ? 'Saving...' : editData ? 'Update Target' : 'Assign Target'}
+            </Button>
           </div>
         </form>
       </DialogContent>
@@ -146,33 +162,121 @@ function TargetForm({ open, onClose, onSave, editData, managers, customers, outs
   );
 }
 
-function RankIcon({ rank }) {
-  if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-  if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
-  if (rank === 3) return <Award className="w-5 h-5 text-amber-600" />;
-  return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">#{rank}</span>;
-}
-
-function UpdateProgressDialog({ open, onClose, target, onSave }) {
-  const [notes, setNotes] = useState('');
+// ─── UpdateProgressDialog ──────────────────────────────────────────────────────
+function UpdateProgressDialog({ open, onClose, target, currentUser, onSave }) {
+  const [noteText, setNoteText] = useState('');
   const [addedAmount, setAddedAmount] = useState('');
   const [saving, setSaving] = useState(false);
 
   React.useEffect(() => {
-    if (open && target) {
-      setNotes(target.notes || '');
-      setAddedAmount('');
-    }
-  }, [open, target]);
+    if (open) { setNoteText(''); setAddedAmount(''); }
+  }, [open, target?.id]);
+
+  const existingNotes = useMemo(() => {
+    if (!target?.progress_notes) return [];
+    try { return JSON.parse(target.progress_notes); } catch { return []; }
+  }, [target?.progress_notes]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!noteText.trim() && !addedAmount) return;
     setSaving(true);
     const extra = parseFloat(addedAmount) || 0;
+    const newNote = {
+      text: noteText.trim(),
+      amount: extra,
+      timestamp: new Date().toISOString(),
+      author: currentUser?.full_name || currentUser?.email || 'Unknown',
+    };
+    const updatedNotes = [...existingNotes, newNote];
     await onSave(target.id, {
-      notes,
       collected_amount: (target.collected_amount || 0) + extra,
+      progress_notes: JSON.stringify(updatedNotes),
     });
+    setSaving(false);
+    onClose();
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Update Progress — {target?.manager_name || target?.manager_email}</DialogTitle>
+        </DialogHeader>
+
+        {/* Existing notes timeline */}
+        {existingNotes.length > 0 && (
+          <div className="max-h-52 overflow-y-auto space-y-2 border rounded-lg p-3 bg-muted/30">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Progress History</p>
+            {[...existingNotes].reverse().map((n, i) => (
+              <div key={i} className="border-l-2 border-primary/40 pl-3 py-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(n.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}<span className="font-medium text-foreground">{n.author}</span>
+                  </span>
+                  {n.amount > 0 && (
+                    <span className="text-xs font-semibold text-emerald-600 shrink-0">+{formatINR(n.amount)}</span>
+                  )}
+                </div>
+                {n.text && <p className="text-sm mt-0.5 text-foreground">{n.text}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-3 pt-1">
+          <div className="space-y-1.5">
+            <Label>Amount Collected (₹)</Label>
+            <Input type="number" min="0" value={addedAmount} onChange={e => setAddedAmount(e.target.value)} placeholder="Amount collected this update..." />
+            {target?.collected_amount > 0 && (
+              <p className="text-xs text-muted-foreground">Total so far: <span className="font-medium text-emerald-600">{formatINR(target.collected_amount)}</span></p>
+            )}
+          </div>
+          <div className="space-y-1.5">
+            <Label>Note *</Label>
+            <Textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={2} placeholder="Add a progress note..." />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
+            <Button type="submit" disabled={saving || (!noteText.trim() && !addedAmount)}>
+              {saving ? 'Saving...' : 'Add Update'}
+            </Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── BulkEditDialog ────────────────────────────────────────────────────────────
+function BulkEditDialog({ open, onClose, selectedIds, targets, onSave, onDelete }) {
+  const [field, setField] = useState('collected_amount');
+  const [value, setValue] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  React.useEffect(() => { if (open) { setField('collected_amount'); setValue(''); } }, [open]);
+
+  const selected = targets.filter(t => selectedIds.has(t.id));
+
+  const handleSave = async () => {
+    if (!value) return;
+    setSaving(true);
+    const updates = selected.map(t => {
+      if (field === 'collected_amount') return { id: t.id, data: { collected_amount: parseFloat(value) || 0 } };
+      if (field === 'target_amount') return { id: t.id, data: { target_amount: parseFloat(value) || 0 } };
+      if (field === 'manager_email') return { id: t.id, data: { manager_email: value } };
+      return null;
+    }).filter(Boolean);
+    await onSave(updates);
+    setSaving(false);
+    onClose();
+  };
+
+  const handleDelete = async () => {
+    if (!confirm(`Delete ${selectedIds.size} target(s)? This cannot be undone.`)) return;
+    setSaving(true);
+    await onDelete([...selectedIds]);
     setSaving(false);
     onClose();
   };
@@ -181,38 +285,73 @@ function UpdateProgressDialog({ open, onClose, target, onSave }) {
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Update Progress</DialogTitle>
+          <DialogTitle>Bulk Edit — {selectedIds.size} record(s)</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Add Collected Amount (₹)</Label>
-            <Input type="number" min="0" value={addedAmount} onChange={e => setAddedAmount(e.target.value)} placeholder="Amount collected..." />
-            {target?.collected_amount > 0 && (
-              <p className="text-xs text-muted-foreground">Already recorded: <span className="font-medium text-emerald-600">{formatINR(target.collected_amount)}</span></p>
-            )}
+            <Label>Field to update</Label>
+            <Select value={field} onValueChange={setField}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="collected_amount">Collected Amount (₹)</SelectItem>
+                <SelectItem value="target_amount">Target Amount (₹)</SelectItem>
+                <SelectItem value="manager_email">Manager Email</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5">
-            <Label>Notes</Label>
-            <Textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3} placeholder="Update notes..." />
+            <Label>New Value</Label>
+            <Input
+              type={field === 'manager_email' ? 'email' : 'number'}
+              value={value}
+              onChange={e => setValue(e.target.value)}
+              placeholder={field === 'manager_email' ? 'email@example.com' : '0'}
+            />
           </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+          <div className="text-xs text-muted-foreground bg-muted/40 rounded p-2 max-h-24 overflow-y-auto">
+            {selected.map(t => <div key={t.id}>• {t.manager_name || t.manager_email} — {t.customer_name || 'No customer'}</div>)}
           </div>
-        </form>
+          <div className="flex justify-between gap-2 pt-1">
+            <Button variant="destructive" size="sm" onClick={handleDelete} disabled={saving}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" />Delete Selected
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={onClose}>Cancel</Button>
+              <Button onClick={handleSave} disabled={saving || !value}>
+                {saving ? 'Saving...' : 'Apply'}
+              </Button>
+            </div>
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
 }
 
+// ─── RankIcon ──────────────────────────────────────────────────────────────────
+function RankIcon({ rank }) {
+  if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
+  if (rank === 2) return <Medal className="w-5 h-5 text-gray-400" />;
+  if (rank === 3) return <Award className="w-5 h-5 text-amber-600" />;
+  return <span className="w-5 h-5 flex items-center justify-center text-sm font-bold text-muted-foreground">#{rank}</span>;
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function CollectionTargets() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
   const [editingTarget, setEditingTarget] = useState(null);
   const [updatingTarget, setUpdatingTarget] = useState(null);
+  const [showBulkEdit, setShowBulkEdit] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [currentUser, setCurrentUser] = useState(null);
+
+  React.useEffect(() => {
+    base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
+  }, []);
 
   const { data: targets = [], isLoading } = useQuery({
     queryKey: ['collectionTargets'],
@@ -222,11 +361,6 @@ export default function CollectionTargets() {
   const { data: allUsers = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => base44.entities.User.list(),
-  });
-
-  const { data: customers = [] } = useQuery({
-    queryKey: ['customers'],
-    queryFn: () => base44.entities.Customer.list(),
   });
 
   const { data: payments = [] } = useQuery({
@@ -241,36 +375,38 @@ export default function CollectionTargets() {
 
   const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
 
-  // Outstanding amount per customer_id AND per customer_name (fallback for receivables without customer_id)
-  const outstandingByCustomer = useMemo(() => {
-    const byId = {};
-    const byName = {};
+  // Build outstanding map keyed by lowercase customer_name from receivables
+  const outstandingByName = useMemo(() => {
+    const map = {};
     receivables.forEach(r => {
-      const outstanding = Math.max(0, (r.amount || 0) - (r.amount_received || 0));
       if (r.status === 'paid' || r.status === 'written_off') return;
-      if (r.customer_id) {
-        byId[r.customer_id] = (byId[r.customer_id] || 0) + outstanding;
-      }
-      if (r.customer_name) {
-        const key = r.customer_name.trim().toLowerCase();
-        byName[key] = (byName[key] || 0) + outstanding;
-      }
+      if (!r.customer_name) return;
+      const key = r.customer_name.trim().toLowerCase();
+      const outstanding = Math.max(0, (r.amount || 0) - (r.amount_received || 0));
+      map[key] = (map[key] || 0) + outstanding;
     });
-    return { byId, byName };
+    return map;
   }, [receivables]);
 
-  // Helper: get outstanding for a target record
+  // Sorted unique customer names from receivables
+  const receivableCustomers = useMemo(() => {
+    const names = new Set();
+    receivables.forEach(r => { if (r.customer_name) names.add(r.customer_name.trim()); });
+    return [...names].sort();
+  }, [receivables]);
+
+  // Outstanding for a target record
   const getOutstanding = (t) => {
-    if (t.customer_id && outstandingByCustomer.byId[t.customer_id]) {
-      return outstandingByCustomer.byId[t.customer_id];
-    }
-    if (t.customer_name) {
-      return outstandingByCustomer.byName[t.customer_name.trim().toLowerCase()] || 0;
-    }
-    return 0;
+    if (!t.customer_name) return 0;
+    return outstandingByName[t.customer_name.trim().toLowerCase()] || 0;
   };
 
-  // Build a map of manager_email -> customer ids for payment lookups
+  // Build manager->customer ids map for payment attribution
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
+
   const managerCustomerIds = useMemo(() => {
     const map = {};
     customers.forEach(c => {
@@ -282,6 +418,7 @@ export default function CollectionTargets() {
     return map;
   }, [customers]);
 
+  // ── Mutations ──
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.CollectionTarget.create(data),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['collectionTargets'] }); setShowForm(false); toast({ title: 'Target assigned' }); },
@@ -302,25 +439,48 @@ export default function CollectionTargets() {
     else createMut.mutate(data);
   };
 
-  const handleProgressSave = (id, data) => {
-    return updateMut.mutateAsync({ id, data });
+  const handleProgressSave = (id, data) => updateMut.mutateAsync({ id, data });
+
+  const handleBulkSave = async (updates) => {
+    await Promise.all(updates.map(u => base44.entities.CollectionTarget.update(u.id, u.data)));
+    queryClient.invalidateQueries({ queryKey: ['collectionTargets'] });
+    setSelectedIds(new Set());
+    toast({ title: `${updates.length} record(s) updated` });
   };
 
-  // Calculate actual collected per manager from payments for the period
+  const handleBulkDelete = async (ids) => {
+    await Promise.all(ids.map(id => base44.entities.CollectionTarget.delete(id)));
+    queryClient.invalidateQueries({ queryKey: ['collectionTargets'] });
+    setSelectedIds(new Set());
+    toast({ title: `${ids.length} record(s) deleted` });
+  };
+
+  // ── Selection helpers ──
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === targets.length) setSelectedIds(new Set());
+    else setSelectedIds(new Set(targets.map(t => t.id)));
+  };
+
+  // ── Leaderboard data ──
   const monthlyTargets = useMemo(() => {
     const filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
-
     return filtered.map(t => {
-      // Collected = sum of payments for the period, attributed to this manager via customer's account_manager field
       const customerIds = managerCustomerIds[t.manager_email] || [];
       const monthPayments = payments.filter(p => {
         if (!p.payment_date) return false;
         const d = new Date(p.payment_date);
-        if (d.getMonth() + 1 !== selectedMonth || d.getFullYear() !== selectedYear) return false;
-        // Match by debtor_id (which maps to customer id in the new model)
-        return customerIds.includes(p.debtor_id);
+        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear && customerIds.includes(p.debtor_id);
       });
-      const collected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+      const collected = Math.max(autoCollected, t.collected_amount || 0);
       const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
       return { ...t, collected, pct };
     }).sort((a, b) => b.pct - a.pct);
@@ -359,24 +519,20 @@ export default function CollectionTargets() {
       </div>
 
       {/* Overall Progress */}
-       {monthlyTargets.length > 0 && (
-         <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-           <CardContent className="p-3">
-             <div className="flex items-center justify-between mb-2">
-               <div>
-                 <div className="text-xs font-medium text-muted-foreground">Team Overall — {MONTHS[selectedMonth - 1]} {selectedYear}</div>
-                 <div className="text-sm font-bold mt-0.5">{formatINR(totalCollected)} <span className="text-muted-foreground text-xs font-normal">/ {formatINR(totalTarget)}</span></div>
-               </div>
-               <div className="text-2xl font-bold text-primary">{overallPct}%</div>
-             </div>
-             <Progress value={overallPct} className="h-2" />
-             <div className="flex justify-between text-xs text-muted-foreground mt-1">
-               <span>₹0</span>
-               <span>{formatINR(totalTarget)}</span>
-             </div>
-           </CardContent>
-         </Card>
-       )}
+      {monthlyTargets.length > 0 && (
+        <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+          <CardContent className="p-3">
+            <div className="flex items-center justify-between mb-2">
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">Team Overall — {MONTHS[selectedMonth - 1]} {selectedYear}</div>
+                <div className="text-sm font-bold mt-0.5">{formatINR(totalCollected)} <span className="text-muted-foreground text-xs font-normal">/ {formatINR(totalTarget)}</span></div>
+              </div>
+              <div className="text-2xl font-bold text-primary">{overallPct}%</div>
+            </div>
+            <Progress value={overallPct} className="h-2" />
+          </CardContent>
+        </Card>
+      )}
 
       <Tabs defaultValue="targets">
         <TabsList>
@@ -391,21 +547,17 @@ export default function CollectionTargets() {
           ) : (
             <div className="space-y-2">
               {monthlyTargets.map((t, idx) => (
-                <Card key={t.id} className={`${idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}`}>
+                <Card key={t.id} className={idx === 0 ? 'border-yellow-200 bg-yellow-50/40' : ''}>
                   <CardContent className="p-3">
                     <div className="flex items-center gap-3">
-                      <div className="shrink-0 w-6 flex justify-center">
-                        <RankIcon rank={idx + 1} />
-                      </div>
+                      <div className="shrink-0 w-6 flex justify-center"><RankIcon rank={idx + 1} /></div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                           <div>
                             <span className="text-sm font-semibold">{t.manager_name || t.manager_email}</span>
                             <span className="text-xs text-muted-foreground ml-1">{t.manager_email}</span>
                           </div>
-                          <div className="text-right">
-                            <span className="font-bold text-primary text-sm">{t.pct}%</span>
-                          </div>
+                          <span className="font-bold text-primary text-sm">{t.pct}%</span>
                         </div>
                         <Progress value={t.pct} className="h-1.5" />
                         <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
@@ -436,25 +588,43 @@ export default function CollectionTargets() {
 
         {/* All Targets Tab */}
         <TabsContent value="targets" className="mt-4">
-          <div>
-            <h2 className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-2 flex items-center gap-2">
-              <Target className="w-3.5 h-3.5" /> All Targets
-            </h2>
-            {isLoading ? (
-              <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}</div>
-            ) : targets.length === 0 ? (
-              <Card>
-                <CardContent className="py-12 text-center">
-                  <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
-                  <p className="font-semibold text-muted-foreground">No targets assigned yet</p>
-                  <p className="text-sm text-muted-foreground mt-1">Assign monthly collection targets to account managers</p>
-                  <Button className="mt-4" onClick={() => setShowForm(true)}><Plus className="w-4 h-4 mr-2" />Assign First Target</Button>
-                </CardContent>
-              </Card>
-            ) : (
+          {/* Bulk action bar */}
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-3 mb-3 p-2 bg-primary/5 border border-primary/20 rounded-lg">
+              <span className="text-sm font-medium text-primary">{selectedIds.size} selected</span>
+              <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowBulkEdit(true)}>
+                <CheckSquare className="w-3.5 h-3.5" />Bulk Edit
+              </Button>
+              <Button size="sm" variant="outline" className="gap-1.5 text-destructive border-destructive/30"
+                onClick={() => { if (confirm(`Delete ${selectedIds.size} target(s)?`)) handleBulkDelete([...selectedIds]); }}>
+                <Trash2 className="w-3.5 h-3.5" />Delete
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setSelectedIds(new Set())}><X className="w-3.5 h-3.5" /></Button>
+            </div>
+          )}
+
+          {isLoading ? (
+            <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}</div>
+          ) : targets.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
+                <p className="font-semibold text-muted-foreground">No targets assigned yet</p>
+                <p className="text-sm text-muted-foreground mt-1">Assign monthly collection targets to account managers</p>
+                <Button className="mt-4" onClick={() => setShowForm(true)}><Plus className="w-4 h-4 mr-2" />Assign First Target</Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8">
+                      <Checkbox
+                        checked={selectedIds.size === targets.length && targets.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Manager</TableHead>
                     <TableHead>Customer</TableHead>
                     <TableHead className="text-right">Outstanding</TableHead>
@@ -468,44 +638,54 @@ export default function CollectionTargets() {
                 </TableHeader>
                 <TableBody>
                   {targets.map(t => {
-                    const customer = t.customer_id ? customers.find(c => c.id === t.customer_id) : null;
-                    const displayName = customer?.name || t.customer_name || null;
                     const outstanding = getOutstanding(t);
                     const customerIds = managerCustomerIds[t.manager_email] || [];
                     const monthPayments = payments.filter(p => {
                       if (!p.payment_date) return false;
                       const d = new Date(p.payment_date);
-                      if (d.getMonth() + 1 !== t.period_month || d.getFullYear() !== t.period_year) return false;
-                      return customerIds.includes(p.debtor_id);
+                      return d.getMonth() + 1 === t.period_month && d.getFullYear() === t.period_year && customerIds.includes(p.debtor_id);
                     });
                     const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
                     const collected = Math.max(autoCollected, t.collected_amount || 0);
                     const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
+                    const notesCount = (() => { try { return JSON.parse(t.progress_notes || '[]').length; } catch { return 0; } })();
                     return (
-                      <TableRow key={t.id}>
+                      <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                         <TableCell>
-                          <div className="font-medium">{t.manager_name || t.manager_email}</div>
+                          <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium text-sm">{t.manager_name || t.manager_email}</div>
                           <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                         </TableCell>
                         <TableCell className="text-sm">
-                          {displayName ? (
-                            <div>
-                              <div className="font-medium">{displayName}</div>
-                              {customer?.contact_person && <div className="text-xs text-muted-foreground">{customer.contact_person}</div>}
-                            </div>
-                          ) : <span className="text-muted-foreground">—</span>}
+                          {t.customer_name
+                            ? <div className="font-medium max-w-[160px] truncate" title={t.customer_name}>{t.customer_name}</div>
+                            : <span className="text-muted-foreground">—</span>}
                         </TableCell>
-                        <TableCell className="text-right text-sm font-semibold text-red-600">{outstanding > 0 ? formatINR(outstanding) : '—'}</TableCell>
-                        <TableCell className="text-right">{formatINR(t.target_amount)}</TableCell>
+                        <TableCell className="text-right text-sm font-semibold text-red-600">
+                          {outstanding > 0 ? formatINR(outstanding) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
                         <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
-                        <TableCell className="text-right text-emerald-600 font-medium">{formatINR(collected)}</TableCell>
+                        <TableCell className="text-right text-emerald-600 font-medium text-sm">{formatINR(collected)}</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-2 min-w-24">
+                          <div className="flex items-center gap-2 min-w-[100px]">
                             <Progress value={pct} className="h-2 flex-1" />
-                            <span className="text-xs font-semibold w-10 text-right">{pct}%</span>
+                            <span className="text-xs font-semibold w-9 text-right">{pct}%</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm text-muted-foreground max-w-[120px] truncate" title={t.notes}>{t.notes || '-'}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            {notesCount > 0 && (
+                              <span className="inline-flex items-center gap-1 text-xs text-primary">
+                                <StickyNote className="w-3 h-3" />{notesCount}
+                              </span>
+                            )}
+                            {t.notes && <span className="max-w-[80px] truncate text-xs" title={t.notes}>{t.notes}</span>}
+                            {!notesCount && !t.notes && '-'}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -529,8 +709,8 @@ export default function CollectionTargets() {
                   })}
                 </TableBody>
               </Table>
-            )}
-          </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
@@ -540,14 +720,23 @@ export default function CollectionTargets() {
         onSave={handleSave}
         editData={editingTarget}
         managers={managers}
-        customers={customers}
-        outstandingByCustomer={outstandingByCustomer}
+        receivableCustomers={receivableCustomers}
+        outstandingByName={outstandingByName}
       />
       <UpdateProgressDialog
         open={!!updatingTarget}
         onClose={() => setUpdatingTarget(null)}
         target={updatingTarget}
+        currentUser={currentUser}
         onSave={handleProgressSave}
+      />
+      <BulkEditDialog
+        open={showBulkEdit}
+        onClose={() => setShowBulkEdit(false)}
+        selectedIds={selectedIds}
+        targets={targets}
+        onSave={handleBulkSave}
+        onDelete={handleBulkDelete}
       />
     </div>
   );

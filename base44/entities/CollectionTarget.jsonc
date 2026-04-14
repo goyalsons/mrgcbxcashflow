@@ -10,6 +10,10 @@
       "type": "string",
       "description": "Account manager name"
     },
+    "customer_name": {
+      "type": "string",
+      "description": "Customer name (from Receivable)"
+    },
     "target_amount": {
       "type": "number",
       "description": "Collection target in INR"
@@ -35,6 +39,10 @@
     "notes": {
       "type": "string",
       "description": "Target notes"
+    },
+    "progress_notes": {
+      "type": "string",
+      "description": "JSON array of timestamped progress notes [{text, amount, timestamp, author}]"
     }
   },
   "required": [
