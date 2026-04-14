@@ -69,7 +69,12 @@ Deno.serve(async (req) => {
     const customer = await base44.entities.Customer.get(reminder.customer_id);
     let invoices = [];
     if (customer) {
-      const allInvoices = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
+      // First try matching by customer_id
+      let allInvoices = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
+      // Fallback: match by customer_name (for CSV-imported receivables with no customer_id)
+      if (allInvoices.length === 0 && customer.name) {
+        allInvoices = await base44.entities.Receivable.filter({ customer_name: customer.name });
+      }
       invoices = allInvoices.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
       console.log(`[sendSingleReminder] Found ${invoices.length} outstanding receivables for customer ${customer.name}`);
     }
