@@ -184,29 +184,18 @@ const ENTITY_CONFIGS = {
   vendor: {
     label: 'Vendors',
     entity: 'Vendor',
-    fields: ['name', 'address', 'state', 'country', 'gstin'],
-    required: ['name'],
+    fields: ['Sl No.', 'Particulars', 'Address', 'State', 'Country', 'Registration Type', 'GSTIN/UIN', 'PAN/IT No.'],
+    required: ['Particulars'],
     sampleData: [
-      ['ABC Suppliers Pvt Ltd', '100 Industrial Area, Chennai', 'Tamil Nadu', 'India', '27DDDDD3333D4Z8'],
-      ['Cloud Services Inc', '200 Tech Hub, Hyderabad', 'Telangana', 'India', '27EEEEE4444E5Z9'],
+      ['1', 'ABC Suppliers Pvt Ltd', '100 Industrial Area, Chennai', 'Tamil Nadu', 'India', '', '27DDDDD3333D4Z8', ''],
+      ['2', 'Cloud Services Inc', '200 Tech Hub, Hyderabad', 'Telangana', 'India', '', '27EEEEE4444E5Z9', ''],
     ],
-    columnMapping: {
-      'sl_no': 'ignore',
-      'particulars': 'name',
-      'company': 'name',
-      'address': 'address',
-      'state': 'state',
-      'country': 'country',
-      'registration_type': 'ignore',
-      'gstinuin': 'gstin',
-      'panit_no': 'ignore',
-    },
     transform: (row) => ({
-      name: row.name || row.company || row.particulars || '',
-      address: row.address || '',
-      state: row.state || '',
-      country: row.country || '',
-      gstin: row.gstin || row.gstinuin || '',
+      name: row['particulars'] || row['particulars'] || '',
+      address: row['address'] || '',
+      state: row['state'] || '',
+      country: row['country'] || '',
+      gstin: row['gstinuin'] || '',
       email: '',
       phone: '',
       contact_person: '',
@@ -461,7 +450,7 @@ export default function CSVImport() {
       }
 
     } else if (entityType === 'vendor') {
-      // Vendor import with duplicate check by name
+      // Vendor import with duplicate check by name (Particulars field)
       const existingVendors = await base44.entities.Vendor.list().catch(() => []);
       const vendorNameMap = {};
       existingVendors.forEach(v => {
