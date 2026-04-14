@@ -28,6 +28,24 @@ function buildInvoiceTable(invoices) {
   return rows + `\n${'─'.repeat(55)}\nTOTAL OUTSTANDING: ₹${total.toLocaleString('en-IN')}`;
 }
 
+function buildAttachmentLinks(invoices) {
+  const links = [];
+  invoices.forEach(inv => {
+    if (inv.attachments) {
+      try {
+        const arr = JSON.parse(inv.attachments);
+        arr.forEach(a => {
+          if (a.url) links.push(`  • ${a.name || 'Attachment'} (Inv# ${inv.invoice_number || '-'}): ${a.url}`);
+        });
+      } catch (e) { /* ignore */ }
+    }
+    if (inv.document_url) {
+      links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
+    }
+  });
+  return links.length > 0 ? `Attachments:\n${links.join('\n')}` : '';
+}
+
 export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSuccess }) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
@@ -123,13 +141,14 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
           const firstInv = customer.invoices?.[0] || {};
 
           // Unified placeholder data for both {{key}} and {key} syntaxes
+          const attachmentText = buildAttachmentLinks(customer.invoices || []);
           const placeholderData = {
             contact_person: contactName,
             debtor_name: customer.name || '',
             company_name: customer.name || '',
             outstanding_amount: totalOutstanding.toLocaleString('en-IN'),
             invoice_table: invoiceTable,
-            attachments: '',
+            attachments: attachmentText,
             invoice_number: firstInv.invoice_number || '',
             amount: firstInv.amount?.toLocaleString('en-IN') || '',
             due_date: firstInv.due_date ? firstInv.due_date.split('T')[0] : '',
