@@ -50,7 +50,8 @@ Deno.serve(async (req) => {
 
     // Generate SHA-1 signature
     const timestamp = Math.floor(Date.now() / 1000);
-    const toSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
+    const accessControl = JSON.stringify([{ access_type: 'anonymous' }]);
+    const toSign = `access_control=${accessControl}&folder=${folder}&timestamp=${timestamp}${apiSecret}`;
     const msgBuffer = new TextEncoder().encode(toSign);
     const hashBuffer = await crypto.subtle.digest('SHA-1', msgBuffer);
     const signature = Array.from(new Uint8Array(hashBuffer))
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
     uploadFormData.append('signature', signature);
-    uploadFormData.append('access_control', JSON.stringify([{ access_type: 'anonymous' }]));
+    uploadFormData.append('access_control', accessControl);
     
     // Set resource_type for PDFs and other non-image files
     const fileName = file.name || '';
