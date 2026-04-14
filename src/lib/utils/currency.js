@@ -1,16 +1,14 @@
 /**
- * Format a number as Indian Rupee currency (₹1,23,456.78)
+ * Format a number as Indian Rupee currency (₹1,23,456) — no decimals
  */
 export function formatINR(amount) {
-  if (amount === null || amount === undefined || isNaN(amount)) return '₹0.00';
+  if (amount === null || amount === undefined || isNaN(amount)) return '₹0';
   const num = Number(amount);
   const isNegative = num < 0;
-  const absNum = Math.abs(num);
-  
-  const parts = absNum.toFixed(2).split('.');
-  let intPart = parts[0];
-  const decPart = parts[1];
-  
+  const absNum = Math.abs(Math.round(num));
+
+  let intPart = String(absNum);
+
   // Indian number system: first group of 3, then groups of 2
   if (intPart.length > 3) {
     const last3 = intPart.slice(-3);
@@ -21,8 +19,8 @@ export function formatINR(amount) {
     }
     intPart = groups.join(',') + ',' + last3;
   }
-  
-  return `${isNegative ? '-' : ''}₹${intPart}.${decPart}`;
+
+  return `${isNegative ? '-' : ''}₹${intPart}`;
 }
 
 /**

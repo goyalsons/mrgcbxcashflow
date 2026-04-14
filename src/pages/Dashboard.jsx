@@ -54,7 +54,6 @@ export default function Dashboard() {
 
   const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors || loadingPayments;
 
-  // Filter all transactional data to the selected date range
   const { from, to } = dateRange;
 
   const filteredReceivables = useMemo(() =>
@@ -74,7 +73,6 @@ export default function Dashboard() {
     [payments, from, to]
   );
 
-  // Stat calculations on filtered data
   const totalBankBalance = bankAccounts.reduce((sum, a) => sum + (a.balance || 0), 0);
 
   const totalOutstandingReceivable = receivables
@@ -97,8 +95,8 @@ export default function Dashboard() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-48 mb-2" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-          {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {[...Array(6)].map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
       </div>
     );
@@ -117,8 +115,8 @@ export default function Dashboard() {
         <DateRangePicker value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3">
+      {/* Stats Grid — 3 per row, 2 rows */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <StatCard title="Bank Balance" value={formatINR(totalBankBalance)} icon={Landmark} variant="info" />
         <Link to="/receivables" className="contents">
           <StatCard title="Receivable" value={formatINR(totalOutstandingReceivable)} icon={Users} variant="danger" subtitle={`${activeDebtors} active`} />
