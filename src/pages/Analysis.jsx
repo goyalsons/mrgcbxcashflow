@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
+import { loadActiveLLM } from '@/components/settings/LLMSettings';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -83,6 +84,14 @@ export default function Analysis() {
     setAnalyzing(true);
     setAnalysisResult(null);
 
+    // Get active LLM from settings
+    const activeLLM = loadActiveLLM();
+    if (!activeLLM.provider) {
+      setAnalysisResult({ error: 'No LLM configured', message: 'Please configure and activate an LLM provider in Settings → AI/LLM to use analysis.' });
+      setAnalyzing(false);
+      return;
+    }
+
     // Extract actual data from uploaded files
     let extractedDataText = '';
     const validUrls = fileUrls.filter(Boolean);
@@ -109,7 +118,7 @@ export default function Analysis() {
           if (extracted.status === 'success' && extracted.output) {
             const data = extracted.output;
             const rows = data.rows || (Array.isArray(data) ? data : []);
-            const dataStr = JSON.stringify(rows.slice(0, 200)); // limit rows
+            const dataStr = JSON.stringify(rows.slice(0, 200));
             extractedParts.push(`File: ${files[i]}\nData (${rows.length} rows):\n${dataStr}`);
           }
         } catch (err) {
@@ -123,45 +132,30 @@ export default function Analysis() {
       ? `The following data was extracted from the uploaded files:\n\n${extractedDataText}\n\nUse this actual data for the analysis.`
       : (files.length > 0 ? `Files referenced: ${files.join(', ')}.` : '');
 
-    // Get LLM settings from backend (stored in AppSettings)
-    let llmSettings = {};
-    try {
-      const settings = await base44.entities.AppSettings.filter({ key: 'llm_settings' });
-      if (settings.length > 0) {
-        llmSettings = JSON.parse(settings[0].value || '{}');
-      }
-    } catch (err) {
-      console.warn('Could not load LLM settings:', err);
-    }
-
-    const llmModel = llmSettings.model || 'automatic';
+    const analysisPrompt = `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`;
 
     try {
-      const result = await base44.integrations.Core.InvokeLLM({
-        prompt: `You are a financial data analyst. ${contextText}\n\nUser prompt: ${prompt}\n\nProvide a comprehensive analysis based on the actual data provided and return a JSON object with this exact structure:\n{\n  "summary": "2-3 sentence executive summary",\n  "key_metrics": [{"label": "string", "value": "string", "trend": "up|down|neutral", "color": "green|red|amber"}],\n  "insights": [{"title": "string", "description": "string", "type": "positive|negative|neutral"}],\n  "chart_data": {\n    "bar": [{"name": "string", "value": number, "value2": number}],\n    "line": [{"name": "string", "value": number}],\n    "pie": [{"name": "string", "value": number}]\n  },\n  "bar_label": "string",\n  "bar_label2": "string",\n  "line_label": "string",\n  "recommendations": ["string"]\n}`,
-        response_json_schema: {
-          type: 'object',
-          properties: {
-            summary: { type: 'string' },
-            key_metrics: { type: 'array', items: { type: 'object' } },
-            insights: { type: 'array', items: { type: 'object' } },
-            chart_data: { type: 'object' },
-            bar_label: { type: 'string' },
-            bar_label2: { type: 'string' },
-            line_label: { type: 'string' },
-            recommendations: { type: 'array', items: { type: 'string' } },
-          },
-        },
-        model: llmModel,
-      });
-
-      setAnalysisResult(result);
-    } catch (err) {
-      if (err.message?.includes('limit of integrations')) {
-        setAnalysisResult({ error: 'Integration limit reached', message: 'You have exhausted your monthly integration credits. Please upgrade your plan to continue using AI analysis.' });
-      } else {
-        setAnalysisResult({ error: 'Analysis failed', message: err.message || 'An error occurred during analysis. Please try again.' });
+      let result;
+      
+      if (activeLLM.provider === 'gemini') {
+        result = await base44.functions.invoke('testLLM', {
+          provider: 'gemini',
+          api_key: activeLLM.gemini_api_key,
+          model: activeLLM.gemini_model,
+          prompt: analysisPrompt,
+        });
+        setAnalysisResult(JSON.parse(result.data.response));
+      } else if (activeLLM.provider === 'claude') {
+        result = await base44.functions.invoke('testLLM', {
+          provider: 'claude',
+          api_key: activeLLM.claude_api_key,
+          model: activeLLM.claude_model,
+          prompt: analysisPrompt,
+        });
+        setAnalysisResult(JSON.parse(result.data.response));
       }
+    } catch (err) {
+      setAnalysisResult({ error: 'Analysis failed', message: err.message || 'An error occurred during analysis. Please try again.' });
     }
     setAnalyzing(false);
   };
