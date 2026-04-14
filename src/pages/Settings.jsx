@@ -178,6 +178,7 @@ export default function Settings() {
 
   // Load all settings from DB on mount
   const { data: dbSettingsRecords = [] } = useQuery({
+    select: (data) => Array.isArray(data) ? data : [],
     queryKey: ['appSettings'],
     queryFn: () => base44.entities.AppSettings.list(),
   });
@@ -202,7 +203,7 @@ export default function Settings() {
 
   useEffect(() => {
     // Try DB first, fall back to localStorage
-    const dbRecord = dbSettingsRecords.find(r => r.key === DB_SETTINGS_KEY);
+    const dbRecord = Array.isArray(dbSettingsRecords) ? dbSettingsRecords.find(r => r.key === DB_SETTINGS_KEY) : undefined;
     let s = {};
     if (dbRecord?.value) {
       try { s = JSON.parse(dbRecord.value); } catch {}
