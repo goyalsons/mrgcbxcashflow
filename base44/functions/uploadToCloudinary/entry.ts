@@ -63,6 +63,7 @@ Deno.serve(async (req) => {
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
     uploadFormData.append('signature', signature);
+    uploadFormData.append('access_control', JSON.stringify([{ access_type: 'public' }]));
     
     // Set resource_type for PDFs and other non-image files
     const fileName = file.name || '';
