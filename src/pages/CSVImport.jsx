@@ -162,20 +162,34 @@ const ENTITY_CONFIGS = {
   customer: {
     label: 'Customers',
     entity: 'Customer',
-    fields: ['name', 'email', 'phone', 'gstin', 'contact_person', 'address'],
+    fields: ['Particulars', 'Contact Name', 'Mobile Nos.', 'Default WhatsApp No.', 'Phone No.', 'E-Mail ID'],
     required: ['name'],
+    csvColumnToEntityField: {
+      'Particulars': 'name',
+      'Contact Name': 'contact_person',
+      'Mobile Nos.': 'phone',
+      'Phone No.': 'phone',
+      'E-Mail ID': 'email',
+    },
     sampleData: [
-      ['Global Exports Inc', 'info@globalexports.com', '+91 98000 11111', '27CCCCC2222C3Z7', 'Amit Sharma', '789 Export Zone, Mumbai'],
-      ['Digital Ventures Ltd', 'hello@digitalventures.com', '+91 77000 22222', '', 'Sneha Patel', '321 IT Park, Pune'],
+      ['Global Exports Inc', 'Amit Sharma', '+91 98000 11111', '', '+91 22 6123 4567', 'info@globalexports.com'],
+      ['Digital Ventures Ltd', 'Sneha Patel', '+91 77000 22222', '', '', 'hello@digitalventures.com'],
     ],
-    transform: (row) => ({
-      name: row.name || row.customer_name || row.company,
-      email: row.email,
-      phone: row.phone || row.mobile,
-      gstin: row.gstin || row.gst,
-      contact_person: row.contact_person || row.contact,
-      address: row.address,
-    }),
+    transform: (row) => {
+      // Prefer mobile number if available, otherwise use phone number
+      const mobile = (row['mobile_nos'] || '').trim();
+      const phone = (row['phone_no'] || '').trim();
+      const phoneValue = mobile || phone;
+      
+      return {
+        name: row['particulars'] || '',
+        contact_person: row['contact_name'] || '',
+        email: row['email_id'] || '',
+        phone: phoneValue,
+        gstin: '',
+        address: '',
+      };
+    },
     dupCheck: async (data) => {
       const existing = await base44.entities.Customer.filter({ name: data.name }).catch(() => []);
       return existing.length > 0;
@@ -457,30 +471,54 @@ export default function CSVImport() {
       }
 
     } else if (entityType === 'vendor') {
-      // Vendor import with duplicate check by name (Particulars field)
-      const existingVendors = await base44.entities.Vendor.list().catch(() => []);
-      const vendorNameMap = {};
-      existingVendors.forEach(v => {
-        if (v.name) vendorNameMap[v.name.trim().toLowerCase()] = true;
-      });
+       // Vendor import with duplicate check by name (Particulars field)
+       const existingVendors = await base44.entities.Vendor.list().catch(() => []);
+       const vendorNameMap = {};
+       existingVendors.forEach(v => {
+         if (v.name) vendorNameMap[v.name.trim().toLowerCase()] = true;
+       });
 
-      const toCreate = [];
-      for (const row of validRows) {
-        const vendorName = (row.data.name || '').trim().toLowerCase();
-        if (vendorName && vendorNameMap[vendorName]) {
-          duplicates++;
-        } else {
-          toCreate.push(row.data);
-          if (vendorName) vendorNameMap[vendorName] = true;
-        }
-      }
-      for (let i = 0; i < toCreate.length; i += BATCH) {
-        const batch = toCreate.slice(i, i + BATCH);
-        await base44.entities.Vendor.bulkCreate(batch);
-        success += batch.length;
-        await sleep(300);
-      }
-    } else {
+       const toCreate = [];
+       for (const row of validRows) {
+         const vendorName = (row.data.name || '').trim().toLowerCase();
+         if (vendorName && vendorNameMap[vendorName]) {
+           duplicates++;
+         } else {
+           toCreate.push(row.data);
+           if (vendorName) vendorNameMap[vendorName] = true;
+         }
+       }
+       for (let i = 0; i < toCreate.length; i += BATCH) {
+         const batch = toCreate.slice(i, i + BATCH);
+         await base44.entities.Vendor.bulkCreate(batch);
+         success += batch.length;
+         await sleep(300);
+       }
+     } else if (entityType === 'customer') {
+       // Customer import with duplicate check by company name (Particulars field)
+       const existingCustomers = await base44.entities.Customer.list().catch(() => []);
+       const customerNameMap = {};
+       existingCustomers.forEach(c => {
+         if (c.name) customerNameMap[c.name.trim().toLowerCase()] = true;
+       });
+
+       const toCreate = [];
+       for (const row of validRows) {
+         const customerName = (row.data.name || '').trim().toLowerCase();
+         if (customerName && customerNameMap[customerName]) {
+           duplicates++;
+         } else {
+           toCreate.push(row.data);
+           if (customerName) customerNameMap[customerName] = true;
+         }
+       }
+       for (let i = 0; i < toCreate.length; i += BATCH) {
+         const batch = toCreate.slice(i, i + BATCH);
+         await base44.entities.Customer.bulkCreate(batch);
+         success += batch.length;
+         await sleep(300);
+       }
+     } else {
       // Standard import with dupCheck
       const toCreate = [];
       for (const row of validRows) {
@@ -565,6 +603,12 @@ export default function CSVImport() {
                   <>
                     <p className="text-blue-800"><strong>Important:</strong> If your file has extra header rows above the column names, delete them first. Keep only the main column header row.</p>
                     <p className="text-blue-800">Example: If you see "Sl No." as the first row, delete it before uploading.</p>
+                  </>
+                ) : entityType === 'customer' ? (
+                  <>
+                    <p className="text-blue-800"><strong>Important:</strong> Delete any extra rows at the top of your file before uploading. Your CSV should start directly with the column headers.</p>
+                    <p className="text-blue-800">This import is designed for the "Ledger Contact Details" report exported from Tally.</p>
+                    <p className="text-blue-800">If both Mobile and Phone numbers are provided, the mobile number will be used.</p>
                   </>
                 ) : (
                   <>
