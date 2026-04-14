@@ -256,22 +256,22 @@ export default function RecurringExpenses() {
                       </TableRow>
                     ))}
                   </TableBody>
-                  </Table>
-                  {totalPagesTemplates > 1 && (
-                    <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
-                      <span className="text-sm text-muted-foreground">Page {currentPageTemplates} of {totalPagesTemplates} • Showing {paginatedTemplates.length} of {templates.length} templates</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(1)}>First</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(currentPageTemplates - 1)}>Previous</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(currentPageTemplates + 1)}>Next</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(totalPagesTemplates)}>Last</Button>
-                      </div>
-                    </div>
-                  )}
-                  )}
-                  </CardContent>
-                  </Card>
-                  </TabsContent>
+                </Table>
+              )}
+              {totalPagesTemplates > 1 && (
+                <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                  <span className="text-sm text-muted-foreground">Page {currentPageTemplates} of {totalPagesTemplates} • Showing {paginatedTemplates.length} of {templates.length} templates</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(1)}>First</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(currentPageTemplates - 1)}>Previous</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(currentPageTemplates + 1)}>Next</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(totalPagesTemplates)}>Last</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
                   <TabsContent value="instances" className="mt-4">
           {selectedIds.size > 0 && (
@@ -338,23 +338,23 @@ export default function RecurringExpenses() {
                       );
                     })}
                   </TableBody>
-                  </Table>
-                  {totalPagesInstances > 1 && (
-                    <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
-                      <span className="text-sm text-muted-foreground">Page {currentPageInstances} of {totalPagesInstances} • Showing {paginatedInstances.length} of {instances.length} entries</span>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(1)}>First</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(currentPageInstances - 1)}>Previous</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(currentPageInstances + 1)}>Next</Button>
-                        <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(totalPagesInstances)}>Last</Button>
-                      </div>
-                    </div>
-                  )}
-                  )}
-                  </CardContent>
-                  </Card>
-                  </TabsContent>
-                  </Tabs>
+                </Table>
+              )}
+              {totalPagesInstances > 1 && (
+                <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                  <span className="text-sm text-muted-foreground">Page {currentPageInstances} of {totalPagesInstances} • Showing {paginatedInstances.length} of {instances.length} entries</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(1)}>First</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(currentPageInstances - 1)}>Previous</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(currentPageInstances + 1)}>Next</Button>
+                    <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(totalPagesInstances)}>Last</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <ExpenseForm
         open={showForm}
