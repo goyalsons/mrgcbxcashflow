@@ -82,10 +82,10 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Upload failed (${response.status}): ${errMsg}` });
     }
 
-    // Ensure PDF files have .pdf extension in the URL
+    // Replace .pdf with .png in the URL
     let fileUrl = data.secure_url;
-    if (file.name.toLowerCase().endsWith('.pdf') && !fileUrl.toLowerCase().includes('.pdf')) {
-      fileUrl = fileUrl.replace(/\.[\w]+$/, '.pdf');
+    if (fileUrl.toLowerCase().endsWith('.pdf')) {
+      fileUrl = fileUrl.slice(0, -4) + '.png';
     }
 
     return Response.json({
