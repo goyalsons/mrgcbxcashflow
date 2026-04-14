@@ -77,6 +77,18 @@ function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, se
             <span className="text-xs text-foreground">{t.subject}</span>
           </div>
         )}
+        {isWhatsApp && (
+          <div className="flex items-center gap-2 p-2 rounded-md bg-white/70 border border-green-100">
+            <span className="text-xs font-semibold text-green-700 shrink-0">Meta Name:</span>
+            <span className="text-xs font-mono text-foreground">{t.meta_template_name || <span className="text-amber-500 italic">Not set — edit to add</span>}</span>
+          </div>
+        )}
+        {isWhatsApp && t.default_variables && (
+          <div className="flex items-center gap-2 p-2 rounded-md bg-white/70 border border-green-100">
+            <span className="text-xs font-semibold text-green-700 shrink-0">Variables:</span>
+            <span className="text-xs text-muted-foreground">{t.default_variables}</span>
+          </div>
+        )}
         <div className="relative p-3 rounded-md bg-white/70 border border-gray-100">
           <p className="text-xs text-muted-foreground whitespace-pre-wrap line-clamp-5 pr-2">{t.body}</p>
         </div>

@@ -1,0 +1,45 @@
+{
+  "name": "MessageTemplate",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Template display name"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "email",
+        "sms",
+        "whatsapp"
+      ],
+      "description": "Message channel"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Subject (for email)"
+    },
+    "body": {
+      "type": "string",
+      "description": "Message body / reference text with placeholders"
+    },
+    "meta_template_name": {
+      "type": "string",
+      "description": "Exact template name registered in Meta/WhatsApp Business Manager (for WhatsApp type only)"
+    },
+    "default_variables": {
+      "type": "string",
+      "description": "Comma-separated default variable values for {{1}}, {{2}}, {{3}}... (for WhatsApp type only)"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether template is active"
+    }
+  },
+  "required": [
+    "name",
+    "type",
+    "body"
+  ]
+}

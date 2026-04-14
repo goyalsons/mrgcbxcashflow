@@ -76,6 +76,29 @@ function TemplateEditor({ template, onClose, onSave }) {
               <Input value={form.subject} onChange={e => set('subject', e.target.value)} placeholder="Payment Reminder - {{company_name}}" />
             </div>
           )}
+          {form.type === 'whatsapp' && (
+            <div className="space-y-4 p-3 rounded-lg border border-green-200 bg-green-50/50">
+              <div className="space-y-1.5">
+                <Label>Meta Template Name *</Label>
+                <Input
+                  value={form.meta_template_name || ''}
+                  onChange={e => set('meta_template_name', e.target.value)}
+                  placeholder="e.g. payment_reminder_v1"
+                  className="font-mono"
+                />
+                <p className="text-xs text-muted-foreground">Must match exactly the name approved in WhatsApp Business Manager (lowercase, underscores).</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Default Variable Values</Label>
+                <Input
+                  value={form.default_variables || ''}
+                  onChange={e => set('default_variables', e.target.value)}
+                  placeholder="e.g. John Doe, ₹5000, 31 March 2026"
+                />
+                <p className="text-xs text-muted-foreground">Comma-separated default values for {'{{1}}'}, {'{{2}}'}, {'{{3}}'}... Used when testing.</p>
+              </div>
+            </div>
+          )}
 
           {/* Dynamic Fields Guide */}
           <div className="rounded-lg border border-blue-200 bg-blue-50/60 overflow-hidden">
@@ -592,80 +615,8 @@ export default function Settings() {
               Get your API Key and Phone ID from your <a href="https://wa.redlava.in" target="_blank" rel="noreferrer" className="underline font-medium">RedLava dashboard</a> → API Credentials.
             </div>
 
-              {/* WhatsApp Templates */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">WhatsApp Templates</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Add your approved templates from WhatsApp Business Manager. The template name must match exactly.</p>
-                  </div>
-                  <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={() => setW('wa_templates', [...(whatsapp.wa_templates || []), { name: '', body: '', variables: '' }])}>
-                    <Plus className="w-4 h-4" /> Add Template
-                  </Button>
-                </div>
-
-                {(whatsapp.wa_templates || []).length === 0 ? (
-                  <div className="text-center py-8 border-2 border-dashed rounded-xl text-muted-foreground text-sm">
-                    <span className="text-2xl block mb-2">💬</span>
-                    No templates yet. Click <strong>Add Template</strong> to get started.
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {(whatsapp.wa_templates || []).map((tpl, idx) => (
-                      <div key={idx} className="border rounded-xl bg-card shadow-sm overflow-hidden">
-                        {/* Template Header */}
-                        <div className="flex items-center justify-between px-4 py-3 bg-muted/40 border-b">
-                          <div className="flex items-center gap-2">
-                            <span className="text-base">💬</span>
-                            <span className="text-sm font-semibold text-foreground">Template #{idx + 1}</span>
-                          </div>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => setW('wa_templates', whatsapp.wa_templates.filter((_, i) => i !== idx))}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-
-                        {/* Template Fields */}
-                        <div className="p-4 space-y-4">
-                          {/* Template Name */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Template Name *</Label>
-                            <Input
-                              value={tpl.name}
-                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], name: e.target.value }; setW('wa_templates', updated); }}
-                              placeholder="e.g. payment_reminder_v1"
-                              className="font-mono"
-                            />
-                            <p className="text-xs text-muted-foreground">Must match the exact name approved in WhatsApp Business Manager (lowercase, underscores).</p>
-                          </div>
-
-                          {/* Template Body */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Message Body</Label>
-                            <Textarea
-                              value={tpl.body}
-                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], body: e.target.value }; setW('wa_templates', updated); }}
-                              placeholder={'Dear {{1}}, your payment of ₹{{2}} is due on {{3}}. Please pay at your earliest convenience.'}
-                              rows={4}
-                              className="resize-none font-mono text-sm"
-                            />
-                            <p className="text-xs text-muted-foreground">Paste the approved template text. Use {'{{1}}'}, {'{{2}}'}, {'{{3}}'} for dynamic values.</p>
-                          </div>
-
-                          {/* Default Variable Values */}
-                          <div className="space-y-1.5">
-                            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Default Variable Values</Label>
-                            <Input
-                              value={tpl.variables || ''}
-                              onChange={e => { const updated = [...whatsapp.wa_templates]; updated[idx] = { ...updated[idx], variables: e.target.value }; setW('wa_templates', updated); }}
-                              placeholder="e.g. John Doe, ₹5000, 31 March 2026"
-                            />
-                            <p className="text-xs text-muted-foreground">Comma-separated values for {'{{1}}'}, {'{{2}}'}, {'{{3}}'} in order. Used as defaults when testing.</p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className="p-3 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
+                💬 WhatsApp templates are managed in the <strong>Templates tab</strong>. Create a template there and set the Meta template name. All dropdowns throughout the app will use those templates.
               </div>
 
               <div className="space-y-1.5">
@@ -718,23 +669,23 @@ export default function Settings() {
                 </div>
                 <div className="space-y-1.5">
                   <Label>Template Name *</Label>
-                  {(whatsapp.wa_templates || []).length > 0 ? (
+                  {templates.filter(t => t.type === 'whatsapp' && t.meta_template_name).length > 0 ? (
                     <Select value={testMsg.templateName} onValueChange={v => {
-                      const tpl = (whatsapp.wa_templates || []).find(t => t.name === v);
-                      setTestMsg(f => ({ ...f, templateName: v, variables: tpl?.variables || f.variables }));
+                      const tpl = templates.find(t => t.meta_template_name === v);
+                      setTestMsg(f => ({ ...f, templateName: v, variables: tpl?.default_variables || f.variables }));
                     }}>
                       <SelectTrigger><SelectValue placeholder="Select a template..." /></SelectTrigger>
                       <SelectContent>
-                        {(whatsapp.wa_templates || []).filter(t => t.name).map(t => (
-                          <SelectItem key={t.name} value={t.name}>{t.name}</SelectItem>
+                        {templates.filter(t => t.type === 'whatsapp' && t.meta_template_name).map(t => (
+                          <SelectItem key={t.id} value={t.meta_template_name}>{t.name} ({t.meta_template_name})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   ) : (
                     <Input
                       value={testMsg.templateName}
-                      onChange={e => setTestMsg(f => ({ ...f, templateName: e.target.value }))} 
-                      placeholder="Add templates in WhatsApp settings above"
+                      onChange={e => setTestMsg(f => ({ ...f, templateName: e.target.value }))}
+                      placeholder="Add WhatsApp templates in the Templates tab"
                     />
                   )}
                 </div>

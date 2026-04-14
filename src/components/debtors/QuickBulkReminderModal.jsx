@@ -162,7 +162,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
             await base44.functions.invoke('sendWhatsAppMessage', {
               action: 'sendMessage',
               to: customer.phone,
-              templateName: template.name,
+              templateName: template.meta_template_name || template.name,
               language: 'en',
               templateVariables,
               messageBody: processedBody,
