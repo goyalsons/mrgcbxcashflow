@@ -184,19 +184,32 @@ const ENTITY_CONFIGS = {
   vendor: {
     label: 'Vendors',
     entity: 'Vendor',
-    fields: ['name', 'email', 'phone', 'gstin', 'contact_person', 'address'],
+    fields: ['name', 'address', 'state', 'country', 'gstin'],
     required: ['name'],
     sampleData: [
-      ['ABC Suppliers Pvt Ltd', 'procurement@abc.com', '+91 96000 33333', '27DDDDD3333D4Z8', 'Ravi Kumar', '100 Industrial Area, Chennai'],
-      ['Cloud Services Inc', 'billing@cloudservices.com', '+91 85000 44444', '', 'Meena Iyer', '200 Tech Hub, Hyderabad'],
+      ['ABC Suppliers Pvt Ltd', '100 Industrial Area, Chennai', 'Tamil Nadu', 'India', '27DDDDD3333D4Z8'],
+      ['Cloud Services Inc', '200 Tech Hub, Hyderabad', 'Telangana', 'India', '27EEEEE4444E5Z9'],
     ],
+    columnMapping: {
+      'sl_no': 'ignore',
+      'particulars': 'name',
+      'company': 'name',
+      'address': 'address',
+      'state': 'state',
+      'country': 'country',
+      'registration_type': 'ignore',
+      'gstinuin': 'gstin',
+      'panit_no': 'ignore',
+    },
     transform: (row) => ({
-      name: row.name || row.vendor_name || row.supplier,
-      email: row.email,
-      phone: row.phone || row.mobile,
-      gstin: row.gstin || row.gst,
-      contact_person: row.contact_person || row.contact,
-      address: row.address,
+      name: row.name || row.company || row.particulars || '',
+      address: row.address || '',
+      state: row.state || '',
+      country: row.country || '',
+      gstin: row.gstin || row.gstinuin || '',
+      email: '',
+      phone: '',
+      contact_person: '',
     }),
     dupCheck: async (data) => {
       const existing = await base44.entities.Vendor.filter({ name: data.name }).catch(() => []);
@@ -447,6 +460,30 @@ export default function CSVImport() {
         await sleep(100);
       }
 
+    } else if (entityType === 'vendor') {
+      // Vendor import with duplicate check by name
+      const existingVendors = await base44.entities.Vendor.list().catch(() => []);
+      const vendorNameMap = {};
+      existingVendors.forEach(v => {
+        if (v.name) vendorNameMap[v.name.trim().toLowerCase()] = true;
+      });
+
+      const toCreate = [];
+      for (const row of validRows) {
+        const vendorName = (row.data.name || '').trim().toLowerCase();
+        if (vendorName && vendorNameMap[vendorName]) {
+          duplicates++;
+        } else {
+          toCreate.push(row.data);
+          if (vendorName) vendorNameMap[vendorName] = true;
+        }
+      }
+      for (let i = 0; i < toCreate.length; i += BATCH) {
+        const batch = toCreate.slice(i, i + BATCH);
+        await base44.entities.Vendor.bulkCreate(batch);
+        success += batch.length;
+        await sleep(300);
+      }
     } else {
       // Standard import with dupCheck
       const toCreate = [];
@@ -526,12 +563,25 @@ export default function CSVImport() {
                 <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFile} />
               </div>
 
+              <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-xs space-y-2">
+                <p className="font-medium text-blue-900">📋 Instructions:</p>
+                {entityType === 'vendor' ? (
+                  <>
+                    <p className="text-blue-800"><strong>Important:</strong> If your file has extra header rows above the column names, delete them first. Keep only the main column header row.</p>
+                    <p className="text-blue-800">Example: If you see "Sl No." as the first row, delete it before uploading.</p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-blue-800">Dates: DD/MM/YYYY, YYYY-MM-DD, or Tally (1-Apr-25)</p>
+                    <p className="text-blue-800">Amounts: ₹1,23,456 or 123456</p>
+                  </>
+                )}
+              </div>
+
               <div className="p-3 rounded-lg bg-muted/40 text-xs space-y-2">
                 <p className="font-medium">Expected columns for {config.label}:</p>
                 <p className="text-muted-foreground">{config.fields.join(', ')}</p>
                 <p className="text-muted-foreground">Required: <span className="text-red-600">{config.required.join(', ')}</span></p>
-                <p className="text-muted-foreground">Dates: DD/MM/YYYY, YYYY-MM-DD, or Tally (1-Apr-25)</p>
-                <p className="text-muted-foreground">Amounts: ₹1,23,456 or 123456</p>
                 <Button onClick={downloadSampleCSV} variant="outline" size="sm" className="w-full gap-2 mt-2">
                   <Download className="w-3.5 h-3.5" /> Download Sample CSV
                 </Button>
