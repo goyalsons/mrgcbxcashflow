@@ -330,18 +330,18 @@ export default function CSVImport() {
 
     const isXLSX = f.name.match(/\.xlsx?$/i);
 
-    const processRows = (rows) => {
-      // Debug: log raw keys from first row so we can diagnose mapping issues
-      if (rows.length > 0) {
-        console.log('[CSVImport] Raw keys from first row:', Object.keys(rows[0]));
-        console.log('[CSVImport] First row values:', rows[0]);
-      }
+    const processRows = (rows, debugInfo = null) => {
       const transformed = rows.map(row => {
         const data = config.transform(row);
         const missing = config.required.filter(k => !data[k]);
         return { raw: row, data, missing, valid: missing.length === 0 };
       });
-      setPreview({ rows: transformed, rawKeys: rows.length > 0 ? Object.keys(rows[0]) : [] });
+      setPreview({
+        rows: transformed,
+        rawKeys: rows.length > 0 ? Object.keys(rows[0]) : [],
+        firstRow: rows.length > 0 ? rows[0] : {},
+        debugInfo,
+      });
     };
 
     if (isXLSX) {
@@ -353,59 +353,73 @@ export default function CSVImport() {
         if (entityType === 'tally_receivable' || entityType === 'tally_payable') {
           const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-          // Find header row: must contain both a date-like and party-like cell
+          // Find header row: look for "Party" anywhere in a row
           let headerIdx = rawRows.findIndex(r =>
-            r.some(c => /^date$/i.test(String(c).trim())) && r.some(c => /party/i.test(String(c)))
+            r.some(c => /party/i.test(String(c).trim()))
           );
-          // Fallback: any row with "party" somewhere
-          if (headerIdx < 0) {
-            headerIdx = rawRows.findIndex(r => r.some(c => /party/i.test(String(c))));
-          }
           if (headerIdx < 0) headerIdx = 0;
 
-          // Build headers — use normKey to normalize
           const rawHeaders = rawRows[headerIdx].map(h => String(h ?? '').trim());
-          const headers = rawHeaders.map(h => normKey(h));
 
-          // Check if next row is a sub-header (e.g. "Amount" under "Pending")
-          // A sub-header row has NO date-like or party-like values and has some short text labels
+          // Check next row for sub-headers (e.g. "Amount" under "Pending")
           const nextRow = rawRows[headerIdx + 1] || [];
-          const isSubHeader = nextRow.length > 0 &&
-            !nextRow.some(c => /party/i.test(String(c))) &&
-            nextRow.some(c => { const s = String(c).trim(); return s.length > 0 && s.length < 20 && isNaN(Number(s.replace(/,/g, ''))); });
+          const nextRowStrings = nextRow.map(c => String(c ?? '').trim());
+          const isSubHeader = nextRowStrings.some(s =>
+            s.length > 0 && s.length < 30 &&
+            isNaN(Number(s.replace(/[,₹\s]/g, ''))) &&
+            !/party/i.test(s) && !/date/i.test(s)
+          );
+
+          // Build merged headers: if sub-header has content for a column, merge it
+          const mergedHeaders = rawHeaders.map((h, i) => {
+            const sub = nextRowStrings[i] || '';
+            if (isSubHeader && sub && h) return normKey(`${h} ${sub}`);
+            if (isSubHeader && sub && !h) return normKey(sub);
+            return normKey(h);
+          });
 
           const dataStart = isSubHeader ? headerIdx + 2 : headerIdx + 1;
 
-          // For "Pending" column, if sub-header says "Amount", merge into "pending_amount"
-          const mergedHeaders = [...headers];
-          if (isSubHeader) {
-            nextRow.forEach((sub, i) => {
-              const s = String(sub ?? '').trim();
-              if (s && mergedHeaders[i]) {
-                mergedHeaders[i] = normKey(`${rawHeaders[i]} ${s}`);
+          const convertCell = (val, h) => {
+            if (val instanceof Date) return val.toISOString().slice(0, 10);
+            if (typeof val === 'number') {
+              // Could be Excel serial date (large number ~40000+) or a plain number
+              if (val > 25000 && val < 60000 && (h.includes('date') || h.includes('due') || h === 'date')) {
+                const excelEpoch = new Date(1899, 11, 30);
+                const d = new Date(excelEpoch.getTime() + val * 86400000);
+                return d.toISOString().slice(0, 10);
               }
-            });
-          }
+              return String(val);
+            }
+            return String(val ?? '').trim();
+          };
 
           const rows = rawRows.slice(dataStart).map(r => {
             const row = {};
             mergedHeaders.forEach((h, i) => {
-              let val = r[i];
-              if (val instanceof Date) val = val.toISOString().slice(0, 10);
-              else if (typeof val === 'number' && h.includes('date')) {
-                // Excel serial date number
-                const excelEpoch = new Date(1899, 11, 30);
-                const d = new Date(excelEpoch.getTime() + val * 86400000);
-                val = d.toISOString().slice(0, 10);
-              }
-              row[h] = String(val ?? '').trim();
+              row[h] = convertCell(r[i], h);
             });
             return row;
           }).filter(r => {
-            const name = r['partys_name'] || r['party_s_name'] || r['party_name'] || r['party'] || r['partys_name'] || '';
-            return name.trim().length > 0 && !/^[\d,\.]+$/.test(name.trim());
+            // Accept row if ANY key that looks like a name has a non-numeric value
+            const allVals = Object.values(r);
+            const nameVal = Object.entries(r).find(([k]) => /party|name/.test(k))?.[1] || '';
+            if (nameVal.trim().length > 0 && !/^[\d,\.₹\s]+$/.test(nameVal.trim())) return true;
+            // Fallback: at least one string value that looks like a company name
+            return allVals.some(v => v && v.trim().length > 2 && isNaN(Number(v.replace(/[,₹\s]/g, ''))) && !/^[\d\-\/]+$/.test(v.trim()));
           });
-          processRows(rows);
+
+          const debugInfo = {
+            totalRawRows: rawRows.length,
+            headerIdx,
+            rawHeaders,
+            mergedHeaders,
+            isSubHeader,
+            dataStart,
+            firstDataRow: rawRows[dataStart] || [],
+            firstMappedRow: rows[0] || {},
+          };
+          processRows(rows, debugInfo);
         } else {
           const jsonRows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
           const rows = jsonRows.map(r => {
@@ -717,9 +731,17 @@ export default function CSVImport() {
                 </div>
               </CardHeader>
               <CardContent className="overflow-auto max-h-[500px]">
-                {preview.rawKeys && preview.rawKeys.length > 0 && (entityType === 'tally_receivable' || entityType === 'tally_payable') && (
-                  <div className="mb-3 p-2 bg-slate-50 border border-slate-200 rounded text-xs text-slate-600">
-                    <span className="font-semibold">Detected column keys:</span> {preview.rawKeys.join(', ')}
+                {(entityType === 'tally_receivable' || entityType === 'tally_payable') && preview.debugInfo && (
+                  <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 space-y-1 font-mono">
+                    <div><span className="font-bold">Header row index:</span> {preview.debugInfo.headerIdx}</div>
+                    <div><span className="font-bold">Sub-header detected:</span> {String(preview.debugInfo.isSubHeader)}</div>
+                    <div><span className="font-bold">Data starts at row:</span> {preview.debugInfo.dataStart}</div>
+                    <div><span className="font-bold">Raw headers:</span> {preview.debugInfo.rawHeaders.join(' | ')}</div>
+                    <div><span className="font-bold">Merged keys:</span> {preview.debugInfo.mergedHeaders.join(' | ')}</div>
+                    <div><span className="font-bold">Rows after filter:</span> {preview.rows.length}</div>
+                    {preview.debugInfo.firstMappedRow && Object.keys(preview.debugInfo.firstMappedRow).length > 0 && (
+                      <div><span className="font-bold">First row values:</span> {JSON.stringify(preview.debugInfo.firstMappedRow)}</div>
+                    )}
                   </div>
                 )}
                 <Table>
