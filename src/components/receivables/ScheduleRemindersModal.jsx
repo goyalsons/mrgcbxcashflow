@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, AlertCircle, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -61,6 +61,12 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     },
   });
 
+  // Fetch existing active scheduled reminders to detect duplicates
+  const { data: existingReminders = [] } = useQuery({
+    queryKey: ['scheduledReminders'],
+    queryFn: () => base44.entities.ScheduledReminder.list(),
+  });
+
   // Extract unique customers from selected invoices
   const selectedCustomers = useMemo(() => {
     if (!invoices || invoices.length === 0) return [];
@@ -84,6 +90,21 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     return Array.from(customerMap.values());
   }, [invoices, allCustomers]);
 
+  // Detect customers who already have an active scheduled reminder campaign
+  const duplicateCustomerIds = useMemo(() => {
+    const activeReminders = existingReminders.filter(r => r.status === 'pending' || r.status === 'active' || !r.status);
+    const activeDebtorIds = new Set(activeReminders.map(r => r.debtor_id).filter(Boolean));
+    return new Set(selectedCustomers.filter(c => activeDebtorIds.has(c.id)).map(c => c.id));
+  }, [selectedCustomers, existingReminders]);
+
+  const duplicateCustomers = useMemo(() =>
+    selectedCustomers.filter(c => duplicateCustomerIds.has(c.id)),
+  [selectedCustomers, duplicateCustomerIds]);
+
+  const schedulableCustomers = useMemo(() =>
+    selectedCustomers.filter(c => !duplicateCustomerIds.has(c.id)),
+  [selectedCustomers, duplicateCustomerIds]);
+
   // Handlers
   const toggleDay = (day) => {
     setSelectedDays(prev => {
@@ -103,8 +124,8 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
 
   const handleSchedule = async () => {
     // Validate
-    if (selectedCustomers.length === 0) {
-      toast({ title: 'No customers to schedule', variant: 'destructive' });
+    if (schedulableCustomers.length === 0) {
+      toast({ title: 'All selected customers already have active reminder campaigns', variant: 'destructive' });
       return;
     }
 
@@ -131,7 +152,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     setLoading(true);
     try {
       const response = await base44.functions.invoke('scheduleRemindersForDebtors', {
-        debtorIds: selectedCustomers.map(c => c.id),
+        debtorIds: schedulableCustomers.map(c => c.id),
         frequencyType,
         selectedDays: Array.from(selectedDays),
         selectedMonthlyDays: Array.from(selectedMonthlyDays),
@@ -146,7 +167,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
 
       toast({
         title: 'Reminders scheduled!',
-        description: `${response.data.totalCreated} reminder(s) created for ${selectedCustomers.length} customer(s).`,
+        description: `${response.data.totalCreated} reminder(s) created for ${schedulableCustomers.length} customer(s).`,
       });
 
       queryClient.invalidateQueries({ queryKey: ['scheduledReminders'] });
@@ -167,22 +188,36 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
 
         <div className="space-y-5">
           {/* Selected Debtors */}
-          <div>
+          <div className="space-y-2">
             <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               Selected Customers ({selectedCustomers.length})
             </Label>
             {selectedCustomers.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 mt-2 p-2 bg-muted/40 rounded-lg border">
+              <div className="flex flex-wrap gap-1.5 p-2 bg-muted/40 rounded-lg border">
                 {selectedCustomers.map(c => (
-                  <Badge key={c.id} variant="secondary" className="text-xs">
+                  <Badge
+                    key={c.id}
+                    variant="secondary"
+                    className={`text-xs ${duplicateCustomerIds.has(c.id) ? 'bg-amber-100 text-amber-800 border-amber-300 line-through opacity-60' : ''}`}
+                  >
                     {c.name}
+                    {duplicateCustomerIds.has(c.id) && ' (active campaign)'}
                   </Badge>
                 ))}
               </div>
             ) : (
-              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-2 text-sm">
                 <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
                 <span className="text-red-700">No customers found. Please select invoices first.</span>
+              </div>
+            )}
+            {duplicateCustomers.length > 0 && (
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span className="text-amber-800">
+                  <strong>{duplicateCustomers.length}</strong> customer{duplicateCustomers.length > 1 ? 's' : ''} already {duplicateCustomers.length > 1 ? 'have' : 'has'} an active reminder campaign and will be skipped.
+                  {schedulableCustomers.length === 0 && ' No new reminders will be created.'}
+                </span>
               </div>
             )}
           </div>
@@ -335,7 +370,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
               <strong>Schedule:</strong> {frequencyType === 'daily' ? 'Daily' : frequencyType === 'weekly' ? `Every ${Array.from(selectedDays).join(', ')}` : `Dates: ${Array.from(selectedMonthlyDays).sort((a, b) => a - b).join(', ')}`}
             </p>
             <p><strong>Starting:</strong> {startDate} at {sendTime}</p>
-            <p><strong>Customers:</strong> {selectedCustomers.length}</p>
+            <p><strong>Customers:</strong> {schedulableCustomers.length}{duplicateCustomers.length > 0 ? ` (${duplicateCustomers.length} skipped — active campaign)` : ''}</p>
           </div>
         </div>
 
@@ -343,7 +378,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
           <Button variant="outline" onClick={onClose}>Cancel</Button>
           <Button
             onClick={handleSchedule}
-            disabled={loading || selectedCustomers.length === 0}
+            disabled={loading || schedulableCustomers.length === 0}
           >
             {loading ? 'Scheduling...' : 'Schedule Reminders'}
           </Button>
