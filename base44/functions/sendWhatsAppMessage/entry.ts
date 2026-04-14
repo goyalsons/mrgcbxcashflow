@@ -35,13 +35,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'templateName and to are required' }, { status: 400 });
     }
 
-    const body = {
+    const payload = {
       templateName,
       language,
       to: String(to).replace(/^\+/, ''),
     };
-    if (templateVariables.length > 0) body.templateVariables = templateVariables;
-    if (fileUrl) body.fileUrl = fileUrl;
+    if (templateVariables.length > 0) payload.templateVariables = templateVariables;
+    if (fileUrl) payload.fileUrl = fileUrl;
 
     const res = await fetch(`${REDLAVA_BASE_URL}/sendMessage`, {
       method: 'POST',
@@ -50,12 +50,15 @@ Deno.serve(async (req) => {
         'x-phone-id': phoneId,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(payload),
     });
 
-    const data = await res.json();
-    if (res.ok && data.status === 'success') {
-      return Response.json({ success: true, messageId: data.messageId, timestamp: data.timestamp });
+    let data = {};
+    try { data = await res.json(); } catch {}
+
+    // RedLava returns 200 on success — treat any 2xx as success
+    if (res.ok) {
+      return Response.json({ success: true, messageId: data.messageId || data.id, timestamp: data.timestamp });
     } else {
       return Response.json({ success: false, error: data?.message || data?.error || `RedLava error (${res.status})` });
     }
