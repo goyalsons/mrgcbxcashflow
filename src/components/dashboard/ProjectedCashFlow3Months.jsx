@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Area, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { startOfMonth, endOfMonth, addMonths, format } from 'date-fns';
 import { formatINR } from '@/lib/utils/currency';
@@ -33,7 +33,12 @@ export default function ProjectedCashFlow3Months({ receivables = [], payables = 
       ].reduce((s, v) => s + v, 0);
 
       return { label, inflow, outflow, net: inflow - outflow };
-    });
+    }).reduce((acc, month) => {
+      const prev = acc[acc.length - 1];
+      const closing = (prev?.closing ?? 0) + month.net;
+      acc.push({ ...month, closing });
+      return acc;
+    }, []);
   }, [receivables, payables, expenses]);
 
   const fmt = (v) => `₹${(v / 100000).toFixed(1)}L`;
@@ -46,7 +51,7 @@ export default function ProjectedCashFlow3Months({ receivables = [], payables = 
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
-          <AreaChart data={data} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(var(--accent))" stopOpacity={0.3} />
@@ -72,7 +77,8 @@ export default function ProjectedCashFlow3Months({ receivables = [], payables = 
             <Area type="monotone" dataKey="inflow" name="Inflow" stroke="hsl(var(--accent))" fill="url(#inflowGrad)" strokeWidth={2} />
             <Area type="monotone" dataKey="outflow" name="Outflow" stroke="hsl(var(--destructive))" fill="url(#outflowGrad)" strokeWidth={2} />
             <Area type="monotone" dataKey="net" name="Net" stroke="hsl(var(--primary))" fill="url(#netGrad)" strokeWidth={2} />
-          </AreaChart>
+            <Line type="monotone" dataKey="closing" name="Closing Balance" stroke="#15803d" strokeWidth={2} dot={false} />
+          </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { addDays, startOfDay, format } from 'date-fns';
 import { formatINR } from '@/lib/utils/currency';
@@ -33,7 +33,12 @@ export default function ProjectedCashFlow4Weeks({ receivables = [], payables = [
       ].reduce((s, v) => s + v, 0);
 
       return { label, inflow, outflow, net: inflow - outflow };
-    });
+    }).reduce((acc, week) => {
+      const prev = acc[acc.length - 1];
+      const closing = (prev?.closing ?? 0) + week.net;
+      acc.push({ ...week, closing });
+      return acc;
+    }, []);
   }, [receivables, payables, expenses]);
 
   const fmt = (v) => `₹${(v / 1000).toFixed(0)}k`;
@@ -46,7 +51,7 @@ export default function ProjectedCashFlow4Weeks({ receivables = [], payables = [
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
+          <ComposedChart data={data} margin={{ top: 4, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis dataKey="label" tick={{ fontSize: 11 }} />
             <YAxis tickFormatter={fmt} tick={{ fontSize: 11 }} width={48} />
@@ -58,7 +63,8 @@ export default function ProjectedCashFlow4Weeks({ receivables = [], payables = [
             <Bar dataKey="inflow" name="Inflow" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />
             <Bar dataKey="outflow" name="Outflow" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
             <Bar dataKey="net" name="Net" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-          </BarChart>
+            <Line type="monotone" dataKey="closing" name="Closing Balance" stroke="#15803d" strokeWidth={2} dot={false} />
+          </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
     </Card>

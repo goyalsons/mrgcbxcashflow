@@ -39,8 +39,6 @@ const WeeklyTooltip = ({ active, payload, label }) => {
       <div className="space-y-0.5">
         <p className="font-medium text-emerald-700 mb-1">Inflows</p>
         <div className="flex justify-between"><span className="text-emerald-600">Receivables</span><span className="font-medium">{INR_FMT(data.inflowReceivables || 0)}</span></div>
-        <div className="flex justify-between"><span className="text-emerald-500">Invoices</span><span className="font-medium">{INR_FMT(data.inflowInvoices || 0)}</span></div>
-        <div className="flex justify-between"><span className="text-teal-600">Coll. Targets</span><span className="font-medium">{INR_FMT(data.inflowTargets || 0)}</span></div>
       </div>
       <div className="border-t my-1 pt-1 space-y-0.5">
         <p className="font-medium text-red-700 mb-1">Outflows</p>
