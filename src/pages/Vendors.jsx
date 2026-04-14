@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload, Eye } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
@@ -18,6 +18,8 @@ export default function Vendors() {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
   const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -45,15 +47,41 @@ export default function Vendors() {
   };
 
   const filtered = useMemo(() => {
-    if (!search) return vendors;
-    const q = search.toLowerCase();
-    return vendors.filter(v =>
-      (v.name || '').toLowerCase().includes(q) ||
-      (v.email || '').toLowerCase().includes(q) ||
-      (v.phone || '').toLowerCase().includes(q) ||
-      (v.contact_person || '').toLowerCase().includes(q)
-    );
-  }, [vendors, search]);
+    let result = vendors;
+    if (search) {
+      const q = search.toLowerCase();
+      result = vendors.filter(v =>
+        (v.name || '').toLowerCase().includes(q) ||
+        (v.email || '').toLowerCase().includes(q) ||
+        (v.phone || '').toLowerCase().includes(q) ||
+        (v.contact_person || '').toLowerCase().includes(q)
+      );
+    }
+    result.sort((a, b) => {
+      const aVal = String(a[sortBy] || '').toLowerCase();
+      const bVal = String(b[sortBy] || '').toLowerCase();
+      return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    return result;
+  }, [vendors, search, sortBy, sortDir]);
+
+  const toggleSort = (col) => {
+    if (sortBy === col) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(col); setSortDir('asc'); }
+  };
+
+  const SortHeader = ({ label, col }) => (
+    <TableHead className="cursor-pointer hover:bg-muted/50 select-none" onClick={() => toggleSort(col)}>
+      <div className="flex items-center gap-1.5 font-semibold">
+        {label}
+        {sortBy === col ? (
+          sortDir === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+        ) : (
+          <ArrowUpDown className="w-4 h-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-6">
@@ -65,11 +93,11 @@ export default function Vendors() {
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search vendors..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
+        <Input placeholder="Search vendors..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 border-primary/20 focus:border-primary" />
       </div>
 
-      <Card>
+      <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-slate-50/50">
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
         ) : vendors.length === 0 ? (
@@ -79,34 +107,34 @@ export default function Vendors() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>GSTIN</TableHead>
+              <TableHeader className="bg-slate-50/80 border-b-2 border-slate-200">
+                <TableRow className="hover:bg-slate-50/80">
+                  <SortHeader label="Company" col="name" />
+                  <SortHeader label="Contact Person" col="contact_person" />
+                  <SortHeader label="Email" col="email" />
+                  <SortHeader label="Phone" col="phone" />
+                  <SortHeader label="Address" col="address" />
+                  <SortHeader label="State" col="state" />
+                  <SortHeader label="Country" col="country" />
+                  <SortHeader label="GSTIN" col="gstin" />
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((v) => (
-                  <TableRow key={v.id} className="group">
-                    <TableCell className="font-medium">{v.name}</TableCell>
-                    <TableCell>{v.contact_person || '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{v.email || '-'}</TableCell>
-                    <TableCell>{v.phone || '-'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{v.address || '-'}</TableCell>
-                    <TableCell>{v.state || '-'}</TableCell>
-                    <TableCell>{v.country || '-'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{v.gstin || '-'}</TableCell>
+                  <TableRow key={v.id} className="group hover:bg-primary/5 border-slate-200/50">
+                    <TableCell className="font-semibold text-slate-900">{v.name}</TableCell>
+                    <TableCell className="text-slate-700">{v.contact_person || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-600">{v.email || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{v.phone || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-xs text-slate-600 max-w-[150px] truncate">{v.address || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{v.state || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{v.country || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-xs text-slate-600 font-mono">{v.gstin || <span className="text-slate-400">—</span>}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 hover:bg-primary/10"><MoreHorizontal className="w-4 h-4 text-primary" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => navigate(`/vendor/${v.id}`)}><Eye className="w-4 h-4 mr-2" /> View Profile</DropdownMenuItem>

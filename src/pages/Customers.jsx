@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload, UserCheck } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, UserCheck, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,6 +26,8 @@ export default function Customers() {
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [assigningManager, setAssigningManager] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [sortBy, setSortBy] = useState('name');
+  const [sortDir, setSortDir] = useState('asc');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -80,15 +82,48 @@ export default function Customers() {
   };
 
   const filtered = useMemo(() => {
-    if (!search) return customers;
-    const q = search.toLowerCase();
-    return customers.filter(c =>
-      (c.name || '').toLowerCase().includes(q) ||
-      (c.email || '').toLowerCase().includes(q) ||
-      (c.phone || '').toLowerCase().includes(q) ||
-      (c.contact_person || '').toLowerCase().includes(q)
-    );
-  }, [customers, search]);
+    let result = customers;
+    if (search) {
+      const q = search.toLowerCase();
+      result = customers.filter(c =>
+        (c.name || '').toLowerCase().includes(q) ||
+        (c.email || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.contact_person || '').toLowerCase().includes(q)
+      );
+    }
+    result.sort((a, b) => {
+      let aVal = a[sortBy];
+      let bVal = b[sortBy];
+      if (sortBy === 'credit_limit') {
+        aVal = Number(aVal) || 0;
+        bVal = Number(bVal) || 0;
+        return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+      }
+      aVal = String(aVal || '').toLowerCase();
+      bVal = String(bVal || '').toLowerCase();
+      return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+    });
+    return result;
+  }, [customers, search, sortBy, sortDir]);
+
+  const toggleSort = (col) => {
+    if (sortBy === col) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    else { setSortBy(col); setSortDir('asc'); }
+  };
+
+  const SortHeader = ({ label, col }) => (
+    <TableHead className="cursor-pointer hover:bg-muted/50 select-none" onClick={() => toggleSort(col)}>
+      <div className="flex items-center gap-1.5 font-semibold">
+        {label}
+        {sortBy === col ? (
+          sortDir === 'asc' ? <ArrowUp className="w-4 h-4" /> : <ArrowDown className="w-4 h-4" />
+        ) : (
+          <ArrowUpDown className="w-4 h-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  );
 
   return (
     <div className="space-y-6">
@@ -99,22 +134,22 @@ export default function Customers() {
       </PageHeader>
 
       {selected.size > 0 && (
-        <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-lg px-4 py-2">
-          <span className="text-sm font-medium text-primary">{selected.size} customer{selected.size > 1 ? 's' : ''} selected</span>
-          <Button size="sm" variant="outline" className="gap-1.5 ml-auto" onClick={() => setShowAssignModal(true)}>
+        <div className="flex items-center gap-3 bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/30 rounded-lg px-4 py-3">
+          <span className="text-sm font-semibold text-accent">{selected.size} customer{selected.size > 1 ? 's' : ''} selected</span>
+          <Button size="sm" className="gap-1.5 ml-auto bg-accent hover:bg-accent/90 text-white" onClick={() => setShowAssignModal(true)}>
             <UserCheck className="w-4 h-4" /> Assign Account Manager
           </Button>
-          <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
+          <button onClick={() => setSelected(new Set())} className="text-xs text-accent/70 hover:text-accent underline">Clear</button>
         </div>
       )}
 
       {/* Search */}
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
+        <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 border-primary/20 focus:border-primary" />
       </div>
 
-      <Card>
+      <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-slate-50/50">
         {isLoading ? (
           <div className="p-12 text-center text-muted-foreground">Loading...</div>
         ) : customers.length === 0 ? (
@@ -124,51 +159,51 @@ export default function Customers() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
+              <TableHeader className="bg-slate-50/80 border-b-2 border-slate-200">
+                <TableRow className="hover:bg-slate-50/80">
                   <TableHead className="w-10">
                     <Checkbox
                       checked={filtered.length > 0 && selected.size === filtered.length}
                       onCheckedChange={toggleAll}
                     />
                   </TableHead>
-                  <TableHead>Company</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Address</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Country</TableHead>
-                  <TableHead>GSTIN</TableHead>
-                  <TableHead>Credit Limit</TableHead>
-                  <TableHead>Account Manager</TableHead>
+                  <SortHeader label="Company" col="name" />
+                  <SortHeader label="Contact Person" col="contact_person" />
+                  <SortHeader label="Email" col="email" />
+                  <SortHeader label="Phone" col="phone" />
+                  <SortHeader label="Address" col="address" />
+                  <SortHeader label="State" col="state" />
+                  <SortHeader label="Country" col="country" />
+                  <SortHeader label="GSTIN" col="gstin" />
+                  <SortHeader label="Credit Limit" col="credit_limit" />
+                  <SortHeader label="Account Manager" col="account_manager_name" />
                   <TableHead className="w-12"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map((c) => (
-                  <TableRow key={c.id} className="group">
+                  <TableRow key={c.id} className="group hover:bg-primary/5 border-slate-200/50">
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggleOne(c.id)} />
                     </TableCell>
-                    <TableCell className="font-medium">{c.name}</TableCell>
-                    <TableCell>{c.contact_person || '-'}</TableCell>
-                    <TableCell className="text-muted-foreground">{c.email || '-'}</TableCell>
-                    <TableCell>{c.phone || '-'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground max-w-[150px] truncate">{c.address || '-'}</TableCell>
-                    <TableCell>{c.state || '-'}</TableCell>
-                    <TableCell>{c.country || '-'}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground font-mono">{c.gstin || '-'}</TableCell>
-                    <TableCell className="text-sm">{c.credit_limit ? `₹${Number(c.credit_limit).toLocaleString('en-IN')}` : <span className="text-muted-foreground text-xs">No limit</span>}</TableCell>
+                    <TableCell className="font-semibold text-slate-900">{c.name}</TableCell>
+                    <TableCell className="text-slate-700">{c.contact_person || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-600">{c.email || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{c.phone || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-xs text-slate-600 max-w-[150px] truncate">{c.address || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{c.state || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-slate-700">{c.country || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-xs text-slate-600 font-mono">{c.gstin || <span className="text-slate-400">—</span>}</TableCell>
+                    <TableCell className="text-sm font-medium text-slate-900">{c.credit_limit ? `₹${Number(c.credit_limit).toLocaleString('en-IN')}` : <span className="text-slate-400 text-xs">No limit</span>}</TableCell>
                     <TableCell>
                       {c.account_manager_name
-                        ? <Badge variant="secondary" className="text-xs">{c.account_manager_name}</Badge>
-                        : <span className="text-muted-foreground text-xs">—</span>}
+                        ? <Badge variant="secondary" className="text-xs bg-accent/10 text-accent hover:bg-accent/20">{c.account_manager_name}</Badge>
+                        : <span className="text-slate-400 text-xs">—</span>}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100"><MoreHorizontal className="w-4 h-4" /></Button>
+                          <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 hover:bg-primary/10"><MoreHorizontal className="w-4 h-4 text-primary" /></Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => { setEditing(c); setShowForm(true); }}><Pencil className="w-4 h-4 mr-2" /> Edit</DropdownMenuItem>
