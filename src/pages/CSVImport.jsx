@@ -185,7 +185,14 @@ const ENTITY_CONFIGS = {
     label: 'Vendors',
     entity: 'Vendor',
     fields: ['Sl No.', 'Particulars', 'Address', 'State', 'Country', 'Registration Type', 'GSTIN/UIN', 'PAN/IT No.'],
-    required: ['Particulars'],
+    required: ['name'],
+    csvColumnToEntityField: {
+      'Particulars': 'name',
+      'Address': 'address',
+      'State': 'state',
+      'Country': 'country',
+      'GSTIN/UIN': 'gstin',
+    },
     sampleData: [
       ['1', 'ABC Suppliers Pvt Ltd', '100 Industrial Area, Chennai', 'Tamil Nadu', 'India', '', '27DDDDD3333D4Z8', ''],
       ['2', 'Cloud Services Inc', '200 Tech Hub, Hyderabad', 'Telangana', 'India', '', '27EEEEE4444E5Z9', ''],
@@ -636,11 +643,14 @@ export default function CSVImport() {
                               </div>
                           }
                         </TableCell>
-                        {config.fields.map(f => (
-                          <TableCell key={f} className="text-xs max-w-[120px] truncate">
-                            {String(row.data[f] ?? '')}
-                          </TableCell>
-                        ))}
+                        {config.fields.map(f => {
+                          const entityField = config.csvColumnToEntityField?.[f] || f.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                          return (
+                            <TableCell key={f} className="text-xs max-w-[120px] truncate">
+                              {String(row.data[entityField] ?? row.raw[f.toLowerCase()] ?? '')}
+                            </TableCell>
+                          );
+                        })}
                       </TableRow>
                     ))}
                   </TableBody>
