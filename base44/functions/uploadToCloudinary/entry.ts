@@ -57,17 +57,12 @@ Deno.serve(async (req) => {
       .map(b => b.toString(16).padStart(2, '0'))
       .join('');
 
-    // Determine resource type based on file type
-    const mimeType = file.type || '';
-    const resourceType = mimeType.startsWith('image/') ? 'image' : 'raw';
-
     const uploadFormData = new FormData();
     uploadFormData.append('file', file);
     uploadFormData.append('folder', folder);
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
     uploadFormData.append('signature', signature);
-    uploadFormData.append('resource_type', resourceType);
 
     const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
     const response = await fetch(uploadUrl, { method: 'POST', body: uploadFormData });
