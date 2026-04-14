@@ -292,7 +292,7 @@ const PAGE_MAP = {
   bank_account: '/bank-accounts',
   customer: '/customers',
   vendor: '/vendors',
-  tally_receivable: '/receivables2',
+  tally_receivable: '/receivables',
   tally_payable: '/payables',
 };
 
@@ -598,9 +598,25 @@ export default function CSVImport() {
       </div>
       <PageHeader title="Bulk CSV Import" subtitle="Import data from CSV files with Indian format support (DD/MM/YYYY, ₹ currency)" />
 
+      {results && (
+        <Card className="bg-emerald-50 border-emerald-200">
+          <CardContent className="p-4 space-y-2">
+            <div className="flex items-center gap-2 text-emerald-700 font-semibold"><CheckCircle className="w-5 h-5" /> Import Complete</div>
+            <div className="text-sm space-y-1">
+              {results.success > 0 && <div className="text-emerald-700">✓ {results.success} new records created</div>}
+              {results.updated > 0 && <div className="text-blue-700">↻ {results.updated} records updated</div>}
+              {results.duplicates > 0 && <div className="text-amber-700">↪ {results.duplicates} duplicates skipped</div>}
+            </div>
+            <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => navigate(PAGE_MAP[entityType])}>
+              View {config.label}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Config panel */}
-        <div className="space-y-4">
+        <div className={`space-y-4 ${importing ? 'opacity-50 pointer-events-none' : ''}`}>
           <Card>
             <CardHeader><CardTitle className="text-base">Import Settings</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -663,26 +679,17 @@ export default function CSVImport() {
               </div>
             </CardContent>
           </Card>
-
-          {results && (
-            <Card className="bg-emerald-50 border-emerald-200">
-              <CardContent className="p-4 space-y-2">
-                <div className="flex items-center gap-2 text-emerald-700 font-semibold"><CheckCircle className="w-5 h-5" /> Import Complete</div>
-                <div className="text-sm space-y-1">
-                  {results.success > 0 && <div className="text-emerald-700">✓ {results.success} new records created</div>}
-                  {results.updated > 0 && <div className="text-blue-700">↻ {results.updated} records updated</div>}
-                  {results.duplicates > 0 && <div className="text-amber-700">↪ {results.duplicates} duplicates skipped</div>}
-                </div>
-                <Button size="sm" variant="outline" className="w-full mt-2" onClick={() => navigate(PAGE_MAP[entityType])}>
-                  View {config.label}
-                </Button>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         {/* Preview panel */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 relative">
+          {importing && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-10">
+              <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mb-3"></div>
+              <p className="text-sm font-medium text-foreground">Importing data...</p>
+              <p className="text-xs text-muted-foreground mt-1">Please do not close this page</p>
+            </div>
+          )}
           {!preview ? (
             <Card className="h-full flex items-center justify-center min-h-[300px]">
               <CardContent className="text-center py-16">
