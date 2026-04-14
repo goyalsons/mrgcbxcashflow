@@ -236,19 +236,19 @@ const ENTITY_CONFIGS = {
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
     ],
     transform: (row) => {
-      // Try all possible normKey variants for party name
+      // "Party's Name" → normKey → partys_name
       const debtorName = row['partys_name'] || row['party_s_name'] || row['partys_name_'] || row['party_name'] || row['parties_name'] || row['party'] || '';
-      // Try all possible normKey variants for amount (Pending / Pending Amount)
+      // "Pending Amount" → normKey → pending_amount. Also try plain "pending" for sub-header merged variants.
       const amount = parseIndianAmount(
-        row['pending_amount'] || row['pending_amount_'] || row['pending'] ||
-        row['pendingamount'] || row['amount'] || '0'
+        row['pending_amount'] || row['pending_amount_'] || row['pendingamount'] ||
+        row['pending'] || row['amount'] || '0'
       );
-      // Due on
+      // Due on → normKey → due_on
       const dueDate = parseIndianDate(row['due_on'] || row['dueon'] || row['due_date'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
-      // Ref. No. → normKey → ref_no or refno or ref_no_
+      // Ref. No. → normKey → ref_no
       const invoiceNumber = row['ref_no'] || row['ref_no_'] || row['refno'] || row['ref'] || row['invoice_number'] || '';
-      // Overdue by (days)
+      // Overdue → normKey → overdue or overdue_by_days
       const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue_by'] || row['overdue'] || row['overdue_days'] || '';
       const overdueDaysNum = parseInt(overdueDays) || 0;
       return {
