@@ -125,9 +125,8 @@ function TemplateEditor({ template, onClose, onSave }) {
                         onClick={() => insertPlaceholder(placeholder)}
                         title="Insert into body"
                       >
-                        {placeholder}
+                        {placeholder} - {`{{${label}}}`}
                       </button>
-                      {label && <span className="font-mono text-xs text-muted-foreground bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded shrink-0">{label}</span>}
                       <span className="text-xs text-muted-foreground">{description}</span>
                     </div>
                   ))}
