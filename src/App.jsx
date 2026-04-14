@@ -18,7 +18,7 @@ import AIInsights from '@/pages/AIInsights';
 import CSVImport from '@/pages/CSVImport';
 import Settings from '@/pages/Settings';
 import AdminPanel from '@/pages/AdminPanel';
-import AuditLogs from '@/pages/AuditLogs';
+
 import Receivables from '@/pages/Receivables';
 import Payables from '@/pages/Payables';
 import Expenses from '@/pages/Expenses';
@@ -70,7 +70,6 @@ const AuthenticatedApp = () => {
         <Route path="/csv-import" element={<ProtectedRoute user={user} featureKey="csv_import"><CSVImport /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute user={user} featureKey="settings"><Settings /></ProtectedRoute>} />
         <Route path="/admin-panel" element={<ProtectedRoute user={user} featureKey="admin_panel"><AdminPanel /></ProtectedRoute>} />
-        <Route path="/audit-logs" element={<ProtectedRoute user={user} featureKey="audit_logs"><AuditLogs /></ProtectedRoute>} />
         <Route path="/receivables" element={<ProtectedRoute user={user} featureKey="receivables"><Receivables /></ProtectedRoute>} />
         <Route path="/payables" element={<ProtectedRoute user={user} featureKey="payables"><Payables /></ProtectedRoute>} />
         <Route path="/expenses" element={<ProtectedRoute user={user} featureKey="expenses"><Expenses /></ProtectedRoute>} />
