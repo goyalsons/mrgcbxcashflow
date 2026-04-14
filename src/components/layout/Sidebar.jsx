@@ -23,7 +23,6 @@ const NAV_GROUPS = [
     label: 'Overview',
     items: [
       { key: 'dashboard', label: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
-      { key: 'notifications', label: 'Notifications', path: '/notifications', icon: 'Bell' },
       { key: 'my_collections', label: 'My Collections', path: '/my-collections', icon: 'Briefcase' },
     ],
   },
@@ -73,14 +72,6 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
   const location = useLocation();
   const role = user?.role || 'user';
   
-  const { data: notifications = [] } = useQuery({
-    queryKey: ['notifications'],
-    queryFn: () => base44.entities.Notification.list(),
-    refetchInterval: 30000,
-  });
-  
-  const unreadCount = notifications.filter(n => !n.is_read).length;
-
   return (
     <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50
       ${collapsed ? 'md:w-[68px]' : 'md:w-60'}
@@ -121,8 +112,6 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
                      ? location.pathname === '/'
                      : location.pathname.startsWith(item.path);
 
-                   const showBadge = item.key === 'notifications' && unreadCount > 0;
-
                    return (
                      <Link
                        key={item.key}
@@ -138,11 +127,6 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
                      >
                        {Icon && <Icon className="w-[16px] h-[16px] flex-shrink-0" />}
                        {!collapsed && <span className="truncate text-[13px]">{item.label}</span>}
-                       {showBadge && (
-                         <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                           {unreadCount > 99 ? '99+' : unreadCount}
-                         </span>
-                       )}
                      </Link>
                    );
                  })}

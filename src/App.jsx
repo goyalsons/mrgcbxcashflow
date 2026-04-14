@@ -25,7 +25,6 @@ import Expenses from '@/pages/Expenses';
 import BankAccounts from '@/pages/BankAccounts';
 import Customers from '@/pages/Customers';
 import Vendors from '@/pages/Vendors';
-import Notifications from '@/pages/Notifications';
 
 import RecurringExpenses from '@/pages/RecurringExpenses';
 import CashFlowSimulator from '@/pages/CashFlowSimulator';
@@ -78,7 +77,6 @@ const AuthenticatedApp = () => {
         <Route path="/customers" element={<ProtectedRoute user={user} featureKey="customers"><Customers /></ProtectedRoute>} />
         <Route path="/vendors" element={<ProtectedRoute user={user} featureKey="vendors"><Vendors /></ProtectedRoute>} />
 
-        <Route path="/notifications" element={<Notifications />} />
         <Route path="/cash-flow-simulator" element={<CashFlowSimulator />} />
 
         <Route path="/vendor/:id" element={<VendorProfile />} />
