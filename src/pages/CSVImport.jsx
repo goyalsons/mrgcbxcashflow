@@ -388,7 +388,7 @@ export default function CSVImport() {
     setImporting(true);
     const validRows = preview.rows.filter(r => r.valid);
     let success = 0, updated = 0, duplicates = 0;
-    const BATCH = 15;
+    const BATCH = 10;
 
     if (entityType === 'tally_payable') {
       // Upsert logic for Tally Payables: match on bill_number
@@ -401,13 +401,13 @@ export default function CSVImport() {
       for (const row of validRows) {
         const billNum = (row.data.bill_number || '').trim().toLowerCase();
         if (billNum && existingMap[billNum]) {
-          await base44.entities.Payable.update(existingMap[billNum].id, {
-            amount: row.data.amount,
-            due_date: row.data.due_date,
-            status: row.data.status,
-          });
-          updated++;
-          await sleep(150);
+           await base44.entities.Payable.update(existingMap[billNum].id, {
+             amount: row.data.amount,
+             due_date: row.data.due_date,
+             status: row.data.status,
+           });
+           updated++;
+           await sleep(500);
         } else {
           toCreate.push(row.data);
         }
@@ -416,7 +416,7 @@ export default function CSVImport() {
          const batch = toCreate.slice(i, i + BATCH);
          await base44.entities.Payable.bulkCreate(batch);
          success += batch.length;
-         await sleep(800);
+         await sleep(1200);
        }
     } else if (entityType === 'tally_receivable') {
       // Step 1: Resolve / create Debtor records by company name
@@ -430,7 +430,7 @@ export default function CSVImport() {
         if (!debtorByName[name.toLowerCase()]) {
           const created = await base44.entities.Debtor.create({ name, status: 'active' });
           debtorByName[name.toLowerCase()] = created;
-          await sleep(100);
+          await sleep(500);
         }
       }
 
@@ -467,8 +467,8 @@ export default function CSVImport() {
           await base44.entities.Invoice.create(invData);
           success++;
         }
-        await sleep(100);
-      }
+        await sleep(500);
+        }
 
     } else if (entityType === 'vendor') {
        // Vendor import with duplicate check by name (Particulars field)
@@ -492,7 +492,7 @@ export default function CSVImport() {
          const batch = toCreate.slice(i, i + BATCH);
          await base44.entities.Vendor.bulkCreate(batch);
          success += batch.length;
-         await sleep(800);
+         await sleep(1200);
        }
      } else if (entityType === 'customer') {
        // Customer import with duplicate check by company name (Particulars field)
@@ -516,7 +516,7 @@ export default function CSVImport() {
          const batch = toCreate.slice(i, i + BATCH);
          await base44.entities.Customer.bulkCreate(batch);
          success += batch.length;
-         await sleep(800);
+         await sleep(1200);
        }
      } else {
       // Standard import with dupCheck
@@ -532,7 +532,7 @@ export default function CSVImport() {
         const batch = toCreate.slice(i, i + BATCH);
         await base44.entities[config.entity].bulkCreate(batch);
         success += batch.length;
-        await sleep(800);
+        await sleep(1200);
       }
     }
 
