@@ -1,5 +1,39 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
+async function sendViaGmail(base44, to, subject, body) {
+  const conn = await base44.asServiceRole.connectors.getConnection('gmail');
+  if (!conn || !conn.accessToken) throw new Error('Gmail not authorized');
+  const accessToken = conn.accessToken;
+
+  const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
+  const htmlBody = body
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>\n');
+  const messageParts = [
+    `To: ${to}`,
+    `Subject: ${encodedSubject}`,
+    'Content-Type: text/html; charset=utf-8',
+    'MIME-Version: 1.0',
+    '',
+    `<html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#222;">${htmlBody}</body></html>`,
+  ];
+  const uint8 = new TextEncoder().encode(messageParts.join('\r\n'));
+  let binary = '';
+  uint8.forEach(b => { binary += String.fromCharCode(b); });
+  const raw = btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+  const res = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ raw }),
+  });
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err?.error?.message || 'Gmail send failed');
+  }
+  return await res.json();
+}
+
 function buildInvoiceTable(invoices) {
   if (!invoices || invoices.length === 0) return '(No outstanding invoices found)';
   const rows = invoices.map(inv => {
@@ -127,11 +161,7 @@ Deno.serve(async (req) => {
           + signature;
 
         if (reminder.send_type === 'email') {
-          await base44.functions.invoke('sendGmailReminder', {
-            to: reminder.customer_email,
-            subject,
-            body: messageBody,
-          });
+          await sendViaGmail(base44, reminder.customer_email, subject, messageBody);
         }
         // WhatsApp: extend here when API is ready
 
