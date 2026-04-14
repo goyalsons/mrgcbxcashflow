@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Pause, Play, Trash2, ChevronDown, Mail, MessageSquare, Send } from 'lucide-react';
+import { Pause, Play, Trash2, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import ScheduledMessageList from './ScheduledMessageList';
 
@@ -13,8 +13,6 @@ export default function ReminderCampaignList() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState(null);
-  const [testingCampaignId, setTestingCampaignId] = useState(null);
-  const [testLoading, setTestLoading] = useState(false);
 
   const { data: campaigns = [] } = useQuery({
     queryKey: ['reminderCampaigns'],
@@ -45,52 +43,7 @@ export default function ReminderCampaignList() {
     },
   });
 
-  const { data: settings = {} } = useQuery({
-    queryKey: ['appSettings'],
-    queryFn: () => {
-      try {
-        return Promise.resolve(JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}'));
-      } catch {
-        return Promise.resolve({});
-      }
-    },
-  });
 
-  const sendTestMessage = async (campaign) => {
-    setTestingCampaignId(campaign.id);
-    setTestLoading(true);
-    try {
-      const testEmail = settings.testEmailForReminders || '';
-      const testPhone = settings.testPhoneForReminders || '';
-
-      if (campaign.reminder_type === 'email' && !testEmail) {
-        toast({ title: 'Test email not configured in Settings', variant: 'destructive' });
-        return;
-      }
-
-      if (campaign.reminder_type === 'whatsapp' && !testPhone) {
-        toast({ title: 'Test phone not configured in Settings', variant: 'destructive' });
-        return;
-      }
-
-      const res = await base44.functions.invoke('sendTestReminder', {
-        campaignId: campaign.id,
-        testEmail: testEmail || null,
-        testPhone: testPhone || null,
-      });
-
-      if (res.data?.success) {
-        toast({ title: res.data.message });
-      } else {
-        toast({ title: res.data?.error || 'Failed to send test message', variant: 'destructive' });
-      }
-    } catch (err) {
-      toast({ title: 'Error sending test message', description: err.message, variant: 'destructive' });
-    } finally {
-      setTestLoading(false);
-      setTestingCampaignId(null);
-    }
-  };
 
   if (campaigns.length === 0) {
     return <div className="text-center py-8 text-muted-foreground">No campaigns yet. Create one to get started.</div>;
@@ -139,16 +92,7 @@ export default function ReminderCampaignList() {
                       {campaign.send_time && <p className="text-xs text-muted-foreground">{campaign.send_time}</p>}
                     </div>
                   </TableCell>
-                  <TableCell className="text-right space-x-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => sendTestMessage(campaign)}
-                      disabled={testLoading || testingCampaignId === campaign.id}
-                      title="Send test message"
-                    >
-                      {testingCampaignId === campaign.id ? '⏳' : campaign.reminder_type === 'email' ? <Mail className="w-4 h-4" /> : <MessageSquare className="w-4 h-4" />}
-                    </Button>
+                  <TableCell className="text-right flex items-center justify-end gap-1">
                     {campaign.status === 'active' && (
                       <Button size="sm" variant="ghost" onClick={() => pauseResumeMut.mutate({ campaignId: campaign.id, action: 'pause' })}>
                        <Pause className="w-4 h-4" />
