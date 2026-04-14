@@ -43,7 +43,7 @@ function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, se
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-base">{isWhatsApp ? '💬' : isEmail ? '📧' : '📱'}</span>
-            <span className="font-semibold text-sm">{t.name}</span>
+            <span className="font-semibold text-sm font-mono">{t.meta_template_name || t.name}</span>
             <Badge variant="outline" className={`text-xs ${badgeStyle}`}>{t.type}</Badge>
             {isDefault && <Badge className="text-xs bg-amber-100 text-amber-700 border-amber-300"><Star className="w-2.5 h-2.5 mr-1" />Default Reminder</Badge>}
           </div>
@@ -77,12 +77,7 @@ function TemplateCard({ t, ts = {}, setTemplateTestState, setEditingTemplate, se
             <span className="text-xs text-foreground">{t.subject}</span>
           </div>
         )}
-        {isWhatsApp && (
-          <div className="flex items-center gap-2 p-2 rounded-md bg-white/70 border border-green-100">
-            <span className="text-xs font-semibold text-green-700 shrink-0">Meta Name:</span>
-            <span className="text-xs font-mono text-foreground">{t.meta_template_name || <span className="text-amber-500 italic">Not set — edit to add</span>}</span>
-          </div>
-        )}
+
         {isWhatsApp && t.default_variables && (
           <div className="flex items-center gap-2 p-2 rounded-md bg-white/70 border border-green-100">
             <span className="text-xs font-semibold text-green-700 shrink-0">Variables:</span>

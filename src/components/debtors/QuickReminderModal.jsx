@@ -260,7 +260,7 @@ export default function QuickReminderModal({ customer, onClose }) {
                 </SelectTrigger>
                 <SelectContent>
                   {emailTemplates.map(t => (
-                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                    <SelectItem key={t.id} value={t.id}>{t.meta_template_name || t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>

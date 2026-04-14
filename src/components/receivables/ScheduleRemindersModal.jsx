@@ -331,7 +331,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
                 <SelectContent>
                   {emailTemplates.map(t => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name}
+                      {t.meta_template_name || t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -353,7 +353,7 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
                 <SelectContent>
                   {whatsappTemplates.map(t => (
                     <SelectItem key={t.id} value={t.id}>
-                      {t.name}
+                      {t.meta_template_name || t.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

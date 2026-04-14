@@ -41,10 +41,9 @@ function TemplateEditor({ template, onClose, onSave }) {
   const [saving, setSaving] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const set = (k, v) => {
-    if (k === 'name' && form.type === 'whatsapp') {
-      // Auto-sync meta_template_name from name: lowercase + underscores
-      const metaName = v.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-      setForm(f => ({ ...f, [k]: v, meta_template_name: metaName }));
+    if (k === 'meta_template_name') {
+      // Keep name in sync with meta_template_name
+      setForm(f => ({ ...f, meta_template_name: v, name: v }));
     } else {
       setForm(f => ({ ...f, [k]: v }));
     }
@@ -63,10 +62,6 @@ function TemplateEditor({ template, onClose, onSave }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label>Name *</Label>
-              <Input value={form.name} onChange={e => set('name', e.target.value)} required />
-            </div>
-            <div className="space-y-1.5">
               <Label>Channel *</Label>
               <Select value={form.type} onValueChange={v => set('type', v)}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -77,6 +72,16 @@ function TemplateEditor({ template, onClose, onSave }) {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Template Name *</Label>
+              <Input
+                value={form.meta_template_name || ''}
+                onChange={e => set('meta_template_name', e.target.value)}
+                placeholder="e.g. payment_reminder_v1"
+                className="font-mono"
+                required
+              />
+            </div>
           </div>
           {form.type === 'email' && (
             <div className="space-y-1.5">
@@ -86,15 +91,6 @@ function TemplateEditor({ template, onClose, onSave }) {
           )}
           {form.type === 'whatsapp' && (
             <div className="space-y-4 p-3 rounded-lg border border-green-200 bg-green-50/50">
-              <div className="space-y-1.5">
-                <Label>Meta Template Name</Label>
-                <Input
-                  value={form.meta_template_name || ''}
-                  readOnly
-                  className="font-mono bg-muted text-muted-foreground cursor-default"
-                />
-                <p className="text-xs text-muted-foreground">Auto-generated from Name (lowercase, underscores). Update the Name field to change this.</p>
-              </div>
               <div className="space-y-1.5">
                 <Label>Default Variable Values</Label>
                 <Input
@@ -685,7 +681,7 @@ export default function Settings() {
                       <SelectContent>
                         {templates.filter(t => t.type === 'whatsapp').map(t => (
                           <SelectItem key={t.id} value={t.meta_template_name || t.name}>
-                            {t.name}{t.meta_template_name ? ` (${t.meta_template_name})` : ''}
+                            {t.meta_template_name || t.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -919,8 +915,8 @@ export default function Settings() {
                         <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
                         <SelectContent>
                           {templates.filter(t => t.type === reminderSchedule.channel).map(t => (
-                            <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                          ))}
+                                             <SelectItem key={t.id} value={t.id}>{t.meta_template_name || t.name}</SelectItem>
+                                           ))}
                         </SelectContent>
                       </Select>
                     </div>
