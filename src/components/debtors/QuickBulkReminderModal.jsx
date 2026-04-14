@@ -8,6 +8,14 @@ import { base44 } from '@/api/base44Client';
 import { Send, Loader2, Mail, MessageSquare, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
+// Handles both {{key}} and {key} placeholder syntaxes
+function replacePlaceholders(text, data) {
+  if (!text) return '';
+  return text
+    .replace(/\{\{(\w+)\}\}/g, (match, key) => data[key] !== undefined ? data[key] : match)
+    .replace(/\{(\w+)\}/g, (match, key) => data[key] !== undefined ? data[key] : match);
+}
+
 function buildInvoiceTable(invoices) {
   if (!invoices || invoices.length === 0) return '(No outstanding invoices found)';
   const rows = invoices.map(inv => {
@@ -112,20 +120,26 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
             (s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0
           );
           const contactName = customer.contact_person || customer.name || '';
+          const firstInv = customer.invoices?.[0] || {};
+
+          // Unified placeholder data for both {{key}} and {key} syntaxes
+          const placeholderData = {
+            contact_person: contactName,
+            debtor_name: customer.name || '',
+            company_name: customer.name || '',
+            outstanding_amount: totalOutstanding.toLocaleString('en-IN'),
+            invoice_table: invoiceTable,
+            attachments: '',
+            invoice_number: firstInv.invoice_number || '',
+            amount: firstInv.amount?.toLocaleString('en-IN') || '',
+            due_date: firstInv.due_date ? firstInv.due_date.split('T')[0] : '',
+          };
 
           if (channel === 'email') {
             if (!customer.email) { skipCount++; continue; }
 
-            const subject = (template.subject || `Payment Reminder - ${customer.name}`)
-              .replace(/\{\{company_name\}\}/g, customer.name || '')
-              .replace(/\{\{contact_person\}\}/g, contactName);
-
-            const body = (template.body || '')
-              .replace(/\{\{contact_person\}\}/g, contactName)
-              .replace(/\{\{company_name\}\}/g, customer.name || '')
-              .replace(/\{\{outstanding_amount\}\}/g, `₹${totalOutstanding.toLocaleString('en-IN')}`)
-              .replace(/\{\{invoice_table\}\}/g, invoiceTable)
-              .replace(/\{\{attachments\}\}/g, '');
+            const subject = replacePlaceholders(template.subject || `Payment Reminder - ${customer.name}`, placeholderData);
+            const body = replacePlaceholders(template.body || '', placeholderData);
 
             await base44.functions.invoke('sendGmailReminder', { to: customer.email, subject, body });
             successCount++;
@@ -135,21 +149,15 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
 
             const waSettings = (() => { try { return JSON.parse(localStorage.getItem('cashflow_pro_settings') || '{}').whatsapp || {}; } catch { return {}; } })();
 
-            // Build templateVariables by replacing named placeholders with positional values
-            const bodyText = (template.body || '')
-              .replace(/\{\{contact_person\}\}/g, contactName)
-              .replace(/\{\{company_name\}\}/g, customer.name || '')
-              .replace(/\{\{outstanding_amount\}\}/g, `₹${totalOutstanding.toLocaleString('en-IN')}`)
-              .replace(/\{\{invoice_table\}\}/g, invoiceTable)
-              .replace(/\{\{attachments\}\}/g, '');
+            // Replace all named placeholders in the body
+            const processedBody = replacePlaceholders(template.body || '', placeholderData);
 
-            // Extract positional variables {{1}}, {{2}}, etc. if present in template
-            const positionalMatches = (template.body || '').match(/\{\{(\d+)\}\}/g) || [];
-            let templateVariables = [];
-            if (positionalMatches.length > 0) {
-              // User is using WhatsApp-style numbered placeholders — they must fill those separately
-              templateVariables = [];
-            }
+            // Build templateVariables array for numbered placeholders {{1}}, {{2}}, etc.
+            // If no numbered placeholders, pass an empty array (body is pre-rendered)
+            const numberedMatches = (template.body || '').match(/\{\{(\d+)\}\}/g) || [];
+            const templateVariables = numberedMatches.length > 0
+              ? [contactName, customer.name || '', `₹${totalOutstanding.toLocaleString('en-IN')}`, firstInv.invoice_number || '', firstInv.due_date?.split('T')[0] || ''].slice(0, numberedMatches.length)
+              : [];
 
             await base44.functions.invoke('sendWhatsAppMessage', {
               action: 'sendMessage',
@@ -157,6 +165,7 @@ export default function QuickBulkReminderModal({ selectedInvoices, onClose, onSu
               templateName: template.name,
               language: 'en',
               templateVariables,
+              messageBody: processedBody,
               api_key: waSettings.api_key || '',
               phone_id: waSettings.phone_id || '',
             });
