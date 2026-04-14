@@ -388,11 +388,6 @@ export default function CollectionTargets() {
     return map;
   }, [receivables]);
 
-  // Sorted unique customer names from the Customer entity
-  const receivableCustomers = useMemo(() => {
-    return [...customers].map(c => c.name).filter(Boolean).sort();
-  }, [customers]);
-
   // Outstanding for a target record
   const getOutstanding = (t) => {
     if (!t.customer_name) return 0;
@@ -404,6 +399,11 @@ export default function CollectionTargets() {
     queryKey: ['customers'],
     queryFn: () => base44.entities.Customer.list(),
   });
+
+  // Sorted unique customer names from the Customer entity
+  const receivableCustomers = useMemo(() => {
+    return [...customers].map(c => c.name).filter(Boolean).sort();
+  }, [customers]);
 
   const managerCustomerIds = useMemo(() => {
     const map = {};
