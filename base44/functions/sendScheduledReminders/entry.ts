@@ -93,8 +93,8 @@ Deno.serve(async (req) => {
         const customer = await base44.entities.Customer.get(reminder.customer_id);
         let invoices = [];
         if (customer) {
-          const allInvoices = await base44.entities.Invoice.filter({ debtor_id: reminder.customer_id });
-          invoices = allInvoices.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
+          const allInvoices = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
+          invoices = allInvoices.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
         }
 
         const invoiceTable = buildInvoiceTable(invoices);

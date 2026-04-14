@@ -66,11 +66,10 @@ Deno.serve(async (req) => {
       }
 
       // Send test email
-      await base44.functions.invoke('sendSmtpEmail', {
+      await base44.functions.invoke('sendGmailReminder', {
         to: testEmail,
         subject: `[TEST] ${reminder.message_subject || 'Payment Reminder'}`,
         body: `[This is a TEST message]\n\n${messageBody}`,
-        from_name: 'Payment Reminders - Test',
       });
     }
 
