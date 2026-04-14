@@ -57,7 +57,6 @@ const NAV_GROUPS = [
     items: [
       { key: 'cash_flow_simulator', label: 'Cash Flow Simulator', path: '/cash-flow-simulator', icon: 'SlidersHorizontal' },
       { key: 'ai_insights', label: 'AI Insights', path: '/ai-insights', icon: 'Sparkles' },
-      { key: 'analysis', label: 'Analysis', path: '/analysis', icon: 'BarChart3' },
     ],
   },
   {
