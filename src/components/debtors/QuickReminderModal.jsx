@@ -13,13 +13,13 @@ import { format, parseISO } from 'date-fns';
 
 function buildInvoiceTable(invoices) {
   const rows = invoices.map(inv => {
-    const outstanding = (inv.amount || 0) - (inv.amount_paid || 0);
+    const outstanding = (inv.amount || 0) - (inv.amount_received || inv.amount_paid || 0);
     const dueDate = inv.due_date ? format(parseISO(inv.due_date), 'dd/MM/yyyy') : '-';
     const invDate = inv.invoice_date ? format(parseISO(inv.invoice_date), 'dd/MM/yyyy') : '-';
     const overdue = inv.status === 'overdue' ? ' ⚠️ Overdue' : '';
     return `  • Inv# ${inv.invoice_number || '-'}  |  Date: ${invDate}  |  Due: ${dueDate}  |  Outstanding: ₹${outstanding.toLocaleString('en-IN')}${overdue}`;
   }).join('\n');
-  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0);
+  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_received || i.amount_paid || 0), 0);
   return rows + `\n${'─'.repeat(60)}\n  TOTAL OUTSTANDING: ₹${total.toLocaleString('en-IN')}`;
 }
 
@@ -34,7 +34,7 @@ function buildAttachmentLinks(invoices) {
         });
       } catch (e) { /* ignore */ }
     }
-    if (inv.document_url && !inv.attachments) {
+    if (inv.document_url) {
       links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
     }
   });
@@ -74,7 +74,7 @@ function buildDefaultBody(customer, invoices) {
 }
 
 function applyTemplateToContent(template, customer, invoices, contactPerson) {
-  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
+  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_received || i.amount_paid || 0), 0) || customer.credit_limit || 0;
   const table = buildInvoiceTable(
     invoices.length > 0
       ? invoices
@@ -142,13 +142,13 @@ export default function QuickReminderModal({ customer, onClose }) {
 
   // Fetch invoices once on mount; apply template immediately after with real invoice data
   useEffect(() => {
-    base44.entities.Invoice.list('-created_date', 500)
+    base44.entities.Receivable.list('-created_date', 500)
       .then(all => {
         const forThisCustomer = all.filter(inv => {
-          if (customer.id) return inv.debtor_id === customer.id;
-          return inv.debtor_name?.toLowerCase() === customer.name?.toLowerCase();
+          if (customer.id) return inv.customer_id === customer.id;
+          return inv.customer_name?.toLowerCase() === customer.name?.toLowerCase();
         });
-        const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partial'].includes(i.status));
+        const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
         setInvoices(outstanding);
         invoicesRef.current = outstanding;
 
@@ -178,7 +178,7 @@ export default function QuickReminderModal({ customer, onClose }) {
     }
   };
 
-  const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0) || customer.credit_limit || 0;
+  const totalOutstanding = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_received || i.amount_paid || 0), 0) || customer.credit_limit || 0;
 
   const handleSend = async () => {
     if (!resolvedEmail) {
