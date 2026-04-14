@@ -87,14 +87,13 @@ function TemplateEditor({ template, onClose, onSave }) {
           {form.type === 'whatsapp' && (
             <div className="space-y-4 p-3 rounded-lg border border-green-200 bg-green-50/50">
               <div className="space-y-1.5">
-                <Label>Meta Template Name *</Label>
+                <Label>Meta Template Name</Label>
                 <Input
                   value={form.meta_template_name || ''}
-                  onChange={e => set('meta_template_name', e.target.value)}
-                  placeholder="e.g. payment_reminder_v1"
-                  className="font-mono"
+                  readOnly
+                  className="font-mono bg-muted text-muted-foreground cursor-default"
                 />
-                <p className="text-xs text-muted-foreground">Must match exactly the name approved in WhatsApp Business Manager (lowercase, underscores).</p>
+                <p className="text-xs text-muted-foreground">Auto-generated from Name (lowercase, underscores). Update the Name field to change this.</p>
               </div>
               <div className="space-y-1.5">
                 <Label>Default Variable Values</Label>
