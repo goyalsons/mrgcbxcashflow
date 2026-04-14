@@ -18,6 +18,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Debtor or template not found' }, { status: 404 });
     }
 
+    // Check for existing active or paused campaign for this debtor
+    const existingCampaigns = await base44.entities.ReminderCampaign.filter({ debtor_id: debtorId });
+    const activeOrPausedCampaign = existingCampaigns.find(c => c.status === 'active' || c.status === 'paused');
+    if (activeOrPausedCampaign) {
+      return Response.json({ 
+        error: `A campaign for this company is already active or paused: "${activeOrPausedCampaign.campaign_name}"` 
+      }, { status: 400 });
+    }
+
     // Create the campaign
     const campaign = await base44.entities.ReminderCampaign.create({
       debtor_id: debtorId,

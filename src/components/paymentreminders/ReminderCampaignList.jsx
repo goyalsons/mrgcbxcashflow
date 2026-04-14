@@ -9,14 +9,21 @@ import { Pause, Play, Trash2, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import ScheduledMessageList from './ScheduledMessageList';
 
-export default function ReminderCampaignList() {
+export default function ReminderCampaignList({ onDuplicateDetected }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [expandedId, setExpandedId] = useState(null);
 
-  const { data: campaigns = [] } = useQuery({
+  const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ['reminderCampaigns'],
-    queryFn: () => base44.entities.ReminderCampaign.list('-created_date'),
+    queryFn: async () => {
+      const cmpns = await base44.entities.ReminderCampaign.list('-created_date');
+      const customers = await base44.entities.Customer.list();
+      return cmpns.map(c => {
+        const customer = customers.find(cust => cust.id === c.debtor_id);
+        return { ...c, customer };
+      });
+    },
   });
 
   const pauseResumeMut = useMutation({
@@ -56,8 +63,10 @@ export default function ReminderCampaignList() {
           <TableHeader>
             <TableRow>
               <TableHead className="w-8"></TableHead>
-              <TableHead>Campaign</TableHead>
-              <TableHead>Debtor</TableHead>
+              <TableHead>Company</TableHead>
+              <TableHead>Contact Name</TableHead>
+              <TableHead>Email</TableHead>
+              <TableHead>Phone</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Frequency</TableHead>
               <TableHead>Status</TableHead>
@@ -77,8 +86,10 @@ export default function ReminderCampaignList() {
                       <ChevronDown className={`w-4 h-4 transition-transform ${expandedId === campaign.id ? 'rotate-180' : ''}`} />
                     </button>
                   </TableCell>
-                  <TableCell className="font-medium">{campaign.campaign_name}</TableCell>
-                  <TableCell>{campaign.debtor_name}</TableCell>
+                  <TableCell className="font-medium">{campaign.debtor_name}</TableCell>
+                  <TableCell>{campaign.customer?.contact_person || '-'}</TableCell>
+                  <TableCell>{campaign.customer?.email || '-'}</TableCell>
+                  <TableCell>{campaign.customer?.phone || '-'}</TableCell>
                   <TableCell><Badge>{campaign.reminder_type}</Badge></TableCell>
                   <TableCell className="capitalize">{campaign.frequency}</TableCell>
                   <TableCell>

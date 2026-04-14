@@ -30,9 +30,24 @@ export default function ReminderCampaignForm({ onSuccess }) {
     queryFn: () => base44.entities.MessageTemplate.filter({ type: reminderType }),
   });
 
+  const { data: campaigns = [] } = useQuery({
+    queryKey: ['reminderCampaigns'],
+    queryFn: () => base44.entities.ReminderCampaign.list(),
+  });
+
   const handleSchedule = async () => {
     if (!debtorId || !campaignName || !templateId) {
       toast({ title: 'Please fill all fields' });
+      return;
+    }
+
+    // Check for existing active campaign for the same debtor
+    const existingCampaign = campaigns.find(c => c.debtor_id === debtorId && c.status !== 'completed');
+    if (existingCampaign) {
+      toast({ 
+        title: 'Campaign already exists', 
+        description: `A campaign for this company is already active or paused: "${existingCampaign.campaign_name}"`
+      });
       return;
     }
 
