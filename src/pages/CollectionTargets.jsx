@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Trophy, Medal, Target, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign, StickyNote, CheckSquare, X } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
@@ -328,6 +329,53 @@ function BulkEditDialog({ open, onClose, selectedIds, targets, onSave, onDelete 
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── NotesPopover ──────────────────────────────────────────────────────────────
+function NotesPopover({ target }) {
+  const notes = useMemo(() => {
+    try { return JSON.parse(target.progress_notes || '[]'); } catch { return []; }
+  }, [target.progress_notes]);
+
+  const hasContent = notes.length > 0 || target.notes;
+  if (!hasContent) return <span className="text-muted-foreground text-xs">—</span>;
+
+  const trigger = (
+    <span className="inline-flex items-center gap-1 text-xs text-primary cursor-pointer hover:underline">
+      <StickyNote className="w-3 h-3" />
+      {notes.length > 0 ? `${notes.length} note${notes.length > 1 ? 's' : ''}` : target.notes?.slice(0, 20)}
+    </span>
+  );
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+      <PopoverContent side="left" className="w-80 p-3 space-y-2" align="start">
+        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Progress Notes</p>
+        {target.notes && (
+          <div className="text-xs text-foreground bg-muted/40 rounded p-2">{target.notes}</div>
+        )}
+        {notes.length > 0 ? (
+          <div className="max-h-60 overflow-y-auto space-y-2">
+            {[...notes].reverse().map((n, i) => (
+              <div key={i} className="border-l-2 border-primary/40 pl-3 py-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {new Date(n.timestamp).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}<span className="font-medium text-foreground">{n.author}</span>
+                  </span>
+                  {n.amount > 0 && <span className="text-xs font-semibold text-emerald-600 shrink-0">+{formatINR(n.amount)}</span>}
+                </div>
+                {n.text && <p className="text-sm mt-0.5">{n.text}</p>}
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground italic">No progress notes yet.</p>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -648,7 +696,6 @@ export default function CollectionTargets() {
                     const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
                     const collected = Math.max(autoCollected, t.collected_amount || 0);
                     const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
-                    const notesCount = (() => { try { return JSON.parse(t.progress_notes || '[]').length; } catch { return 0; } })();
                     return (
                       <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
                         <TableCell>
@@ -669,15 +716,7 @@ export default function CollectionTargets() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            {notesCount > 0 && (
-                              <span className="inline-flex items-center gap-1 text-xs text-primary">
-                                <StickyNote className="w-3 h-3" />{notesCount}
-                              </span>
-                            )}
-                            {t.notes && <span className="max-w-[80px] truncate text-xs" title={t.notes}>{t.notes}</span>}
-                            {!notesCount && !t.notes && '-'}
-                          </div>
+                          <NotesPopover target={t} />
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
