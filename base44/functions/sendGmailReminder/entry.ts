@@ -23,14 +23,21 @@ Deno.serve(async (req) => {
     // Encode subject as RFC 2047 encoded-word to handle non-ASCII chars
     const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`;
 
-    // Build RFC 2822 email message
+    // Convert plain-text body to HTML (preserve newlines, plain text invoice tables)
+    const htmlBody = body
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\n/g, '<br>\n');
+
+    // Build RFC 2822 email message with HTML content type
     const messageParts = [
       `To: ${to}`,
       `Subject: ${encodedSubject}`,
-      'Content-Type: text/plain; charset=utf-8',
+      'Content-Type: text/html; charset=utf-8',
       'MIME-Version: 1.0',
       '',
-      body,
+      `<html><body style="font-family:Arial,sans-serif;font-size:14px;line-height:1.6;color:#222;">${htmlBody}</body></html>`,
     ];
     // Encode full message as UTF-8 bytes → base64
     const uint8 = new TextEncoder().encode(messageParts.join('\r\n'));
