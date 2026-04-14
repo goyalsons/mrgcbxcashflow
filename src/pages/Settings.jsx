@@ -29,11 +29,11 @@ function saveLocalSettings(data) {
 }
 
 const PLACEHOLDER_GUIDE = [
-  { placeholder: '{{contact_person}}', description: 'Contact person at the debtor company' },
-  { placeholder: '{{company_name}}', description: 'Debtor company name' },
-  { placeholder: '{{outstanding_amount}}', description: 'Total outstanding balance (e.g. ₹1,50,000)' },
-  { placeholder: '{{invoice_table}}', description: 'Full table of outstanding invoices with dates & amounts' },
-  { placeholder: '{{attachments}}', description: 'Links to invoice attachments (if any are uploaded)' },
+  { placeholder: '{{1}}', description: 'Contact person at the debtor company' },
+  { placeholder: '{{2}}', description: 'Debtor company name' },
+  { placeholder: '{{3}}', description: 'Total outstanding balance (e.g. ₹1,50,000)' },
+  { placeholder: '{{4}}', description: 'Full table of outstanding invoices with dates & amounts' },
+  { placeholder: '{{5}}', description: 'Links to invoice attachments (if any are uploaded)' },
 ];
 
 function TemplateEditor({ template, onClose, onSave }) {
