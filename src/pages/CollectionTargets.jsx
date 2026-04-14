@@ -32,7 +32,7 @@ const EMPTY_FORM = {
 };
 
 // ─── TargetForm ────────────────────────────────────────────────────────────────
-function TargetForm({ open, onClose, onSave, editData, managers, receivableCustomers, outstandingByName }) {
+function TargetForm({ open, onClose, onSave, editData, managers, receivableCustomers, outstandingByName, customers }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
@@ -52,10 +52,13 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
 
   const handleCustomerSelect = (name) => {
     const outstanding = outstandingByName[name.trim().toLowerCase()] || 0;
+    const customer = customers?.find(c => c.name === name);
     setForm(f => ({
       ...f,
       customer_name: name,
       target_amount: outstanding > 0 ? outstanding.toString() : f.target_amount,
+      manager_email: customer?.account_manager || f.manager_email,
+      manager_name: customer?.account_manager_name || f.manager_name,
     }));
   };
 
@@ -624,6 +627,7 @@ export default function CollectionTargets() {
                       />
                     </TableHead>
                     <TableHead>Manager</TableHead>
+                    <TableHead>Customer</TableHead>
                     <TableHead className="text-right">Target</TableHead>
                     <TableHead>Month</TableHead>
                     <TableHead className="text-right">Collected</TableHead>
@@ -654,6 +658,7 @@ export default function CollectionTargets() {
                           <div className="font-medium text-sm">{t.manager_name || t.manager_email}</div>
                           <div className="text-xs text-muted-foreground">{t.manager_email}</div>
                         </TableCell>
+                        <TableCell className="text-sm">{t.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
                         <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
                         <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium text-sm">{formatINR(collected)}</TableCell>
@@ -710,6 +715,7 @@ export default function CollectionTargets() {
         managers={managers}
         receivableCustomers={receivableCustomers}
         outstandingByName={outstandingByName}
+        customers={customers}
       />
       <UpdateProgressDialog
         open={!!updatingTarget}
