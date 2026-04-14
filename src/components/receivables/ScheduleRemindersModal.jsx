@@ -61,10 +61,10 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     },
   });
 
-  // Fetch existing active scheduled reminders to detect duplicates
-  const { data: existingReminders = [] } = useQuery({
-    queryKey: ['scheduledReminders'],
-    queryFn: () => base44.entities.ScheduledReminder.list(),
+  // Fetch existing campaigns to detect duplicates
+  const { data: existingCampaigns = [] } = useQuery({
+    queryKey: ['reminderCampaigns'],
+    queryFn: () => base44.entities.ReminderCampaign.list(),
   });
 
   // Extract unique customers from selected invoices
@@ -90,12 +90,12 @@ export default function ScheduleRemindersModal({ invoices, onClose }) {
     return Array.from(customerMap.values());
   }, [invoices, allCustomers]);
 
-  // Detect customers who already have an active scheduled reminder campaign
+  // Detect customers who already have an active or paused campaign
   const duplicateCustomerIds = useMemo(() => {
-    const activeReminders = existingReminders.filter(r => r.status === 'pending' || r.status === 'active' || !r.status);
-    const activeDebtorIds = new Set(activeReminders.map(r => r.debtor_id).filter(Boolean));
+    const activeCampaigns = existingCampaigns.filter(c => c.status === 'active' || c.status === 'paused');
+    const activeDebtorIds = new Set(activeCampaigns.map(c => c.debtor_id).filter(Boolean));
     return new Set(selectedCustomers.filter(c => activeDebtorIds.has(c.id)).map(c => c.id));
-  }, [selectedCustomers, existingReminders]);
+  }, [selectedCustomers, existingCampaigns]);
 
   const duplicateCustomers = useMemo(() =>
     selectedCustomers.filter(c => duplicateCustomerIds.has(c.id)),

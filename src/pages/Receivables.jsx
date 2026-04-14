@@ -23,6 +23,7 @@ import SetTargetModal from '@/components/debtors/SetTargetModal';
 
 export default function Receivables() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [minAmount, setMinAmount] = useState('');
   const [filters, setFilters] = useState({
     company: '',
     dueWeek: '',
@@ -131,8 +132,16 @@ export default function Receivables() {
       result = result.filter(inv => getResolvedManager(inv) === filters.manager);
       }
 
+      if (minAmount) {
+        const minVal = parseInt(minAmount) || 0;
+        result = result.filter(inv => {
+          const outstanding = inv.amount - (inv.amount_paid || 0);
+          return outstanding > minVal;
+        });
+      }
+
       return result.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-  }, [invoices, searchTerm, filters]);
+  }, [invoices, searchTerm, filters, minAmount]);
 
   const uniqueCompanies = useMemo(() => {
     return [...new Set(invoices.map(inv => inv.customer_name))].sort();
@@ -374,7 +383,17 @@ export default function Receivables() {
               <option key={m} value={m}>{m.split('@')[0]}</option>
             ))}
           </select>
-        </div>
+          <div className="relative">
+            <IndianRupee className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Min outstanding amount"
+              type="number"
+              value={minAmount}
+              onChange={(e) => setMinAmount(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+          </div>
 
         <div className="flex gap-2 items-center flex-wrap pt-1 border-t">
           <span className="text-xs font-medium text-muted-foreground">Group by:</span>

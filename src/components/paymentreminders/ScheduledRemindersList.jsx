@@ -33,6 +33,7 @@ export default function ScheduledRemindersList() {
   const [searchCustomer, setSearchCustomer] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editDate, setEditDate] = useState('');
+  const [editTime, setEditTime] = useState('');
   const [sendingId, setSendingId] = useState(null);
   const [sendingOverdue, setSendingOverdue] = useState(false);
 
@@ -77,9 +78,9 @@ export default function ScheduledRemindersList() {
   });
 
   const handleSaveDate = (id) => {
-    updateMut.mutate({ id, data: { scheduled_send_date: editDate } });
-    setEditingId(null);
-    toast({ title: 'Schedule updated' });
+   updateMut.mutate({ id, data: { scheduled_send_date: editDate, scheduled_send_time: editTime } });
+   setEditingId(null);
+   toast({ title: 'Schedule updated' });
   };
 
   const handleTogglePause = (reminder) => {
@@ -282,9 +283,13 @@ export default function ScheduledRemindersList() {
 
                       {/* Scheduled Time */}
                       <TableCell>
-                        <span className={`text-sm ${overdue ? 'text-orange-600 font-medium' : 'text-muted-foreground'}`}>
-                          {reminder.scheduled_send_time || '—'}
-                        </span>
+                        {editingId === reminder.id ? (
+                          <Input type="time" value={editTime} onChange={e => setEditTime(e.target.value)} className="w-24" />
+                        ) : (
+                          <span className={`text-sm ${overdue ? 'text-orange-600 font-medium' : 'text-muted-foreground'}`}>
+                            {reminder.scheduled_send_time || '—'}
+                          </span>
+                        )}
                       </TableCell>
 
                       {/* Status */}
@@ -316,10 +321,10 @@ export default function ScheduledRemindersList() {
                                 : <Send className="w-3.5 h-3.5" />}
                             </Button>
                           )}
-                          {/* Edit date */}
+                          {/* Edit date & time */}
                           {reminder.status === 'pending' && editingId !== reminder.id && (
-                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit date"
-                              onClick={() => { setEditingId(reminder.id); setEditDate(reminder.scheduled_send_date); }}>
+                            <Button size="icon" variant="ghost" className="h-7 w-7" title="Edit date & time"
+                              onClick={() => { setEditingId(reminder.id); setEditDate(reminder.scheduled_send_date); setEditTime(reminder.scheduled_send_time || '09:00'); }}>
                               <Edit2 className="w-3.5 h-3.5" />
                             </Button>
                           )}

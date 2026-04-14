@@ -59,10 +59,10 @@ export default function PaymentReminders() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <PageHeader
-          title="Payment Reminders"
-          subtitle="Schedule automated email and WhatsApp reminders to collect payments"
-        />
+         <PageHeader
+           title="Payment Reminders"
+           subtitle="Schedule automated email and WhatsApp reminders to collect payments. New reminders can be created for selected companies from the Receivables page."
+         />
         {/* Auto-reminder global toggle */}
         <div className="flex items-center gap-3 bg-card border rounded-xl px-4 py-3 shadow-sm shrink-0">
           <Zap className={`w-4 h-4 ${autoEnabled ? 'text-amber-500' : 'text-muted-foreground'}`} />
