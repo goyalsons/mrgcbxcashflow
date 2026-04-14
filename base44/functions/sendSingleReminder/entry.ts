@@ -61,7 +61,7 @@ function buildAttachmentLinks(invoices) {
         });
       } catch (e) { /* ignore */ }
     }
-    if (inv.document_url && !inv.attachments) {
+    if (inv.document_url) {
       links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
     }
   });
