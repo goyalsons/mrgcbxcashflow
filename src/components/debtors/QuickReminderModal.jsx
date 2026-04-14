@@ -146,12 +146,15 @@ export default function QuickReminderModal({ customer, onClose }) {
   useEffect(() => {
     base44.entities.Receivable.list('-created_date', 500)
       .then(all => {
+        console.log('[QuickReminderModal] All receivables:', all.length);
         const forThisCustomer = all.filter(inv => {
           // Match by customer_id or customer_name (Receivable fields)
           if (customer.id) return inv.customer_id === customer.id || inv.customer_name?.toLowerCase() === customer.name?.toLowerCase();
           return inv.customer_name?.toLowerCase() === customer.name?.toLowerCase();
         });
+        console.log('[QuickReminderModal] Matching customer:', customer.name, customer.id, 'Found:', forThisCustomer.length);
         const outstanding = forThisCustomer.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
+        console.log('[QuickReminderModal] Outstanding invoices:', outstanding.map(i => ({ id: i.id, number: i.invoice_number, attachments: i.attachments, document_url: i.document_url })));
         setInvoices(outstanding);
         invoicesRef.current = outstanding;
 
