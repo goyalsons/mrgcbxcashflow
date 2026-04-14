@@ -29,11 +29,11 @@ function saveLocalSettings(data) {
 }
 
 const PLACEHOLDER_GUIDE = [
-  { placeholder: '{{1}}', description: 'Contact person at the debtor company' },
-  { placeholder: '{{2}}', description: 'Debtor company name' },
-  { placeholder: '{{3}}', description: 'Total outstanding balance (e.g. ₹1,50,000)' },
-  { placeholder: '{{4}}', description: 'Full table of outstanding invoices with dates & amounts' },
-  { placeholder: '{{5}}', description: 'Links to invoice attachments (if any are uploaded)' },
+  { placeholder: '{{1}}', label: 'contact_person', description: 'Contact person at the debtor company' },
+  { placeholder: '{{2}}', label: 'company_name', description: 'Debtor company name' },
+  { placeholder: '{{3}}', label: 'outstanding_amount', description: 'Total outstanding balance (e.g. ₹1,50,000)' },
+  { placeholder: '{{4}}', label: 'invoice_table', description: 'Full table of outstanding invoices with dates & amounts' },
+  { placeholder: '{{5}}', label: 'attachments', description: 'Links to invoice attachments (if any are uploaded)' },
 ];
 
 function TemplateEditor({ template, onClose, onSave }) {
@@ -117,7 +117,7 @@ function TemplateEditor({ template, onClose, onSave }) {
               <div className="px-3 pb-3 space-y-2">
                 <p className="text-xs text-blue-700 mb-2">Click a placeholder to insert it at the end of the message body.</p>
                 <div className="grid gap-1.5">
-                  {PLACEHOLDER_GUIDE.map(({ placeholder, description }) => (
+                  {PLACEHOLDER_GUIDE.map(({ placeholder, label, description }) => (
                     <div key={placeholder} className="flex items-center gap-2 bg-white rounded border border-blue-100 px-2 py-1.5">
                       <button
                         type="button"
@@ -127,6 +127,7 @@ function TemplateEditor({ template, onClose, onSave }) {
                       >
                         {placeholder}
                       </button>
+                      {label && <span className="font-mono text-xs text-muted-foreground bg-gray-50 border border-gray-200 px-1.5 py-0.5 rounded shrink-0">{label}</span>}
                       <span className="text-xs text-muted-foreground">{description}</span>
                     </div>
                   ))}
