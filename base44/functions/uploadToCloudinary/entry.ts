@@ -63,6 +63,12 @@ Deno.serve(async (req) => {
     uploadFormData.append('api_key', apiKey);
     uploadFormData.append('timestamp', String(timestamp));
     uploadFormData.append('signature', signature);
+    
+    // Set resource_type for PDFs and other non-image files
+    const fileName = file.name || '';
+    if (fileName.toLowerCase().endsWith('.pdf')) {
+      uploadFormData.append('resource_type', 'raw');
+    }
 
     const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
     const response = await fetch(uploadUrl, { method: 'POST', body: uploadFormData });
