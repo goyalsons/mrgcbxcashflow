@@ -1,16 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
 
 function buildInvoiceTable(invoices) {
-  if (!invoices || invoices.length === 0) return '';
+  if (!invoices || invoices.length === 0) return '(No outstanding invoices found)';
   const rows = invoices.map(inv => {
-    const outstanding = (inv.amount || 0) - (inv.amount_paid || 0);
+    // Receivable uses amount_received, not amount_paid
+    const received = (inv.amount_received || inv.amount_paid || 0);
+    const outstanding = (inv.amount || 0) - received;
     const dueDate = inv.due_date ? inv.due_date.split('T')[0] : '-';
     const invDate = inv.invoice_date ? inv.invoice_date.split('T')[0] : '-';
     const overdue = inv.status === 'overdue' ? ' ⚠️ Overdue' : '';
     const amt = outstanding.toLocaleString('en-IN');
     return `  • Inv# ${inv.invoice_number || '-'}  |  Date: ${invDate}  |  Due: ${dueDate}  |  Outstanding: ₹${amt}${overdue}`;
   }).join('\n');
-  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_paid || 0), 0);
+  const total = invoices.reduce((s, i) => s + (i.amount || 0) - (i.amount_received || i.amount_paid || 0), 0);
   return rows + `\n${'─'.repeat(60)}\n  TOTAL OUTSTANDING: ₹${total.toLocaleString('en-IN')}`;
 }
 
@@ -69,6 +71,7 @@ Deno.serve(async (req) => {
     if (customer) {
       const allInvoices = await base44.entities.Receivable.filter({ customer_id: reminder.customer_id });
       invoices = allInvoices.filter(i => ['pending', 'overdue', 'partially_paid'].includes(i.status));
+      console.log(`[sendSingleReminder] Found ${invoices.length} outstanding receivables for customer ${customer.name}`);
     }
 
     // Fetch company settings for signature
