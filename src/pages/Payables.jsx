@@ -125,6 +125,8 @@ function PartialProgressBar({ amount, amountPaid }) {
   );
 }
 
+const ITEMS_PER_PAGE = 50;
+
 export default function Payables() {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
@@ -139,6 +141,7 @@ export default function Payables() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [payingPayable, setPayingPayable] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -274,6 +277,13 @@ export default function Payables() {
     });
   }, [filtered, sortConfig]);
 
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return sortedFiltered.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedFiltered, currentPage]);
+
+  const totalPages = Math.ceil(sortedFiltered.length / ITEMS_PER_PAGE);
+
   const toggleSelect = (id) => setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
 
   const selectedBills = useMemo(() => payables.filter(p => selectedIds.has(p.id)), [payables, selectedIds]);
@@ -394,6 +404,7 @@ export default function Payables() {
         ) : filtered.length === 0 ? (
           <div className="p-12 text-center text-muted-foreground text-sm">No results match your filters</div>
         ) : (
+          <>
           <div className="overflow-auto">
             <Table>
               <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
@@ -416,7 +427,7 @@ export default function Payables() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedFiltered.map((p) => {
+                {paginatedData.map((p) => {
                   const balance = (p.amount || 0) - (p.amount_paid || 0);
                   const days = getDaysUntilDue(p.due_date);
                   const isOverdue = p.status !== 'paid' && days !== null && days < 0;
@@ -476,9 +487,21 @@ export default function Payables() {
                 })}
               </TableBody>
             </Table>
-          </div>
-        )}
-      </Card>
+            </div>
+            {totalPages > 1 && (
+            <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+              <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} • Showing {paginatedData.length} of {sortedFiltered.length} payables</span>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Previous</Button>
+                <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next</Button>
+                <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+              </div>
+            </div>
+            )}
+            </>
+            )}
+            </Card>
 
       {/* Sticky Footer for bulk selection */}
       {selectedIds.size > 0 && (

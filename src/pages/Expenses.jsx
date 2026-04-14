@@ -15,6 +15,8 @@ import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
 
+const ITEMS_PER_PAGE = 50;
+
 const CATEGORY_LABELS = {
   travel: 'Travel', office_supplies: 'Office Supplies', meals: 'Meals',
   utilities: 'Utilities', rent: 'Rent', salary: 'Salary',
@@ -45,6 +47,7 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState('all');
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses'],
@@ -112,6 +115,13 @@ export default function Expenses() {
     [expenses, search, filterWeek, filterMonth, filterCategory]
   );
 
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
   const totalAmount = expenses.reduce((s, e) => s + (e.amount || 0), 0);
   const thisMonthAmount = expenses.filter(e => {
     const d = new Date(e.expense_date);
@@ -176,25 +186,26 @@ export default function Expenses() {
       </div>
 
       <Card>
-        <CardContent className="p-0">
-          {filtered.length === 0 ? (
-            <div className="text-center py-10 text-muted-foreground text-sm">No expenses found.</div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Payment Mode</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Week</TableHead>
-                  <TableHead>Month</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filtered.map(expense => (
+         <CardContent className="p-0">
+           {filtered.length === 0 ? (
+             <div className="text-center py-10 text-muted-foreground text-sm">No expenses found.</div>
+           ) : (
+             <>
+             <Table>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Description</TableHead>
+                   <TableHead>Category</TableHead>
+                   <TableHead>Amount</TableHead>
+                   <TableHead>Payment Mode</TableHead>
+                   <TableHead>Date</TableHead>
+                   <TableHead>Week</TableHead>
+                   <TableHead>Month</TableHead>
+                   <TableHead>Actions</TableHead>
+                 </TableRow>
+               </TableHeader>
+               <TableBody>
+                 {paginatedData.map(expense => (
                   <TableRow key={expense.id}>
                     <TableCell className="font-medium text-sm">{expense.description}</TableCell>
                     <TableCell>
@@ -223,10 +234,22 @@ export default function Expenses() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+              </Table>
+              {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} • Showing {paginatedData.length} of {filtered.length} expenses</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Previous</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+                </div>
+              </div>
+              )}
+              </>
+              )}
+              </CardContent>
+              </Card>
 
       <ExpenseForm
         open={showForm}

@@ -26,6 +26,8 @@ function getMonthLabel(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 }
 
+const ITEMS_PER_PAGE = 50;
+
 const RECURRENCE_LABELS = {
   daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', quarterly: 'Quarterly', custom: 'Custom',
 };
@@ -51,6 +53,8 @@ export default function RecurringExpenses() {
   const [editData, setEditData] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [generating, setGenerating] = useState(false);
+  const [currentPageTemplates, setCurrentPageTemplates] = useState(1);
+  const [currentPageInstances, setCurrentPageInstances] = useState(1);
   const approvalThreshold = loadApprovalThreshold();
 
   const { data: currentUser } = useQuery({ queryKey: ['me'], queryFn: () => base44.auth.me() });
@@ -71,6 +75,20 @@ export default function RecurringExpenses() {
     allExpenses.filter(e => !!e.parent_expense_id).sort((a, b) => a.expense_date.localeCompare(b.expense_date)),
     [allExpenses]
   );
+
+  const paginatedTemplates = useMemo(() => {
+    const start = (currentPageTemplates - 1) * ITEMS_PER_PAGE;
+    return templates.slice(start, start + ITEMS_PER_PAGE);
+  }, [templates, currentPageTemplates]);
+
+  const totalPagesTemplates = Math.ceil(templates.length / ITEMS_PER_PAGE);
+
+  const paginatedInstances = useMemo(() => {
+    const start = (currentPageInstances - 1) * ITEMS_PER_PAGE;
+    return instances.slice(start, start + ITEMS_PER_PAGE);
+  }, [instances, currentPageInstances]);
+
+  const totalPagesInstances = Math.ceil(instances.length / ITEMS_PER_PAGE);
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Expense.update(id, data),
@@ -213,7 +231,7 @@ export default function RecurringExpenses() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {templates.map(t => (
+                     {paginatedTemplates.map(t => (
                       <TableRow key={t.id}>
                         <TableCell className="font-medium">{t.description}</TableCell>
                         <TableCell><Badge variant="outline" className="text-xs">{CATEGORY_LABELS[t.category] || t.category}</Badge></TableCell>
@@ -238,13 +256,24 @@ export default function RecurringExpenses() {
                       </TableRow>
                     ))}
                   </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  </Table>
+                  {totalPagesTemplates > 1 && (
+                    <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                      <span className="text-sm text-muted-foreground">Page {currentPageTemplates} of {totalPagesTemplates} • Showing {paginatedTemplates.length} of {templates.length} templates</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(1)}>First</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageTemplates === 1} onClick={() => setCurrentPageTemplates(currentPageTemplates - 1)}>Previous</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(currentPageTemplates + 1)}>Next</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageTemplates === totalPagesTemplates} onClick={() => setCurrentPageTemplates(totalPagesTemplates)}>Last</Button>
+                      </div>
+                    </div>
+                  )}
+                  )}
+                  </CardContent>
+                  </Card>
+                  </TabsContent>
 
-        <TabsContent value="instances" className="mt-4">
+                  <TabsContent value="instances" className="mt-4">
           {selectedIds.size > 0 && (
             <div className="flex items-center gap-3 mb-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <span className="text-sm text-blue-700 font-medium">{selectedIds.size} selected</span>
@@ -281,7 +310,7 @@ export default function RecurringExpenses() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {instances.map(e => {
+                    {paginatedInstances.map(e => {
                       const isPast = e.expense_date <= new Date().toISOString().split('T')[0];
                       return (
                         <TableRow key={e.id} className={selectedIds.has(e.id) ? 'bg-blue-50' : ''}>
@@ -309,12 +338,23 @@ export default function RecurringExpenses() {
                       );
                     })}
                   </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                  </Table>
+                  {totalPagesInstances > 1 && (
+                    <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                      <span className="text-sm text-muted-foreground">Page {currentPageInstances} of {totalPagesInstances} • Showing {paginatedInstances.length} of {instances.length} entries</span>
+                      <div className="flex gap-2">
+                        <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(1)}>First</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageInstances === 1} onClick={() => setCurrentPageInstances(currentPageInstances - 1)}>Previous</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(currentPageInstances + 1)}>Next</Button>
+                        <Button size="sm" variant="outline" disabled={currentPageInstances === totalPagesInstances} onClick={() => setCurrentPageInstances(totalPagesInstances)}>Last</Button>
+                      </div>
+                    </div>
+                  )}
+                  )}
+                  </CardContent>
+                  </Card>
+                  </TabsContent>
+                  </Tabs>
 
       <ExpenseForm
         open={showForm}

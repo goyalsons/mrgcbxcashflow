@@ -17,6 +17,8 @@ import EmptyState from '@/components/shared/EmptyState';
 import ContactForm from '@/components/contacts/ContactForm';
 import { useToast } from '@/components/ui/use-toast';
 
+const ITEMS_PER_PAGE = 50;
+
 export default function Customers() {
   const navigate = useNavigate();
   const [showForm, setShowForm] = useState(false);
@@ -28,6 +30,7 @@ export default function Customers() {
   const [assigning, setAssigning] = useState(false);
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -112,6 +115,13 @@ export default function Customers() {
     else { setSortBy(col); setSortDir('asc'); }
   };
 
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
   const SortHeader = ({ label, col }) => (
     <TableHead className="cursor-pointer hover:bg-muted/50 select-none" onClick={() => toggleSort(col)}>
       <div className="flex items-center gap-1.5 font-semibold">
@@ -181,7 +191,7 @@ export default function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((c) => (
+                {paginatedData.map((c) => (
                   <TableRow key={c.id} className="group hover:bg-primary/5 border-slate-200/50">
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggleOne(c.id)} />
@@ -214,11 +224,22 @@ export default function Customers() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-            {search && <div className="px-4 py-3 border-t text-xs text-muted-foreground">Showing {filtered.length} of {customers.length}</div>}
-          </div>
-        )}
-      </Card>
+              </Table>
+              {totalPages > 1 && (
+              <div className="flex items-center justify-between px-6 py-3 border-t bg-muted/30">
+                <span className="text-sm text-muted-foreground">Page {currentPage} of {totalPages} • Showing {paginatedData.length} of {filtered.length} customers</span>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(1)}>First</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)}>Previous</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)}>Next</Button>
+                  <Button size="sm" variant="outline" disabled={currentPage === totalPages} onClick={() => setCurrentPage(totalPages)}>Last</Button>
+                </div>
+              </div>
+              )}
+              {search && <div className="px-4 py-3 border-t text-xs text-muted-foreground">Showing {filtered.length} of {customers.length}</div>}
+              </div>
+              )}
+              </Card>
 
       <ContactForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} type="Customer" />
 
