@@ -230,7 +230,7 @@ function AgingTable({ items, type, onStatusChange, capitalRate }) {
       return sortDir === 'asc' ? av - bv : bv - av;
     });
     return all;
-  }, [bucketed, bucketFilter, statusFilter, search, sortKey, sortDir, type, capitalRate]);
+  }, [bucketed, bucketFilter, statusFilter, search, sortKey, sortDir, type, capitalRate, minAmount]);
 
   const STATUSES = type === 'receivable'
     ? ['pending','partially_paid','overdue','written_off','disputed']
@@ -307,7 +307,7 @@ function AgingTable({ items, type, onStatusChange, capitalRate }) {
           <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
           <Input
             type="number"
-            placeholder="Min balance"
+            placeholder="Min Amt"
             value={minAmountInput}
             onChange={e => setMinAmountInput(e.target.value)}
             className="pl-6 h-8 text-sm w-32"

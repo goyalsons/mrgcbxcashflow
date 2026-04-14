@@ -23,7 +23,7 @@ import PageHeader from '@/components/shared/PageHeader';
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 const EMPTY = {
-  debtor_id: '',
+  customer_id: '',
   manager_email: '',
   manager_name: '',
   target_amount: '',
@@ -31,7 +31,7 @@ const EMPTY = {
   notes: '',
 };
 
-function TargetForm({ open, onClose, onSave, editData, managers, debtors }) {
+function TargetForm({ open, onClose, onSave, editData, managers, customers }) {
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -49,16 +49,15 @@ function TargetForm({ open, onClose, onSave, editData, managers, debtors }) {
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
 
-  const handleDebtorSelect = (debtorId) => {
-    const debtor = debtors.find(d => d.id === debtorId);
-    if (!debtor) return;
-    const mgr = managers.find(m => m.email === debtor.assigned_manager);
+  const handleCustomerSelect = (customerId) => {
+    const customer = customers.find(c => c.id === customerId);
+    if (!customer) return;
+    const mgr = managers.find(m => m.email === customer.account_manager);
     setForm(f => ({
       ...f,
-      debtor_id: debtorId,
-      manager_email: debtor.assigned_manager || '',
-      manager_name: mgr?.full_name || debtor.assigned_manager || '',
-      target_amount: debtor.total_outstanding > 0 ? String(debtor.total_outstanding) : f.target_amount,
+      customer_id: customerId,
+      manager_email: customer.account_manager || '',
+      manager_name: mgr?.full_name || customer.account_manager_name || customer.account_manager || '',
     }));
   };
 
@@ -84,12 +83,12 @@ function TargetForm({ open, onClose, onSave, editData, managers, debtors }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           {!editData && (
             <div className="space-y-1.5">
-              <Label>Debtor</Label>
-              <Select value={form.debtor_id} onValueChange={handleDebtorSelect}>
-                <SelectTrigger><SelectValue placeholder="Select debtor..." /></SelectTrigger>
+              <Label>Customer</Label>
+              <Select value={form.customer_id} onValueChange={handleCustomerSelect}>
+                <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
                 <SelectContent>
-                  {debtors.map(d => (
-                    <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>
+                  {customers.map(c => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -98,7 +97,7 @@ function TargetForm({ open, onClose, onSave, editData, managers, debtors }) {
           <div className="space-y-1.5">
             <Label>Account Manager *</Label>
             <div className="flex h-9 w-full rounded-md border border-input bg-muted/40 px-3 py-1 text-sm items-center">
-              {form.manager_name || form.manager_email || <span className="text-muted-foreground">Auto-filled from debtor</span>}
+              {form.manager_name || form.manager_email || <span className="text-muted-foreground">Auto-filled from customer</span>}
             </div>
           </div>
           <div className="space-y-1.5">
@@ -148,9 +147,9 @@ export default function CollectionTargets() {
     queryFn: () => base44.entities.User.list(),
   });
 
-  const { data: debtors = [] } = useQuery({
-    queryKey: ['debtors'],
-    queryFn: () => base44.entities.Debtor.list(),
+  const { data: customers = [] } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
   });
 
   const { data: payments = [] } = useQuery({
@@ -159,6 +158,18 @@ export default function CollectionTargets() {
   });
 
   const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
+
+  // Build a map of manager_email -> customer ids for payment lookups
+  const managerCustomerIds = useMemo(() => {
+    const map = {};
+    customers.forEach(c => {
+      if (c.account_manager) {
+        if (!map[c.account_manager]) map[c.account_manager] = [];
+        map[c.account_manager].push(c.id);
+      }
+    });
+    return map;
+  }, [customers]);
 
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.CollectionTarget.create(data),
@@ -185,19 +196,20 @@ export default function CollectionTargets() {
     const filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
 
     return filtered.map(t => {
-      // Collected = sum of payments by debtors assigned to this manager in this month
-      const managerDebtorIds = debtors.filter(d => d.assigned_manager === t.manager_email).map(d => d.id);
+      // Collected = sum of payments for the period, attributed to this manager via customer's account_manager field
+      const customerIds = managerCustomerIds[t.manager_email] || [];
       const monthPayments = payments.filter(p => {
-        if (!managerDebtorIds.includes(p.debtor_id)) return false;
         if (!p.payment_date) return false;
         const d = new Date(p.payment_date);
-        return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+        if (d.getMonth() + 1 !== selectedMonth || d.getFullYear() !== selectedYear) return false;
+        // Match by debtor_id (which maps to customer id in the new model)
+        return customerIds.includes(p.debtor_id);
       });
       const collected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
       const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
       return { ...t, collected, pct };
     }).sort((a, b) => b.pct - a.pct);
-  }, [targets, selectedMonth, selectedYear, debtors, payments]);
+  }, [targets, selectedMonth, selectedYear, managerCustomerIds, payments]);
 
   const totalTarget = monthlyTargets.reduce((s, t) => s + (t.target_amount || 0), 0);
   const totalCollected = monthlyTargets.reduce((s, t) => s + t.collected, 0);
@@ -341,12 +353,12 @@ export default function CollectionTargets() {
                 </TableHeader>
                 <TableBody>
                   {targets.map(t => {
-                    const managerDebtorIds = debtors.filter(d => d.assigned_manager === t.manager_email).map(d => d.id);
+                    const customerIds = managerCustomerIds[t.manager_email] || [];
                     const monthPayments = payments.filter(p => {
-                      if (!managerDebtorIds.includes(p.debtor_id)) return false;
                       if (!p.payment_date) return false;
                       const d = new Date(p.payment_date);
-                      return d.getMonth() + 1 === t.period_month && d.getFullYear() === t.period_year;
+                      if (d.getMonth() + 1 !== t.period_month || d.getFullYear() !== t.period_year) return false;
+                      return customerIds.includes(p.debtor_id);
                     });
                     const collected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
                     const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
@@ -399,7 +411,7 @@ export default function CollectionTargets() {
         onSave={handleSave}
         editData={editingTarget}
         managers={managers}
-        debtors={debtors}
+        customers={customers}
       />
     </div>
   );
