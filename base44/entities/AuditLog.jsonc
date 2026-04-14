@@ -1,0 +1,50 @@
+{
+  "name": "AuditLog",
+  "type": "object",
+  "properties": {
+    "entity_type": {
+      "type": "string",
+      "description": "Type of entity changed (Customer, Vendor, Receivable, Payable, Expense, BankAccount, FinancialAsset, MessageTemplate, CollectionTarget, ReminderCampaign, User, AppSettings, SimulatorScenario)"
+    },
+    "entity_id": {
+      "type": "string",
+      "description": "ID of the entity changed"
+    },
+    "entity_name": {
+      "type": "string",
+      "description": "Display name of entity"
+    },
+    "action": {
+      "type": "string",
+      "enum": [
+        "delete",
+        "payment_recorded",
+        "status_changed",
+        "expense_approved",
+        "user_invited",
+        "role_changed",
+        "data_imported",
+        "settings_changed",
+        "scenario_saved"
+      ],
+      "description": "Action performed"
+    },
+    "changes": {
+      "type": "string",
+      "description": "JSON string of changes made or action details"
+    },
+    "performed_by": {
+      "type": "string",
+      "description": "Email of user who performed the action"
+    },
+    "performed_by_name": {
+      "type": "string",
+      "description": "Name of user who performed the action"
+    }
+  },
+  "required": [
+    "entity_type",
+    "action",
+    "performed_by"
+  ]
+}
