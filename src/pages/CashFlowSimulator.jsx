@@ -372,66 +372,66 @@ export default function CashFlowSimulator() {
       </div>
       <TabsContent value="weekly" className="mt-0">
     <div className="space-y-4 overflow-x-hidden">
-      {/* Weekly Stat Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {/* Weekly Stat Cards — 8 in a single row */}
+      <div className="grid grid-cols-4 lg:grid-cols-8 gap-1.5">
         <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-blue-600 font-medium flex items-center gap-1"><Wallet className="w-3 h-3" />Opening Balance</div>
-            <div className="text-lg font-bold text-blue-700 mt-0.5">{INR(weeklyData[0]?.simClosing - weeklyData[0]?.simNet || 0)}</div>
-            <div className="text-[11px] text-blue-400">bank balance</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-blue-600 font-medium flex items-center gap-0.5"><Wallet className="w-2.5 h-2.5" />Opening Bal</div>
+            <div className="text-sm font-bold text-blue-700 mt-0.5 truncate">{INR(weeklyData[0]?.simClosing - weeklyData[0]?.simNet || 0)}</div>
+            <div className="text-[10px] text-blue-400">bank balance</div>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50 border-emerald-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-emerald-600 font-medium flex items-center gap-1"><TrendingUp className="w-3 h-3" />12W Sim Inflow</div>
-            <div className="text-lg font-bold text-emerald-700 mt-0.5">{INR(totalInflow12W)}</div>
-            <div className="text-[11px] text-emerald-400">vs base: {INR(weeklyData.reduce((s,w)=>s+w.baseInflow,0))}</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-0.5"><TrendingUp className="w-2.5 h-2.5" />12W Inflow</div>
+            <div className="text-sm font-bold text-emerald-700 mt-0.5 truncate">{INR(totalInflow12W)}</div>
+            <div className="text-[10px] text-emerald-400 truncate">base: {INR(weeklyData.reduce((s,w)=>s+w.baseInflow,0))}</div>
           </CardContent>
         </Card>
         <Card className="bg-red-50 border-red-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-red-600 font-medium flex items-center gap-1"><TrendingDown className="w-3 h-3" />12W Sim Outflow</div>
-            <div className="text-lg font-bold text-red-700 mt-0.5">{INR(totalOutflow12W)}</div>
-            <div className="text-[11px] text-red-400">vs base: {INR(weeklyData.reduce((s,w)=>s+w.baseOutflow,0))}</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-red-600 font-medium flex items-center gap-0.5"><TrendingDown className="w-2.5 h-2.5" />12W Outflow</div>
+            <div className="text-sm font-bold text-red-700 mt-0.5 truncate">{INR(totalOutflow12W)}</div>
+            <div className="text-[10px] text-red-400 truncate">base: {INR(weeklyData.reduce((s,w)=>s+w.baseOutflow,0))}</div>
           </CardContent>
         </Card>
         <Card className={simNet12W >= 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}>
-          <CardContent className="p-3">
-            <div className={`text-[11px] font-medium flex items-center gap-1 ${simNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-              {simNet12W >= 0 ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}Net 12W
+          <CardContent className="p-2">
+            <div className={`text-[10px] font-medium flex items-center gap-0.5 ${simNet12W >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {simNet12W >= 0 ? <ArrowUpRight className="w-2.5 h-2.5" /> : <ArrowDownRight className="w-2.5 h-2.5" />}Net 12W
             </div>
-            <div className={`text-lg font-bold mt-0.5 ${simNet12W >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{INR(simNet12W)}</div>
-            <div className="text-[11px] text-muted-foreground">{negativeWeeks > 0 ? `${negativeWeeks} weeks negative` : 'All weeks positive'}</div>
+            <div className={`text-sm font-bold mt-0.5 truncate ${simNet12W >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>{INR(simNet12W)}</div>
+            <div className="text-[10px] text-muted-foreground truncate">{negativeWeeks > 0 ? `${negativeWeeks}wk neg` : 'All positive'}</div>
           </CardContent>
         </Card>
         <Card className="bg-purple-50 border-purple-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-purple-600 font-medium">Sim Improvement</div>
-            <div className={`text-lg font-bold mt-0.5 ${improvement >= 0 ? 'text-purple-700' : 'text-red-700'}`}>{improvement >= 0 ? '+' : ''}{INR(improvement)}</div>
-            <div className="text-[11px] text-purple-400">vs baseline</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-purple-600 font-medium">Improvement</div>
+            <div className={`text-sm font-bold mt-0.5 truncate ${improvement >= 0 ? 'text-purple-700' : 'text-red-700'}`}>{improvement >= 0 ? '+' : ''}{INR(improvement)}</div>
+            <div className="text-[10px] text-purple-400">vs baseline</div>
           </CardContent>
         </Card>
         <Card className="bg-slate-50 border-slate-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-slate-600 font-medium">Projected Closing</div>
-            <div className={`text-lg font-bold mt-0.5 ${latestClosing >= 0 ? 'text-slate-700' : 'text-red-700'}`}>{INR(latestClosing)}</div>
-            <div className="text-[11px] text-slate-400">end of W12</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-slate-600 font-medium">Proj Closing</div>
+            <div className={`text-sm font-bold mt-0.5 truncate ${latestClosing >= 0 ? 'text-slate-700' : 'text-red-700'}`}>{INR(latestClosing)}</div>
+            <div className="text-[10px] text-slate-400">end of W12</div>
           </CardContent>
         </Card>
         <Card className={negativeWeeks > 4 ? 'bg-red-50 border-red-200' : negativeWeeks > 0 ? 'bg-amber-50 border-amber-100' : 'bg-emerald-50 border-emerald-100'}>
-          <CardContent className="p-3">
-            <div className={`text-[11px] font-medium flex items-center gap-1 ${negativeWeeks > 4 ? 'text-red-600' : negativeWeeks > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
-              <AlertTriangle className="w-3 h-3" />Cash Gap Weeks
+          <CardContent className="p-2">
+            <div className={`text-[10px] font-medium flex items-center gap-0.5 ${negativeWeeks > 4 ? 'text-red-600' : negativeWeeks > 0 ? 'text-amber-600' : 'text-emerald-600'}`}>
+              <AlertTriangle className="w-2.5 h-2.5" />Gap Weeks
             </div>
-            <div className={`text-lg font-bold mt-0.5 ${negativeWeeks > 4 ? 'text-red-700' : negativeWeeks > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{negativeWeeks} / 12</div>
-            <div className="text-[11px] text-muted-foreground">weeks with negative net</div>
+            <div className={`text-sm font-bold mt-0.5 ${negativeWeeks > 4 ? 'text-red-700' : negativeWeeks > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{negativeWeeks} / 12</div>
+            <div className="text-[10px] text-muted-foreground">neg net weeks</div>
           </CardContent>
         </Card>
         <Card className="bg-indigo-50 border-indigo-100">
-          <CardContent className="p-3">
-            <div className="text-[11px] text-indigo-600 font-medium">Avg Weekly Net</div>
-            <div className={`text-lg font-bold mt-0.5 ${(simNet12W/12) >= 0 ? 'text-indigo-700' : 'text-red-700'}`}>{INR(Math.round(simNet12W/12))}</div>
-            <div className="text-[11px] text-indigo-400">per week (simulated)</div>
+          <CardContent className="p-2">
+            <div className="text-[10px] text-indigo-600 font-medium">Avg Weekly Net</div>
+            <div className={`text-sm font-bold mt-0.5 truncate ${(simNet12W/12) >= 0 ? 'text-indigo-700' : 'text-red-700'}`}>{INR(Math.round(simNet12W/12))}</div>
+            <div className="text-[10px] text-indigo-400">per week</div>
           </CardContent>
         </Card>
       </div>

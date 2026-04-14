@@ -166,6 +166,8 @@ function AgingTable({ items, type, onStatusChange, capitalRate }) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortKey, setSortKey] = useState('daysOverdue');
   const [sortDir, setSortDir] = useState('desc');
+  const [minAmountInput, setMinAmountInput] = useState('');
+  const minAmount = parseFloat(minAmountInput) || 0;
 
   const bucketed = useMemo(() => {
     const result = { b0: [], b1: [], b2: [], b3: [] };
@@ -198,6 +200,12 @@ function AgingTable({ items, type, onStatusChange, capitalRate }) {
       ? [...bucketed.b0, ...bucketed.b1, ...bucketed.b2, ...bucketed.b3]
       : bucketed[bucketFilter] || [];
 
+    if (minAmount > 0) {
+      all = all.filter(i => {
+        const bal = type === 'receivable' ? (i.amount||0)-(i.amount_received||0) : (i.amount||0)-(i.amount_paid||0);
+        return bal >= minAmount;
+      });
+    }
     if (statusFilter !== 'all') all = all.filter(i => i.status === statusFilter);
     const q = search.toLowerCase();
     if (q) {
@@ -295,6 +303,16 @@ function AgingTable({ items, type, onStatusChange, capitalRate }) {
             {STATUSES.map(s => <SelectItem key={s} value={s}>{s.replace('_', ' ')}</SelectItem>)}
           </SelectContent>
         </Select>
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+          <Input
+            type="number"
+            placeholder="Min balance"
+            value={minAmountInput}
+            onChange={e => setMinAmountInput(e.target.value)}
+            className="pl-6 h-8 text-sm w-32"
+          />
+        </div>
         <div className="ml-auto text-sm font-semibold whitespace-nowrap">Total: {formatINR(grandTotal)}</div>
       </div>
 
