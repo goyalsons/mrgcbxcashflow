@@ -47,7 +47,7 @@ export default function Receivables() {
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
     queryFn: async () => {
-      return await base44.entities.Receivable.list('-created_date', 100);
+      return await base44.entities.Receivable.list('-created_date');
     },
   });
 
