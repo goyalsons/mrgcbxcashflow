@@ -97,6 +97,7 @@ function applyTemplateToContent(template, customer, invoices, contactPerson) {
 }
 
 export default function QuickReminderModal({ customer, onClose }) {
+  console.log('[QuickReminderModal] Component rendered with customer:', customer);
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
   const [invoices, setInvoices] = useState([]);
