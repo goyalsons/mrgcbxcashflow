@@ -153,27 +153,6 @@ const ENTITY_CONFIGS = {
       approval_status: 'not_required',
     }),
   },
-  payable: {
-    label: 'Payables',
-    entity: 'Payable',
-    fields: ['vendor_name', 'bill_number', 'amount', 'due_date', 'category'],
-    required: ['vendor_name', 'amount'],
-    sampleData: [
-      ['ABC Suppliers', 'BILL-001', '25000', '30/04/2025', 'raw_materials'],
-      ['Cloud Services Inc', 'INV-2025', '8500', '15/04/2025', 'services'],
-    ],
-    transform: (row) => ({
-      vendor_name: row.vendor_name || row.vendor || row.supplier,
-      bill_number: row.bill_number || row.bill_no || row.invoice_number,
-      amount: parseIndianAmount(row.amount || row.total),
-      amount_paid: 0,
-      due_date: parseIndianDate(row.due_date || row.payment_due),
-      bill_date: parseIndianDate(row.bill_date || row.date),
-      category: row.category || 'other',
-      status: 'pending',
-      notes: row.notes || row.remarks || '',
-    }),
-  },
   receivable: {
     label: 'Receivables',
     entity: 'Receivable',
