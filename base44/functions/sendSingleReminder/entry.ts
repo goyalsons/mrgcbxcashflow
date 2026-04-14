@@ -57,8 +57,11 @@ Deno.serve(async (req) => {
     if (reminder.status === 'sent') return Response.json({ error: 'Reminder already sent' }, { status: 400 });
 
     const now = new Date();
-    const currentDate = now.toISOString().split('T')[0];
-    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    // Use IST (UTC+5:30) since scheduled times are stored in IST
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istNow = new Date(now.getTime() + istOffset);
+    const currentDate = istNow.toISOString().split('T')[0];
+    const currentTime = `${String(istNow.getUTCHours()).padStart(2, '0')}:${String(istNow.getUTCMinutes()).padStart(2, '0')}`;
 
     // Fetch customer and their outstanding receivables
     const customer = await base44.entities.Customer.get(reminder.customer_id);
