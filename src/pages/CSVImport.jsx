@@ -225,34 +225,28 @@ const ENTITY_CONFIGS = {
   },
   tally_receivable: {
     label: 'Tally Bills Receivable',
-    entity: 'Invoice',
+    entity: 'Receivable',
+    // Display fields for preview table — maps to dataKeys below
     fields: ['Date', 'Ref. No.', "Party's Name", 'Pending Amount', 'Due on', 'Overdue by days'],
-    required: ['debtor_name', 'amount'],
+    // Internal data keys corresponding to each display field (used for preview rendering)
+    dataKeys: ['invoice_date', 'invoice_number', 'customer_name', 'amount', 'due_date', 'notes'],
+    required: ['customer_name', 'amount'],
     sampleData: [
       ['01/04/2025', 'CEODL/25-26/001', 'Acme Corporation', '25000', '30/04/2025', '0'],
       ['15/03/2025', 'CEODL/24-25/999', 'Tech Solutions Ltd', '78000', '15/04/2025', '19'],
     ],
     transform: (row) => {
-      // "Party's Name" → normKey → partys_name
-      const debtorName = row['partys_name'] || row['party_s_name'] || row['partys_name_'] || row['party_name'] || row['parties_name'] || row['party'] || '';
-      // "Pending Amount" → normKey → pending_amount. Also try plain "pending" for sub-header merged variants.
-      const amount = parseIndianAmount(
-        row['pending_amount'] || row['pending_amount_'] || row['pendingamount'] ||
-        row['pending'] || row['amount'] || '0'
-      );
-      // Due on → normKey → due_on
-      const dueDate = parseIndianDate(row['due_on'] || row['dueon'] || row['due_date'] || '');
+      const customerName = row['partys_name'] || '';
+      const amount = parseIndianAmount(row['pending_amount'] || '0');
+      const dueDate = parseIndianDate(row['due_on'] || '');
       const invoiceDate = parseIndianDate(row['date'] || '');
-      // Ref. No. → normKey → ref_no
-      const invoiceNumber = row['ref_no'] || row['ref_no_'] || row['refno'] || row['ref'] || row['invoice_number'] || '';
-      // Overdue → normKey → overdue or overdue_by_days
-      const overdueDays = row['overdue_by_days'] || row['overdueby_days'] || row['overdue_by'] || row['overdue'] || row['overdue_days'] || '';
-      const overdueDaysNum = parseInt(overdueDays) || 0;
+      const invoiceNumber = row['ref_no'] || '';
+      const overdueDaysNum = parseInt(row['overdue_by_days'] || '0') || 0;
       return {
-        debtor_name: debtorName,
+        customer_name: customerName,
         invoice_number: invoiceNumber,
         amount,
-        amount_paid: 0,
+        amount_received: 0,
         invoice_date: invoiceDate,
         due_date: dueDate || invoiceDate,
         status: overdueDaysNum > 0 ? 'overdue' : 'pending',
@@ -477,56 +471,33 @@ export default function CSVImport() {
          await sleep(1200);
        }
     } else if (entityType === 'tally_receivable') {
-      // Step 1: Resolve / create Debtor records by company name
-      const allDebtors = await base44.entities.Debtor.list().catch(() => []);
-      const debtorByName = {};
-      allDebtors.forEach(d => { if (d.name) debtorByName[d.name.toLowerCase()] = d; });
-
-      // Find names that need new Debtor records
-      const uniqueNames = [...new Set(validRows.map(r => r.data.debtor_name).filter(Boolean))];
-      for (const name of uniqueNames) {
-        if (!debtorByName[name.toLowerCase()]) {
-          const created = await base44.entities.Debtor.create({ name, status: 'active' });
-          debtorByName[name.toLowerCase()] = created;
-          await sleep(500);
-        }
-      }
-
-      // Step 2: Upsert Invoices — match by invoice_number (Ref. No), fallback match by debtor_name+amount
-      const existingInvoices = await base44.entities.Invoice.list().catch(() => []);
-      const invoiceByRefNo = {};
-      existingInvoices.forEach(inv => {
-        if (inv.invoice_number) invoiceByRefNo[inv.invoice_number.trim().toLowerCase()] = inv;
+      // Upsert Receivables — match by invoice_number (Ref. No.)
+      const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
+      const receivableByRefNo = {};
+      existingReceivables.forEach(r => {
+        if (r.invoice_number) receivableByRefNo[r.invoice_number.trim().toLowerCase()] = r;
       });
 
       for (const row of validRows) {
-        const debtor = debtorByName[(row.data.debtor_name || '').toLowerCase()];
-        const invData = {
-          ...row.data,
-          debtor_id: debtor?.id || '',
-          debtor_name: row.data.debtor_name,
-        };
-
         const refKey = (row.data.invoice_number || '').trim().toLowerCase();
-        const existing = refKey ? invoiceByRefNo[refKey] : null;
+        const existing = refKey ? receivableByRefNo[refKey] : null;
 
         if (existing) {
-          await base44.entities.Invoice.update(existing.id, {
-            amount: invData.amount,
-            due_date: invData.due_date,
-            invoice_date: invData.invoice_date,
-            status: invData.status,
-            notes: invData.notes,
-            debtor_id: invData.debtor_id,
-            debtor_name: invData.debtor_name,
+          await base44.entities.Receivable.update(existing.id, {
+            amount: row.data.amount,
+            due_date: row.data.due_date,
+            invoice_date: row.data.invoice_date,
+            status: row.data.status,
+            notes: row.data.notes,
+            customer_name: row.data.customer_name,
           });
           updated++;
         } else {
-          await base44.entities.Invoice.create(invData);
+          await base44.entities.Receivable.create(row.data);
           success++;
         }
-        await sleep(500);
-        }
+        await sleep(300);
+      }
 
     } else if (entityType === 'vendor') {
        // Vendor import with duplicate check by name (Particulars field)
@@ -668,6 +639,12 @@ export default function CSVImport() {
                     <p className="text-blue-800">This import is designed for the "Ledger Contact Details" report exported from Tally.</p>
                     <p className="text-blue-800">If both Mobile and Phone numbers are provided, the mobile number will be used.</p>
                   </>
+                ) : entityType === 'tally_receivable' ? (
+                  <>
+                    <p className="text-blue-800">Export the <strong>"Bills Receivable"</strong> report from Tally and upload the file directly (CSV or XLSX).</p>
+                    <p className="text-blue-800">Required columns: <strong>Date, Ref. No., Party's Name, Pending Amount, Due on, Overdue by days</strong></p>
+                    <p className="text-blue-800">Dates: DD/MM/YYYY or Tally format (1-Apr-25). Amounts: ₹1,23,456 or 123456.</p>
+                  </>
                 ) : (
                   <>
                     <p className="text-blue-800">Dates: DD/MM/YYYY, YYYY-MM-DD, or Tally (1-Apr-25)</p>
@@ -726,19 +703,6 @@ export default function CSVImport() {
                 </div>
               </CardHeader>
               <CardContent className="overflow-auto max-h-[500px]">
-                {(entityType === 'tally_receivable' || entityType === 'tally_payable') && preview.debugInfo && (
-                  <div className="mb-3 p-3 bg-slate-50 border border-slate-200 rounded text-xs text-slate-700 space-y-1 font-mono">
-                    <div><span className="font-bold">Header row index:</span> {preview.debugInfo.headerIdx}</div>
-                    <div><span className="font-bold">Sub-header detected:</span> {String(preview.debugInfo.isSubHeader)}</div>
-                    <div><span className="font-bold">Data starts at row:</span> {preview.debugInfo.dataStart}</div>
-                    <div><span className="font-bold">Raw headers:</span> {preview.debugInfo.rawHeaders.join(' | ')}</div>
-                    <div><span className="font-bold">Merged keys:</span> {preview.debugInfo.mergedHeaders.join(' | ')}</div>
-                    <div><span className="font-bold">Rows after filter:</span> {preview.rows.length}</div>
-                    {preview.debugInfo.firstMappedRow && Object.keys(preview.debugInfo.firstMappedRow).length > 0 && (
-                      <div><span className="font-bold">First row values:</span> {JSON.stringify(preview.debugInfo.firstMappedRow)}</div>
-                    )}
-                  </div>
-                )}
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -758,11 +722,13 @@ export default function CSVImport() {
                               </div>
                           }
                         </TableCell>
-                        {config.fields.map(f => {
-                          const entityField = config.csvColumnToEntityField?.[f] || f.toLowerCase().replace(/[^a-z0-9_]/g, '_');
+                        {config.fields.map((f, fi) => {
+                          const dataKey = config.dataKeys
+                            ? config.dataKeys[fi]
+                            : (config.csvColumnToEntityField?.[f] || f.toLowerCase().replace(/[^a-z0-9_]/g, '_'));
                           return (
                             <TableCell key={f} className="text-xs max-w-[120px] truncate">
-                              {String(row.data[entityField] ?? row.raw[f.toLowerCase()] ?? '')}
+                              {String(row.data[dataKey] ?? '')}
                             </TableCell>
                           );
                         })}
