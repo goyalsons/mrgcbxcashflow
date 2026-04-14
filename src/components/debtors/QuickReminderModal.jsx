@@ -26,6 +26,7 @@ function buildInvoiceTable(invoices) {
 function buildAttachmentLinks(invoices) {
   const links = [];
   invoices.forEach(inv => {
+    console.log('[buildAttachmentLinks] Invoice:', inv.invoice_number, 'attachments:', inv.attachments, 'document_url:', inv.document_url);
     if (inv.attachments) {
       try {
         const arr = JSON.parse(inv.attachments);
@@ -38,6 +39,7 @@ function buildAttachmentLinks(invoices) {
       links.push(`  • Invoice ${inv.invoice_number || '-'}: ${inv.document_url}`);
     }
   });
+  console.log('[buildAttachmentLinks] Result:', links);
   return links.length > 0 ? `Attachments:\n${links.join('\n')}` : '';
 }
 
