@@ -169,7 +169,7 @@ export default function Customers() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/80 border-b-2 border-slate-200">
+              <TableHeader className="sticky top-0 z-10 bg-slate-50 shadow-sm border-b-2 border-slate-200">
                 <TableRow className="hover:bg-slate-50/80">
                   <TableHead className="w-10">
                     <Checkbox
@@ -191,8 +191,8 @@ export default function Customers() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.map((c) => (
-                  <TableRow key={c.id} className="group hover:bg-primary/5 border-slate-200/50">
+                {paginatedData.map((c, idx) => (
+                  <TableRow key={c.id} className={`group hover:bg-primary/5 border-slate-200/50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}>
                     <TableCell onClick={e => e.stopPropagation()}>
                       <Checkbox checked={selected.has(c.id)} onCheckedChange={() => toggleOne(c.id)} />
                     </TableCell>

@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp, Upload, Clock, User } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Wallet, Landmark, PiggyBank, Plus, TrendingUp, Upload, Clock, User, ChevronUp, ChevronDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
@@ -34,6 +34,21 @@ export default function BankAccounts() {
   const [editing, setEditing] = useState(null);
   const [showAssetForm, setShowAssetForm] = useState(false);
   const [editingAsset, setEditingAsset] = useState(null);
+  const [sortAccounts, setSortAccounts] = useState({ key: 'name', dir: 'asc' });
+  const [sortAssets, setSortAssets] = useState({ key: 'name', dir: 'asc' });
+
+  const makeSortHeader = (sortConfig, setSortConfig) => ({ col, label }) => (
+    <TableHead className="cursor-pointer select-none whitespace-nowrap sticky top-0 bg-card z-10" onClick={() => setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}>
+      <span className="inline-flex items-center gap-1">{label}
+        <span className={sortConfig.key === col ? 'opacity-100 text-primary' : 'opacity-30'}>
+          {sortConfig.key === col && sortConfig.dir === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+        </span>
+      </span>
+    </TableHead>
+  );
+
+  const SortHeaderA = makeSortHeader(sortAccounts, setSortAccounts);
+  const SortHeaderF = makeSortHeader(sortAssets, setSortAssets);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -128,6 +143,18 @@ export default function BankAccounts() {
     return Object.values(groups);
   }, [accounts]);
 
+  const sortedSnapshots = useMemo(() => [...latestSnapshots].sort((a, b) => {
+    const av = a[sortAccounts.key], bv = b[sortAccounts.key];
+    const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+    return sortAccounts.dir === 'asc' ? c : -c;
+  }), [latestSnapshots, sortAccounts]);
+
+  const sortedFinancialAssets = useMemo(() => [...financialAssets].sort((a, b) => {
+    const av = a[sortAssets.key], bv = b[sortAssets.key];
+    const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+    return sortAssets.dir === 'asc' ? c : -c;
+  }), [financialAssets, sortAssets]);
+
   const bankSnapshots = latestSnapshots.filter(a => a.type === 'bank');
   const cashSnapshots = latestSnapshots.filter(a => a.type === 'cash');
 
@@ -195,21 +222,21 @@ export default function BankAccounts() {
           ) : (
             <div className="rounded-lg border overflow-hidden">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Account Number</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead>Updated By</TableHead>
-                    <TableHead className="text-right">Balance</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {latestSnapshots.map(a => (
-                    <TableRow key={a.id}>
+                 <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
+                   <TableRow>
+                     <SortHeaderA col="name" label="Name" />
+                     <SortHeaderA col="account_number" label="Account Number" />
+                     <SortHeaderA col="type" label="Type" />
+                     <SortHeaderA col="snapshot_date" label="Last Updated" />
+                     <TableHead className="sticky top-0 bg-card z-10">Updated By</TableHead>
+                     <SortHeaderA col="balance" label="Balance" />
+                     <TableHead className="sticky top-0 bg-card z-10">Status</TableHead>
+                     <TableHead className="w-10 sticky top-0 bg-card z-10"></TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {sortedSnapshots.map((a, idx) => (
+                     <TableRow key={a.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                       <TableCell className="font-medium">{a.name}</TableCell>
                       <TableCell className="text-muted-foreground font-mono text-sm">{a.account_number || '—'}</TableCell>
                       <TableCell><Badge variant="outline" className="capitalize">{a.type === 'cash' ? 'Cash' : 'Bank'}</Badge></TableCell>
@@ -258,22 +285,22 @@ export default function BankAccounts() {
           ) : (
             <div className="rounded-lg border overflow-hidden">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Institution</TableHead>
-                    <TableHead>Account/Folio</TableHead>
-                    <TableHead>Maturity Date</TableHead>
-                    <TableHead>Rate %</TableHead>
-                    <TableHead>Valuation Date</TableHead>
-                    <TableHead className="text-right">Value</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {financialAssets.map(a => (
-                    <TableRow key={a.id}>
+                 <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
+                   <TableRow>
+                     <SortHeaderF col="name" label="Name" />
+                     <SortHeaderF col="type" label="Type" />
+                     <SortHeaderF col="institution" label="Institution" />
+                     <TableHead className="sticky top-0 bg-card z-10">Account/Folio</TableHead>
+                     <SortHeaderF col="maturity_date" label="Maturity Date" />
+                     <SortHeaderF col="interest_rate" label="Rate %" />
+                     <SortHeaderF col="snapshot_date" label="Valuation Date" />
+                     <SortHeaderF col="amount" label="Value" />
+                     <TableHead className="w-10 sticky top-0 bg-card z-10"></TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {sortedFinancialAssets.map((a, idx) => (
+                     <TableRow key={a.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                       <TableCell className="font-medium">{a.name}</TableCell>
                       <TableCell><Badge variant="outline">{ASSET_TYPE_LABELS[a.type] || a.type}</Badge></TableCell>
                       <TableCell className="text-sm">{a.institution || '—'}</TableCell>

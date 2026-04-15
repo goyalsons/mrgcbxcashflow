@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Trash2, CheckCircle, RefreshCw, Loader2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, RefreshCw, Loader2, ChevronUp, ChevronDown } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
@@ -55,6 +55,21 @@ export default function RecurringExpenses() {
   const [generating, setGenerating] = useState(false);
   const [currentPageTemplates, setCurrentPageTemplates] = useState(1);
   const [currentPageInstances, setCurrentPageInstances] = useState(1);
+  const [sortTemplates, setSortTemplates] = useState({ key: 'description', dir: 'asc' });
+  const [sortInstances, setSortInstances] = useState({ key: 'expense_date', dir: 'asc' });
+
+  const makeSortHeader = (sortConfig, setSortConfig) => ({ col, label }) => (
+    <TableHead className="cursor-pointer select-none whitespace-nowrap sticky top-0 bg-card z-10" onClick={() => setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}>
+      <span className="inline-flex items-center gap-1">{label}
+        <span className={sortConfig.key === col ? 'opacity-100 text-primary' : 'opacity-30'}>
+          {sortConfig.key === col && sortConfig.dir === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+        </span>
+      </span>
+    </TableHead>
+  );
+
+  const SortHeaderT = makeSortHeader(sortTemplates, setSortTemplates);
+  const SortHeaderI = makeSortHeader(sortInstances, setSortInstances);
   const approvalThreshold = loadApprovalThreshold();
 
   const { data: currentUser } = useQuery({ queryKey: ['me'], queryFn: () => base44.auth.me() });
@@ -76,19 +91,31 @@ export default function RecurringExpenses() {
     [allExpenses]
   );
 
+  const sortedTemplates = useMemo(() => [...templates].sort((a, b) => {
+    const av = a[sortTemplates.key], bv = b[sortTemplates.key];
+    const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+    return sortTemplates.dir === 'asc' ? c : -c;
+  }), [templates, sortTemplates]);
+
   const paginatedTemplates = useMemo(() => {
     const start = (currentPageTemplates - 1) * ITEMS_PER_PAGE;
-    return templates.slice(start, start + ITEMS_PER_PAGE);
-  }, [templates, currentPageTemplates]);
+    return sortedTemplates.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedTemplates, currentPageTemplates]);
 
-  const totalPagesTemplates = Math.ceil(templates.length / ITEMS_PER_PAGE);
+  const totalPagesTemplates = Math.ceil(sortedTemplates.length / ITEMS_PER_PAGE);
+
+  const sortedInstances = useMemo(() => [...instances].sort((a, b) => {
+    const av = a[sortInstances.key], bv = b[sortInstances.key];
+    const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+    return sortInstances.dir === 'asc' ? c : -c;
+  }), [instances, sortInstances]);
 
   const paginatedInstances = useMemo(() => {
     const start = (currentPageInstances - 1) * ITEMS_PER_PAGE;
-    return instances.slice(start, start + ITEMS_PER_PAGE);
-  }, [instances, currentPageInstances]);
+    return sortedInstances.slice(start, start + ITEMS_PER_PAGE);
+  }, [sortedInstances, currentPageInstances]);
 
-  const totalPagesInstances = Math.ceil(instances.length / ITEMS_PER_PAGE);
+  const totalPagesInstances = Math.ceil(sortedInstances.length / ITEMS_PER_PAGE);
 
   const updateMut = useMutation({
     mutationFn: ({ id, data }) => base44.entities.Expense.update(id, data),
@@ -218,21 +245,21 @@ export default function RecurringExpenses() {
                 <div className="text-center py-10 text-muted-foreground text-sm">No recurring templates. Create one to get started.</div>
               ) : (
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Frequency</TableHead>
-                      <TableHead>Start Week</TableHead>
-                      <TableHead>Start Month</TableHead>
-                      <TableHead>End Date</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                     {paginatedTemplates.map(t => (
-                      <TableRow key={t.id}>
+                   <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
+                     <TableRow>
+                       <SortHeaderT col="description" label="Description" />
+                       <SortHeaderT col="category" label="Category" />
+                       <SortHeaderT col="amount" label="Amount" />
+                       <SortHeaderT col="recurrence_type" label="Frequency" />
+                       <TableHead className="sticky top-0 bg-card z-10">Start Week</TableHead>
+                       <TableHead className="sticky top-0 bg-card z-10">Start Month</TableHead>
+                       <SortHeaderT col="recurrence_end_date" label="End Date" />
+                       <TableHead className="sticky top-0 bg-card z-10">Actions</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                      {paginatedTemplates.map((t, idx) => (
+                       <TableRow key={t.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                         <TableCell className="font-medium">{t.description}</TableCell>
                         <TableCell><Badge variant="outline" className="text-xs">{CATEGORY_LABELS[t.category] || t.category}</Badge></TableCell>
                         <TableCell className="font-semibold">{formatINR(t.amount)}</TableCell>
@@ -292,28 +319,28 @@ export default function RecurringExpenses() {
                 <div className="text-center py-10 text-muted-foreground text-sm">No generated entries yet. Click "Generate Now" to create them.</div>
               ) : (
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-10">
-                        <Checkbox
-                          checked={instances.length > 0 && instances.every(e => selectedIds.has(e.id))}
-                          onCheckedChange={() => toggleAll(instances)}
-                        />
-                      </TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Category</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Week</TableHead>
-                      <TableHead>Month</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {paginatedInstances.map(e => {
-                      const isPast = e.expense_date <= new Date().toISOString().split('T')[0];
-                      return (
-                        <TableRow key={e.id} className={selectedIds.has(e.id) ? 'bg-blue-50' : ''}>
+                   <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
+                     <TableRow>
+                       <TableHead className="w-10 sticky top-0 bg-card z-10">
+                         <Checkbox
+                           checked={instances.length > 0 && instances.every(e => selectedIds.has(e.id))}
+                           onCheckedChange={() => toggleAll(instances)}
+                         />
+                       </TableHead>
+                       <SortHeaderI col="description" label="Description" />
+                       <SortHeaderI col="category" label="Category" />
+                       <SortHeaderI col="amount" label="Amount" />
+                       <SortHeaderI col="expense_date" label="Date" />
+                       <TableHead className="sticky top-0 bg-card z-10">Week</TableHead>
+                       <TableHead className="sticky top-0 bg-card z-10">Month</TableHead>
+                       <TableHead className="sticky top-0 bg-card z-10">Actions</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                   <TableBody>
+                     {paginatedInstances.map((e, idx) => {
+                       const isPast = e.expense_date <= new Date().toISOString().split('T')[0];
+                       return (
+                         <TableRow key={e.id} className={selectedIds.has(e.id) ? 'bg-blue-50' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                           <TableCell>
                             <Checkbox checked={selectedIds.has(e.id)} onCheckedChange={() => toggleSelect(e.id)} />
                           </TableCell>

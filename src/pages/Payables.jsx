@@ -434,7 +434,8 @@ export default function Payables() {
                   const isDueThisWeek = p.status !== 'paid' && days !== null && days >= 0 && days <= 7;
                   const priority = getPriority(p);
                   const pc = PRIORITY_CONFIG[priority];
-                  const rowCls = isOverdue ? 'bg-red-50/40' : isDueThisWeek ? 'bg-amber-50/40' : '';
+                  const rowIdx = paginatedData.indexOf(p);
+                  const rowCls = isOverdue ? 'bg-red-50/40' : isDueThisWeek ? 'bg-amber-50/40' : rowIdx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                   return (
                     <TableRow key={p.id} className={`group ${rowCls}`}>
                       <TableCell className="px-2" onClick={e => e.stopPropagation()}>

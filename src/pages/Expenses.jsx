@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Pencil, Trash2, Upload } from 'lucide-react';
+import { Search, MoreHorizontal, Pencil, Trash2, Upload, ChevronUp, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -48,6 +48,19 @@ export default function Expenses() {
   const [showForm, setShowForm] = useState(false);
   const [editData, setEditData] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [sortConfig, setSortConfig] = useState({ key: 'expense_date', dir: 'desc' });
+
+  const toggleSort = (key) => setSortConfig(s => ({ key, dir: s.key === key && s.dir === 'asc' ? 'desc' : 'asc' }));
+
+  const SortHeader = ({ col, label }) => (
+    <TableHead className="cursor-pointer select-none whitespace-nowrap sticky top-0 bg-card z-10" onClick={() => toggleSort(col)}>
+      <span className="inline-flex items-center gap-1">{label}
+        <span className={sortConfig.key === col ? 'opacity-100 text-primary' : 'opacity-30'}>
+          {sortConfig.key === col && sortConfig.dir === 'desc' ? <ChevronDown className="w-3 h-3" /> : <ChevronUp className="w-3 h-3" />}
+        </span>
+      </span>
+    </TableHead>
+  );
 
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses'],
@@ -100,20 +113,22 @@ export default function Expenses() {
     return [...s];
   }, [expenses]);
 
-  const filtered = useMemo(() =>
-    expenses
-      .filter(e => {
-        const matchSearch = !search ||
-          e.description?.toLowerCase().includes(search.toLowerCase()) ||
-          e.category?.toLowerCase().includes(search.toLowerCase());
-        const matchWeek = filterWeek === 'all' || getISOWeekLabel(e.expense_date) === filterWeek;
-        const matchMonth = filterMonth === 'all' || getMonthLabel(e.expense_date) === filterMonth;
-        const matchCategory = filterCategory === 'all' || e.category === filterCategory;
-        return matchSearch && matchWeek && matchMonth && matchCategory;
-      })
-      .sort((a, b) => new Date(b.expense_date) - new Date(a.expense_date)),
-    [expenses, search, filterWeek, filterMonth, filterCategory]
-  );
+  const filtered = useMemo(() => {
+    const base = expenses.filter(e => {
+      const matchSearch = !search ||
+        e.description?.toLowerCase().includes(search.toLowerCase()) ||
+        e.category?.toLowerCase().includes(search.toLowerCase());
+      const matchWeek = filterWeek === 'all' || getISOWeekLabel(e.expense_date) === filterWeek;
+      const matchMonth = filterMonth === 'all' || getMonthLabel(e.expense_date) === filterMonth;
+      const matchCategory = filterCategory === 'all' || e.category === filterCategory;
+      return matchSearch && matchWeek && matchMonth && matchCategory;
+    });
+    return [...base].sort((a, b) => {
+      const av = a[sortConfig.key], bv = b[sortConfig.key];
+      const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+      return sortConfig.dir === 'asc' ? c : -c;
+    });
+  }, [expenses, search, filterWeek, filterMonth, filterCategory, sortConfig]);
 
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -192,21 +207,21 @@ export default function Expenses() {
            ) : (
              <>
              <Table>
-               <TableHeader>
+               <TableHeader className="sticky top-0 z-10 bg-card shadow-sm">
                  <TableRow>
-                   <TableHead>Description</TableHead>
-                   <TableHead>Category</TableHead>
-                   <TableHead>Amount</TableHead>
-                   <TableHead>Payment Mode</TableHead>
-                   <TableHead>Date</TableHead>
-                   <TableHead>Week</TableHead>
-                   <TableHead>Month</TableHead>
-                   <TableHead>Actions</TableHead>
+                   <SortHeader col="description" label="Description" />
+                   <SortHeader col="category" label="Category" />
+                   <SortHeader col="amount" label="Amount" />
+                   <SortHeader col="payment_mode" label="Payment Mode" />
+                   <SortHeader col="expense_date" label="Date" />
+                   <TableHead className="sticky top-0 bg-card z-10">Week</TableHead>
+                   <TableHead className="sticky top-0 bg-card z-10">Month</TableHead>
+                   <TableHead className="sticky top-0 bg-card z-10">Actions</TableHead>
                  </TableRow>
                </TableHeader>
                <TableBody>
-                 {paginatedData.map(expense => (
-                  <TableRow key={expense.id}>
+                 {paginatedData.map((expense, idx) => (
+                   <TableRow key={expense.id} className={idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
                     <TableCell className="font-medium text-sm">{expense.description}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs capitalize">{CATEGORY_LABELS[expense.category] || expense.category}</Badge>

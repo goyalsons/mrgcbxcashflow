@@ -117,7 +117,7 @@ export default function Vendors() {
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-slate-50/80 border-b-2 border-slate-200">
+              <TableHeader className="sticky top-0 z-10 bg-slate-50 shadow-sm border-b-2 border-slate-200">
                 <TableRow className="hover:bg-slate-50/80">
                   <SortHeader label="Company" col="name" />
                   <SortHeader label="Contact Person" col="contact_person" />
@@ -131,8 +131,8 @@ export default function Vendors() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedData.map((v) => (
-                  <TableRow key={v.id} className="group hover:bg-primary/5 border-slate-200/50">
+                {paginatedData.map((v, idx) => (
+                  <TableRow key={v.id} className={`group hover:bg-primary/5 border-slate-200/50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}`}>
                     <TableCell className="font-semibold text-slate-900">{v.name}</TableCell>
                     <TableCell className="text-slate-700">{v.contact_person || <span className="text-slate-400">—</span>}</TableCell>
                     <TableCell className="text-slate-600">{v.email || <span className="text-slate-400">—</span>}</TableCell>
