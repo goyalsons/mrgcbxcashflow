@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { formatINR } from '@/lib/utils/currency';
@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowDownLeft, Target, Users, AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
+import { ArrowDownLeft, Target, Users, AlertTriangle, CheckCircle2, Clock, ArrowUp, ArrowDown } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -249,40 +249,99 @@ export default function SalesTeamDashboard() {
       </div>
 
       {/* My Receivables Table */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-sm font-semibold">My Receivables</CardTitle>
-            <Link to="/receivables" className="text-xs text-primary hover:underline">View all →</Link>
-          </div>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {myReceivables.length === 0 ? (
-            <p className="text-sm text-muted-foreground text-center py-6">No receivables for your assigned clients.</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Customer</TableHead>
-                    <TableHead>Invoice #</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                    <TableHead className="text-right">Outstanding</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {myReceivables
-                    .filter(r => !['paid', 'written_off'].includes(r.status))
-                    .sort((a, b) => new Date(a.due_date) - new Date(b.due_date))
-                    .slice(0, 15)
-                    .map(r => {
+      <ReceivablesTable myReceivables={myReceivables} />
+    </div>
+  );
+}
+
+function ReceivablesTable({ myReceivables }) {
+  const [sortKey, setSortKey] = useState('due_date');
+  const [sortDir, setSortDir] = useState('asc');
+
+  const handleSort = (key) => {
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+  };
+
+  const SortIcon = ({ col }) => {
+    if (sortKey !== col) return null;
+    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 inline ml-1" /> : <ArrowDown className="w-3 h-3 inline ml-1" />;
+  };
+
+  const activeRows = useMemo(() =>
+    myReceivables.filter(r =>
+      !['paid', 'written_off'].includes(r.status) &&
+      Math.max(0, (r.amount || 0) - (r.amount_received || 0)) > 0
+    ),
+    [myReceivables]
+  );
+
+  // Group by company
+  const grouped = useMemo(() => {
+    const map = {};
+    activeRows.forEach(r => {
+      const key = r.customer_name?.trim() || 'Unknown';
+      if (!map[key]) map[key] = [];
+      map[key].push(r);
+    });
+    return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
+  }, [activeRows]);
+
+  const sortRows = (rows) => {
+    return [...rows].sort((a, b) => {
+      let aVal, bVal;
+      if (sortKey === 'customer_name') { aVal = a.customer_name || ''; bVal = b.customer_name || ''; }
+      else if (sortKey === 'invoice_number') { aVal = a.invoice_number || ''; bVal = b.invoice_number || ''; }
+      else if (sortKey === 'amount') { aVal = a.amount || 0; bVal = b.amount || 0; }
+      else if (sortKey === 'outstanding') { aVal = Math.max(0, (a.amount || 0) - (a.amount_received || 0)); bVal = Math.max(0, (b.amount || 0) - (b.amount_received || 0)); }
+      else if (sortKey === 'due_date') { aVal = new Date(a.due_date || ''); bVal = new Date(b.due_date || ''); }
+      else if (sortKey === 'status') { aVal = a.status || ''; bVal = b.status || ''; }
+      if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+      if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  };
+
+  const thClass = "cursor-pointer select-none hover:bg-muted/50";
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-semibold">My Receivables</CardTitle>
+          <Link to="/receivables" className="text-xs text-primary hover:underline">View all →</Link>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0">
+        {activeRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-6">No outstanding receivables for your clients.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className={thClass} onClick={() => handleSort('customer_name')}>Customer <SortIcon col="customer_name" /></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('invoice_number')}>Invoice # <SortIcon col="invoice_number" /></TableHead>
+                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('amount')}>Amount <SortIcon col="amount" /></TableHead>
+                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('outstanding')}>Outstanding <SortIcon col="outstanding" /></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('due_date')}>Due Date <SortIcon col="due_date" /></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('status')}>Status <SortIcon col="status" /></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {grouped.map(([company, rows]) => (
+                  <React.Fragment key={company}>
+                    <TableRow className="bg-muted/40 hover:bg-muted/50">
+                      <TableCell colSpan={6} className="py-1.5 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        {company} <span className="font-normal normal-case">({rows.length} invoice{rows.length !== 1 ? 's' : ''})</span>
+                      </TableCell>
+                    </TableRow>
+                    {sortRows(rows).map(r => {
                       const outstanding = Math.max(0, (r.amount || 0) - (r.amount_received || 0));
                       const cfg = STATUS_CONFIG[r.status] || STATUS_CONFIG.pending;
                       return (
                         <TableRow key={r.id}>
-                          <TableCell className="font-medium text-sm">{r.customer_name}</TableCell>
+                          <TableCell className="font-medium text-sm pl-6">{r.customer_name}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{r.invoice_number || '—'}</TableCell>
                           <TableCell className="text-right text-sm">{formatINR(r.amount)}</TableCell>
                           <TableCell className="text-right text-sm font-semibold text-red-600">{formatINR(outstanding)}</TableCell>
@@ -295,12 +354,13 @@ export default function SalesTeamDashboard() {
                         </TableRow>
                       );
                     })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+                  </React.Fragment>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

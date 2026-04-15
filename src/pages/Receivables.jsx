@@ -3,7 +3,7 @@
  * © 2025 CEOITBOX Tech Services LLP. All rights reserved.
  * https://www.ceoitbox.com
  */
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
@@ -30,7 +30,7 @@ import { isSalesTeam } from '@/lib/utils/roles';
 
 export default function Receivables() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [minAmount, setMinAmount] = useState('');
+  const [minAmount, setMinAmount] = useState(() => localStorage.getItem('receivables_minAmount') || '');
   const [filters, setFilters] = useState({
     company: '',
     dueWeek: '',
@@ -51,6 +51,11 @@ export default function Receivables() {
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (minAmount) localStorage.setItem('receivables_minAmount', minAmount);
+    else localStorage.removeItem('receivables_minAmount');
+  }, [minAmount]);
 
   const { data: invoices = [], isLoading } = useQuery({
     queryKey: ['invoices'],
