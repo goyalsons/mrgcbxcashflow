@@ -11,7 +11,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { MoreHorizontal, Pencil, Trash2, Search, Upload, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2, Search, Upload, Eye, ArrowUpDown, ArrowUp, ArrowDown, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
@@ -28,6 +28,7 @@ export default function Vendors() {
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [syncing, setSyncing] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -52,6 +53,26 @@ export default function Vendors() {
   const handleSave = async (formData) => {
     if (editing) await updateMut.mutateAsync({ id: editing.id, data: formData });
     else await createMut.mutateAsync(formData);
+  };
+
+  const handleSyncVendors = async () => {
+    setSyncing(true);
+    try {
+      const response = await base44.functions.invoke('syncVendorDetailsFromCustomers', {});
+      toast({ 
+        title: 'Sync Complete', 
+        description: response.data?.message || 'Vendor details updated' 
+      });
+      queryClient.invalidateQueries({ queryKey: ['vendors'] });
+    } catch (error) {
+      toast({ 
+        title: 'Sync Failed', 
+        description: error.message || 'Failed to sync vendor details',
+        variant: 'destructive'
+      });
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const filtered = useMemo(() => {
@@ -103,6 +124,9 @@ export default function Vendors() {
       <PageHeader title="Vendors" subtitle={`${vendors.length} vendors`} actionLabel="Add Vendor" onAction={() => { setEditing(null); setShowForm(true); }}>
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=vendor')}>
           <Upload className="w-4 h-4" /> Bulk Import
+        </Button>
+        <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSyncVendors} disabled={syncing}>
+          <CheckCircle2 className="w-4 h-4" /> {syncing ? 'Syncing...' : 'Sync from Customers'}
         </Button>
       </PageHeader>
 
@@ -178,7 +202,7 @@ export default function Vendors() {
               )}
               </Card>
 
-      <ContactForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} type="Vendor" />
+       <ContactForm open={showForm} onClose={() => { setShowForm(false); setEditing(null); }} onSave={handleSave} editData={editing} type="Vendor" />
     </div>
   );
 }
