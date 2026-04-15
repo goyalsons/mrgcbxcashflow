@@ -117,6 +117,11 @@ export default function AdminPanel() {
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast({ title: 'Role updated' }); },
   });
 
+  const deleteUserMut = useMutation({
+    mutationFn: (id) => base44.functions.invoke('deleteUser', { userId: id }),
+    onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['users'] }); toast({ title: 'User deleted' }); },
+  });
+
   const removeInviteMut = useMutation({
     mutationFn: (id) => base44.entities.PendingInvitation.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] }); toast({ title: 'Invitation removed' }); },
@@ -288,6 +293,12 @@ export default function AdminPanel() {
                             Set as {ROLE_LABELS[r]}
                           </DropdownMenuItem>
                         ))}
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={() => { if (confirm(`Delete user ${u.full_name || u.email}? This cannot be undone.`)) deleteUserMut.mutate(u.id); }}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 mr-2" /> Delete User
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}

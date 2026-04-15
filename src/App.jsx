@@ -56,8 +56,9 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Inactive users see a holding page instead of the app
-  if (user?.role === 'inactive') {
+  // Inactive users (or users with no recognized role) see a holding page
+  const ACTIVE_ROLES = ['admin', 'accounts_team', 'sales_team'];
+  if (user && !ACTIVE_ROLES.includes(user?.role)) {
     return <WaitingActivation />;
   }
 
