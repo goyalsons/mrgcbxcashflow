@@ -12,6 +12,7 @@ const INR = (v) => {
   return `₹${Math.round(abs).toLocaleString('en-IN')}`;
 };
 
+const today = new Date(); today.setHours(0, 0, 0, 0);
 const addDays = (d, n) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
 // Use local date to avoid UTC/IST timezone offset causing off-by-one week placement
 const toDateStr = (d) => {
@@ -19,34 +20,20 @@ const toDateStr = (d) => {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 };
+const weekStart = (i) => addDays(today, i * 7);
+const weekEnd = (i) => addDays(today, (i + 1) * 7 - 1);
+const weekLabel = (i) => {
+  const s = weekStart(i);
+  const e = weekEnd(i);
+  return `${String(s.getDate()).padStart(2,'0')}/${String(s.getMonth()+1).padStart(2,'0')}-${String(e.getDate()).padStart(2,'0')}/${String(e.getMonth()+1).padStart(2,'0')}`;
+};
 
-function getTodayNormalized() {
-  const d = new Date(); 
-  d.setHours(12, 0, 0, 0);
-  return d;
-}
-
-function dueDateToWeek(dateStr, today) {
-  if (!dateStr || !today) return 0;
-  const d = new Date(dateStr); 
-  d.setHours(12, 0, 0, 0);
+function dueDateToWeek(dateStr) {
+  if (!dateStr) return 0;
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   const diff = Math.floor((d - today) / 86400000);
   if (diff < 0) return 0;
   return Math.min(Math.floor(diff / 7), 11);
-}
-
-function getWeekStart(i, today) {
-  return addDays(today, i * 7);
-}
-
-function getWeekEnd(i, today) {
-  return addDays(today, (i + 1) * 7 - 1);
-}
-
-function getWeekLabel(i, today) {
-  const s = getWeekStart(i, today);
-  const e = getWeekEnd(i, today);
-  return `${String(s.getDate()).padStart(2,'0')}/${String(s.getMonth()+1).padStart(2,'0')}-${String(e.getDate()).padStart(2,'0')}/${String(e.getMonth()+1).padStart(2,'0')}`;
 }
 
 function getWeekColors(w) {
@@ -93,7 +80,7 @@ function StaticCard({ item, cardType, label, sublabel, amount }) {
   );
 }
 
-function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn, today }) {
+function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn }) {
   const style = CARD_STYLES[cardType];
   const moved = isAdjusted && origWeek !== curWeek;
   const overdue = item.due_date && new Date(item.due_date) < today;
@@ -190,15 +177,12 @@ export default function SimTimelineBoard({
   });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
-  // Memoize today as noon UTC to ensure consistent week calculations and avoid timezone drift
-  const today = useMemo(() => getTodayNormalized(), []);
-
   const allRec = useMemo(() =>
     [...receivables, ...invoices].filter(r =>
       ['pending', 'overdue', 'partially_paid', 'partial'].includes(r.status) &&
       (r.amount || 0) - (r.amount_received || r.amount_paid || 0) >= minAmount
     ),
-    [receivables, invoices, minAmount, today]
+    [receivables, invoices, minAmount]
   );
 
   const allPay = useMemo(() =>
@@ -206,17 +190,17 @@ export default function SimTimelineBoard({
       ['pending', 'partially_paid', 'overdue'].includes(p.status) &&
       (p.amount || 0) - (p.amount_paid || 0) >= minAmount
     ),
-    [payables, minAmount, today]
+    [payables, minAmount]
   );
 
   const allExp = useMemo(() =>
     (expenses || []).filter(e => (!e.recurrence_type || e.recurrence_type === 'none') && (e.amount || 0) >= minAmount),
-    [expenses, minAmount, today]
+    [expenses, minAmount]
   );
 
   const allRecur = useMemo(() =>
     (recurringExpenses || []).filter(e => (e.amount || 0) >= minAmount),
-    [recurringExpenses, minAmount, today]
+    [recurringExpenses, minAmount]
   );
 
 
@@ -231,21 +215,21 @@ export default function SimTimelineBoard({
       allRec.forEach(r => {
         const key = `rec-${r.id}`;
         const adjDate = recAdj.get(r.id)?.tranches?.[0]?.date;
-        m.set(key, dueDateToWeek(adjDate || r.due_date, today));
+        m.set(key, dueDateToWeek(adjDate || r.due_date));
       });
       allPay.forEach(p => {
         const key = `pay-${p.id}`;
         const adjDate = payAdj.get(p.id)?.tranches?.[0]?.date;
-        m.set(key, dueDateToWeek(adjDate || p.due_date, today));
+        m.set(key, dueDateToWeek(adjDate || p.due_date));
       });
-      allExp.forEach(e => { if (!m.has(`exp-${e.id}`)) m.set(`exp-${e.id}`, dueDateToWeek(e.expense_date, today)); });
-      allRecur.forEach(e => { if (!m.has(`recur-${e.id}`)) m.set(`recur-${e.id}`, dueDateToWeek(e.expense_date, today)); });
+      allExp.forEach(e => { if (!m.has(`exp-${e.id}`)) m.set(`exp-${e.id}`, dueDateToWeek(e.expense_date)); });
+      allRecur.forEach(e => { if (!m.has(`recur-${e.id}`)) m.set(`recur-${e.id}`, dueDateToWeek(e.expense_date)); });
       // Hypo and funding: always sync from source-of-truth dates
-      hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dueDateToWeek(h.tranches?.[0]?.date, today)));
-      fundingSources.forEach(f => m.set(`fund-${f.id}`, dueDateToWeek(f.date || f.drawDate || f.disburseDate, today)));
+      hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dueDateToWeek(h.tranches?.[0]?.date)));
+      fundingSources.forEach(f => m.set(`fund-${f.id}`, dueDateToWeek(f.date || f.drawDate || f.disburseDate)));
       return m;
     });
-  }, [allRec, allPay, allExp, allRecur, recAdj, payAdj, hypotheticals, fundingSources, today]);
+  }, [allRec, allPay, allExp, allRecur, recAdj, payAdj, hypotheticals, fundingSources]);
 
   const matchSearch = (name) => !search || (name || '').toLowerCase().includes(search.toLowerCase());
 
@@ -280,7 +264,7 @@ export default function SimTimelineBoard({
     // Update local assignment immediately for instant visual feedback
     setAssignments(prev => { const m = new Map(prev); m.set(draggableId, dstWeek); return m; });
 
-    const newDate = toDateStr(getWeekStart(dstWeek, today));
+    const newDate = toDateStr(weekStart(dstWeek));
     const prevRecAdj = new Map(recAdj);
     const prevPayAdj = new Map(payAdj);
     const prevHypo = hypotheticals;
@@ -450,7 +434,7 @@ export default function SimTimelineBoard({
                         <div className="flex items-center gap-1 mb-1.5">
                           <div className={`w-2 h-2 rounded-full shrink-0 ${dot}`} />
                           <span className="text-xs font-bold">W{i + 1}</span>
-                          <span className="text-[9px] text-muted-foreground">{getWeekLabel(i, today)}</span>
+                          <span className="text-[9px] text-muted-foreground">{weekLabel(i)}</span>
                         </div>
 
                         {/* Closing Balance */}
@@ -490,23 +474,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Receivables" color="text-emerald-600" />
                           {recs.map(item => {
-                            const origWeek = dueDateToWeek(item.due_date, today);
+                            const origWeek = dueDateToWeek(item.due_date);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`rec-${item.id}`}
-                                 draggableId={`rec-${item.id}`}
-                                 index={idx}
-                                 item={item}
-                                 cardType="receivable"
-                                 isAdjusted={recAdj.has(item.id)}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={r => r.customer_name || r.debtor_name || '—'}
-                                 subField={r => r.invoice_number || '—'}
-                                 amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
-                                 today={today}
-                               />
+                                key={`rec-${item.id}`}
+                                draggableId={`rec-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="receivable"
+                                isAdjusted={recAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={r => r.customer_name || r.debtor_name || '—'}
+                                subField={r => r.invoice_number || '—'}
+                                amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
+                              />
                             );
                           })}
                         </>
@@ -517,23 +500,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Payables" color="text-red-600" />
                           {pays.map(item => {
-                            const origWeek = dueDateToWeek(item.due_date, today);
+                            const origWeek = dueDateToWeek(item.due_date);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`pay-${item.id}`}
-                                 draggableId={`pay-${item.id}`}
-                                 index={idx}
-                                 item={item}
-                                 cardType="payable"
-                                 isAdjusted={payAdj.has(item.id)}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={p => p.vendor_name || '—'}
-                                 subField={p => p.bill_number || '—'}
-                                 amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
-                                 today={today}
-                               />
+                                key={`pay-${item.id}`}
+                                draggableId={`pay-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="payable"
+                                isAdjusted={payAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={p => p.vendor_name || '—'}
+                                subField={p => p.bill_number || '—'}
+                                amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
+                              />
                             );
                           })}
                         </>
@@ -544,23 +526,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Expenses" color="text-orange-500" />
                           {exps.map(item => {
-                            const origWeek = dueDateToWeek(item.expense_date, today);
+                            const origWeek = dueDateToWeek(item.expense_date);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`exp-${item.id}`}
-                                 draggableId={`exp-${item.id}`}
-                                 index={idx}
-                                 item={item}
-                                 cardType="expense"
-                                 isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={e => e.description || '—'}
-                                 subField={e => e.category || 'Expense'}
-                                 amtFn={e => e.amount || 0}
-                                 today={today}
-                               />
+                                key={`exp-${item.id}`}
+                                draggableId={`exp-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="expense"
+                                isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Expense'}
+                                amtFn={e => e.amount || 0}
+                              />
                             );
                           })}
                         </>
@@ -571,23 +552,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Recurring" color="text-yellow-600" />
                           {recur.map(item => {
-                            const origWeek = dueDateToWeek(item.expense_date, today);
+                            const origWeek = dueDateToWeek(item.expense_date);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`recur-${item.id}`}
-                                 draggableId={`recur-${item.id}`}
-                                 index={idx}
-                                 item={item}
-                                 cardType="recurring"
-                                 isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={e => e.description || '—'}
-                                 subField={e => e.category || 'Recurring'}
-                                 amtFn={e => e.amount || 0}
-                                 today={today}
-                               />
+                                key={`recur-${item.id}`}
+                                draggableId={`recur-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="recurring"
+                                isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Recurring'}
+                                amtFn={e => e.amount || 0}
+                              />
                             );
                           })}
                         </>
@@ -601,23 +581,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Hypothetical" color="text-blue-600" />
                           {hypos.map(h => {
-                            const origWeek = dueDateToWeek(h.tranches?.[0]?.date, today);
+                            const origWeek = dueDateToWeek(h.tranches?.[0]?.date);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`hypo-${h.id}`}
-                                 draggableId={`hypo-${h.id}`}
-                                 index={idx}
-                                 item={h}
-                                 cardType={h.type === 'inflow' ? 'hypo_in' : 'hypo_out'}
-                                 isAdjusted={assignments.get(`hypo-${h.id}`) !== dueDateToWeek(h.tranches?.[0]?.date, today)}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={h => h.label || '—'}
-                                 subField={h => h.type === 'inflow' ? 'Hypothetical inflow' : 'Hypothetical outflow'}
-                                 amtFn={h => h.tranches?.reduce((s, t) => s + Number(t.amount || 0), 0) || 0}
-                                 today={today}
-                               />
+                                key={`hypo-${h.id}`}
+                                draggableId={`hypo-${h.id}`}
+                                index={idx}
+                                item={h}
+                                cardType={h.type === 'inflow' ? 'hypo_in' : 'hypo_out'}
+                                isAdjusted={assignments.get(`hypo-${h.id}`) !== dueDateToWeek(h.tranches?.[0]?.date)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={h => h.label || '—'}
+                                subField={h => h.type === 'inflow' ? 'Hypothetical inflow' : 'Hypothetical outflow'}
+                                amtFn={h => h.tranches?.reduce((s, t) => s + Number(t.amount || 0), 0) || 0}
+                              />
                             );
                           })}
                         </>
@@ -628,23 +607,22 @@ export default function SimTimelineBoard({
                         <>
                           <SectionSep label="Funding" color="text-teal-600" />
                           {funding.map(f => {
-                            const origWeek = dueDateToWeek(f.date || f.drawDate || f.disburseDate, today);
+                            const origWeek = dueDateToWeek(f.date || f.drawDate || f.disburseDate);
                             const idx = draggableIndex++;
                             return (
                               <DraggableCard
-                                 key={`fund-${f.id}`}
-                                 draggableId={`fund-${f.id}`}
-                                 index={idx}
-                                 item={f}
-                                 cardType="funding"
-                                 isAdjusted={assignments.get(`fund-${f.id}`) !== origWeek}
-                                 origWeek={origWeek}
-                                 curWeek={i}
-                                 nameField={f => f.lender || f.bank || f.customer || f.asset || 'Funding'}
-                                 subField={f => f.type || 'Funding Source'}
-                                 amtFn={f => Number(f.amount || f.drawAmt || 0)}
-                                 today={today}
-                               />
+                                key={`fund-${f.id}`}
+                                draggableId={`fund-${f.id}`}
+                                index={idx}
+                                item={f}
+                                cardType="funding"
+                                isAdjusted={assignments.get(`fund-${f.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={f => f.lender || f.bank || f.customer || f.asset || 'Funding'}
+                                subField={f => f.type || 'Funding Source'}
+                                amtFn={f => Number(f.amount || f.drawAmt || 0)}
+                              />
                             );
                           })}
                         </>
