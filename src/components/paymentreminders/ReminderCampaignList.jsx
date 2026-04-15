@@ -101,7 +101,7 @@ export default function ReminderCampaignList({ onDuplicateDetected }) {
                 <TableCell><Badge>{campaign.reminder_type}</Badge></TableCell>
                 <TableCell className="text-sm">{campaign.template?.name || '-'}</TableCell>
                 <TableCell className="capitalize">{campaign.frequency}</TableCell>
-                <TableCell className="text-sm">09:00</TableCell>
+                <TableCell className="text-sm">{campaign.send_time || '09:00'}</TableCell>
                 <TableCell>
                   <Badge variant={campaign.status === 'active' ? 'default' : campaign.status === 'paused' ? 'secondary' : 'outline'}>
                     {campaign.status}

@@ -40,6 +40,11 @@
       "format": "date",
       "description": "Campaign start date"
     },
+    "send_time": {
+      "type": "string",
+      "default": "09:00",
+      "description": "Time of day to send reminders (HH:MM)"
+    },
     "number_of_reminders": {
       "type": "number",
       "default": 5,

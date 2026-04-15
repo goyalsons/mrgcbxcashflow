@@ -22,7 +22,7 @@ export default function EditCampaignModal({ campaign, onClose }) {
   const [whatsappTemplateId, setWhatsappTemplateId] = useState(campaign.reminder_type === 'whatsapp' || campaign.reminder_type === 'email' ? campaign.template_id : '');
   const [selectedDays, setSelectedDays] = useState(new Set());
   const [selectedMonthlyDays, setSelectedMonthlyDays] = useState(new Set([1]));
-  const [sendTime, setSendTime] = useState('09:00');
+  const [sendTime, setSendTime] = useState(campaign.send_time || '09:00');
 
   const { data: emailTemplates = [] } = useQuery({
     queryKey: ['messageTemplates', 'email'],
@@ -94,8 +94,15 @@ export default function EditCampaignModal({ campaign, onClose }) {
       await base44.entities.ReminderCampaign.update(campaign.id, {
         reminder_type: mode === 'both' ? 'both' : mode,
         frequency,
+        send_time: sendTime,
         template_id: mode === 'email' ? emailTemplateId : mode === 'whatsapp' ? whatsappTemplateId : emailTemplateId,
       });
+
+      // Update all pending scheduled reminders with the new send time
+      const pendingReminders = await base44.entities.ScheduledReminder.filter({ campaign_id: campaign.id, status: 'pending' });
+      await Promise.all(pendingReminders.map(r =>
+        base44.entities.ScheduledReminder.update(r.id, { scheduled_send_time: sendTime })
+      ));
       queryClient.invalidateQueries({ queryKey: ['reminderCampaigns'] });
       toast({ title: 'Campaign updated successfully' });
       onClose();
