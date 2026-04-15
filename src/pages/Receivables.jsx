@@ -491,6 +491,11 @@ export default function Receivables() {
       {selected.size > 0 && (
         <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
           <span className="text-sm font-semibold text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
+          {selected.size < filteredData.length && (
+            <button onClick={() => setSelected(new Set(filteredData.map(inv => inv.id)))} className="text-xs text-primary underline hover:text-primary/80">
+              Select all {filteredData.length}
+            </button>
+          )}
           <div className="flex gap-2 ml-auto">
             {(() => {
               const selectedInvs = [...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean);
