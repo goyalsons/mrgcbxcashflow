@@ -49,6 +49,7 @@ export default function Receivables() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [showBulkReminder, setShowBulkReminder] = useState(false);
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -519,7 +520,9 @@ export default function Receivables() {
             })()}
             <Button size="sm" variant="outline" onClick={() => { setBulkAction('manager'); setShowBulkModal(true); }}>Assign Manager</Button>
 
-            <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
+            {!isSalesTeam(currentUser?.role) && (
+              <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
+            )}
           </div>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
         </div>
@@ -796,15 +799,17 @@ export default function Receivables() {
                              >
                                <Mail className="w-3.5 h-3.5" />
                              </Button>
-                             <Button
-                               variant="ghost"
-                               size="icon"
-                               className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
-                               title="Delete"
-                               onClick={() => deleteMut.mutate(invoice.id)}
-                             >
-                               <Trash2 className="w-3.5 h-3.5" />
-                             </Button>
+                             {!isSalesTeam(currentUser?.role) && (
+                               <Button
+                                 variant="ghost"
+                                 size="icon"
+                                 className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50"
+                                 title="Delete"
+                                 onClick={() => setDeleteConfirm(invoice)}
+                               >
+                                 <Trash2 className="w-3.5 h-3.5" />
+                               </Button>
+                             )}
                            </div>
                          </TableCell>
                       </TableRow>
@@ -848,6 +853,32 @@ export default function Receivables() {
           onSuccess={() => { setSelected(new Set()); setShowBulkReminder(false); }}
         />
       )}
+
+      {/* Delete Confirmation Dialog (single) */}
+      <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Invoice</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Are you sure you want to delete this invoice? This cannot be undone.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirm(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (deleteConfirm?.id) {
+                  deleteMut.mutate(deleteConfirm.id);
+                  setDeleteConfirm(null);
+                }
+              }}
+            >
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk Action Modal */}
       <Dialog open={showBulkModal} onOpenChange={setShowBulkModal}>
