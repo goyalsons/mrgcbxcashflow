@@ -61,10 +61,10 @@ export default function SimForecastChart({ weeklyData }) {
 
   const chartData = weeklyData.map(w => ({
     label: w.label,
-    inflow: Math.round(w.simInflow || 0),
-    outflow: Math.round(w.simOutflow || 0),
-    net: Math.round(w.simNet || 0),
-    closing: Math.round(w.simClosing || 0),
+    inflow: Math.round(w.baseInflow || 0),
+    outflow: Math.round(w.baseOutflow || 0),
+    net: Math.round(w.baseNet || 0),
+    closing: Math.round(w.baseClosing || 0),
     isCurrentWeek: w.isCurrentWeek,
     // stacked breakdown
     inflowReceivables: Math.round(w.inflowReceivables || 0),
@@ -81,7 +81,7 @@ export default function SimForecastChart({ weeklyData }) {
         onClick={() => setCollapsed(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
       >
-        <span className="text-sm font-semibold">Projected Cash Flow</span>
+        <span className="text-sm font-semibold">Actual Cash Flow</span>
         {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
       </button>
 
@@ -159,14 +159,14 @@ export default function SimForecastChart({ weeklyData }) {
                   <TableBody>
                     {weeklyData.map((w, i) => (
                       <TableRow
-                        key={i}
-                        className={`${w.simNet < 0 ? 'bg-red-50/40' : i % 2 === 0 ? 'bg-white' : 'bg-muted/20'} ${w.isCurrentWeek ? 'ring-1 ring-inset ring-indigo-300' : ''}`}
-                      >
+                         key={i}
+                         className={`${w.baseNet < 0 ? 'bg-red-50/40' : i % 2 === 0 ? 'bg-white' : 'bg-muted/20'} ${w.isCurrentWeek ? 'ring-1 ring-inset ring-indigo-300' : ''}`}
+                       >
                         <TableCell className="font-medium text-xs whitespace-nowrap">
                           {w.label}{w.isCurrentWeek && <span className="ml-1 text-indigo-500 text-xs">•</span>}
                         </TableCell>
                         <TableCell className="text-right text-emerald-600 text-xs bg-emerald-50/40 font-medium">
-                          ₹{Math.round(w.simInflow || 0).toLocaleString('en-IN')}
+                          ₹{Math.round(w.baseInflow || 0).toLocaleString('en-IN')}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground cursor-pointer" onClick={() => setShowExpenseDetail(v => !v)}>
                           {showExpenseDetail ? '▲ hide' : '▼ show'}
@@ -181,13 +181,13 @@ export default function SimForecastChart({ weeklyData }) {
                           <TableCell className="text-right text-slate-600 text-xs bg-amber-50/40">₹{Math.round(w['Office & Other'] || 0).toLocaleString('en-IN')}</TableCell>
                         </>}
                         <TableCell className="text-right text-red-700 font-semibold text-xs">
-                          ₹{Math.round(w.simOutflow || 0).toLocaleString('en-IN')}
+                          ₹{Math.round(w.baseOutflow || 0).toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${(w.simNet || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                          {(w.simNet || 0) >= 0 ? '▲' : '▼'} ₹{Math.abs(Math.round(w.simNet || 0)).toLocaleString('en-IN')}
+                        <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${(w.baseNet || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {(w.baseNet || 0) >= 0 ? '▲' : '▼'} ₹{Math.abs(Math.round(w.baseNet || 0)).toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell className={`text-right font-bold text-xs ${(w.simClosing || 0) >= 0 ? 'text-foreground' : 'text-red-600'}`}>
-                          ₹{Math.abs(Math.round(w.simClosing || 0)).toLocaleString('en-IN')}
+                        <TableCell className={`text-right font-bold text-xs ${(w.baseClosing || 0) >= 0 ? 'text-foreground' : 'text-red-600'}`}>
+                          ₹{Math.abs(Math.round(w.baseClosing || 0)).toLocaleString('en-IN')}
                         </TableCell>
                       </TableRow>
                     ))}

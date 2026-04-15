@@ -90,7 +90,8 @@ function buildSourceFlows(f) {
       const endDate = new Date(disburse); endDate.setMonth(endDate.getMonth() + tenure);
       outflows.push({ date: toDateStr(endDate), amount: amt + interest, label: `WCL Bullet Repay` });
     } else {
-      calcEMIs(amt, rate, tenure, disburse).forEach(e => outflows.push({ ...e, label: `WCL EMI` }));
+      const emiStartDate = new Date(disburse); emiStartDate.setMonth(emiStartDate.getMonth() + 1);
+      calcEMIs(amt, rate, tenure, toDateStr(emiStartDate)).forEach(e => outflows.push({ ...e, label: `WCL EMI` }));
     }
   } else if (f.type === 'invoice_disc') {
     const advance = Math.round(amt * (Number(f.advancePct) || 80) / 100);
@@ -122,7 +123,8 @@ function buildSourceFlows(f) {
     const tenure = Number(f.tenure) || 12;
     const disburse = f.disburseDate || todayStr;
     inflows.push({ date: disburse, amount: net, label: `NBFC: ${f.lender || ''}` });
-    calcEMIs(amt, rate, tenure, disburse).forEach(e => outflows.push({ ...e, label: `NBFC EMI` }));
+    const emiStartDate = new Date(disburse); emiStartDate.setMonth(emiStartDate.getMonth() + 1);
+    calcEMIs(amt, rate, tenure, toDateStr(emiStartDate)).forEach(e => outflows.push({ ...e, label: `NBFC EMI` }));
   } else if (f.type === 'po_finance') {
     const advance = Math.round(amt * (Number(f.advancePct) || 70) / 100);
     const disburse = todayStr;

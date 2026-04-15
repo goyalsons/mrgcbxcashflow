@@ -56,7 +56,7 @@ function dueDateToWeek(dateStr) {
   if (!dateStr) return 0;
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
   const weekNum = getFinancialWeekNumber(d);
-  return Math.min(Math.max(weekNum - 1, 0), 11);
+  return Math.max(weekNum - 1, 0);
 }
 
 function getWeekColors(w) {
