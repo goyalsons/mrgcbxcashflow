@@ -464,6 +464,27 @@ export default function CashFlowSimulatorMonthly() {
         </div>
       </div>
 
+      {/* Bank & Cash Snapshot */}
+      {bankAccounts.length > 0 && (
+        <Card className="bg-gradient-to-r from-blue-50 to-slate-50 border-blue-100">
+          <CardContent className="p-4">
+            <div className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-blue-600" />
+              Bank & Cash Accounts Snapshot
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              {bankAccounts.map((account) => (
+                <div key={account.id} className="bg-white rounded-lg border border-blue-100 p-2.5">
+                  <p className="text-[11px] text-muted-foreground font-medium truncate">{account.name}</p>
+                  <p className="text-sm font-bold text-foreground mt-1">{INR_S(account.balance || 0)}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{account.snapshot_date || 'Current'}</p>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <FundingSummaryCard weeklyData={monthlyData} />
 
       <div className="pt-4 border-t">
