@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { base44 } from '@/api/base44Client';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/components/ui/use-toast';
 import { Target } from 'lucide-react';
 
@@ -18,7 +19,13 @@ export default function SetTargetModal({ customer, onClose }) {
     target_date: today.toISOString().split('T')[0],
     notes: '',
   });
+  const [selectedManagerEmail, setSelectedManagerEmail] = useState(customer?.account_manager || '');
   const [checking, setChecking] = useState(false);
+
+  const { data: users = [] } = useQuery({
+    queryKey: ['users-list'],
+    queryFn: () => base44.entities.User.list(),
+  });
 
   const createMut = useMutation({
     mutationFn: (data) => base44.entities.CollectionTarget.create(data),
@@ -31,13 +38,26 @@ export default function SetTargetModal({ customer, onClose }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!customer?.account_manager) {
-      toast({ title: 'No manager assigned to this customer', variant: 'destructive' });
+    if (!selectedManagerEmail) {
+      toast({ title: 'Please assign a manager first', variant: 'destructive' });
       return;
     }
+    const selectedUser = users.find(u => u.email === selectedManagerEmail);
+    const managerName = selectedUser?.full_name || selectedManagerEmail;
+
     const date = new Date(form.target_date);
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
+
+    // Save manager to Customer if changed
+    if (selectedManagerEmail !== customer.account_manager && customer.id) {
+      await base44.entities.Customer.update(customer.id, {
+        account_manager: selectedManagerEmail,
+        account_manager_name: managerName,
+      });
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['receivables'] });
+    }
 
     // Check for duplicate: same customer + same month/year
     setChecking(true);
@@ -58,8 +78,8 @@ export default function SetTargetModal({ customer, onClose }) {
     }
 
     createMut.mutate({
-      manager_email: customer.account_manager,
-      manager_name: customer.account_manager_name || customer.account_manager,
+      manager_email: selectedManagerEmail,
+      manager_name: managerName,
       customer_name: customer.name,
       target_amount: parseFloat(form.target_amount),
       target_date: form.target_date,
@@ -81,14 +101,26 @@ export default function SetTargetModal({ customer, onClose }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="bg-muted/50 rounded-lg p-3 text-sm">
             <div className="font-medium">{customer?.name}</div>
-            <div className="text-muted-foreground mt-0.5">
-              Manager: <span className="font-medium text-foreground">{customer?.account_manager_name || customer?.account_manager || 'Not assigned'}</span>
-            </div>
           </div>
 
-          {!customer?.account_manager && (
-            <p className="text-sm text-destructive">This customer has no assigned manager. Please assign one first.</p>
-          )}
+          <div>
+            <Label>Assign Manager</Label>
+            <Select value={selectedManagerEmail} onValueChange={setSelectedManagerEmail}>
+              <SelectTrigger className="mt-1">
+                <SelectValue placeholder="Select a manager..." />
+              </SelectTrigger>
+              <SelectContent>
+                {users.map(u => (
+                  <SelectItem key={u.email} value={u.email}>
+                    {u.full_name} ({u.email})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!selectedManagerEmail && (
+              <p className="text-xs text-destructive mt-1">Please select a manager to set a target.</p>
+            )}
+          </div>
 
           <div>
             <Label>Target Amount (₹)</Label>
@@ -126,7 +158,7 @@ export default function SetTargetModal({ customer, onClose }) {
 
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={createMut.isPending || checking || !customer?.account_manager}>
+            <Button type="submit" disabled={createMut.isPending || checking || !selectedManagerEmail}>
               {checking ? 'Checking...' : createMut.isPending ? 'Saving...' : 'Set Target'}
             </Button>
           </div>
