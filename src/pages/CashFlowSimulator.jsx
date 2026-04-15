@@ -386,12 +386,18 @@ export default function CashFlowSimulator() {
 
   const [secCOpen, setSecCOpen] = useState(false);
   const [secDOpen, setSecDOpen] = useState(false);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   const INR = (v) => { const a = Math.abs(v||0); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
-  const totalInflow12W = weeklyData.reduce((s, w) => s + w.simInflow, 0);
-  const totalOutflow12W = weeklyData.reduce((s, w) => s + w.simOutflow, 0);
-  const negativeWeeks = weeklyData.filter(w => w.simNet < 0).length;
-  const latestClosing = weeklyData[weeklyData.length - 1]?.simClosing || 0;
+  
+  // Display only 12 weeks at a time
+  const displayedWeeks = weeklyData.slice(weekOffset, weekOffset + 12);
+  const totalInflow12W = displayedWeeks.reduce((s, w) => s + w.simInflow, 0);
+  const totalOutflow12W = displayedWeeks.reduce((s, w) => s + w.simOutflow, 0);
+  const negativeWeeks = displayedWeeks.filter(w => w.simNet < 0).length;
+  const latestClosing = displayedWeeks[displayedWeeks.length - 1]?.simClosing || 0;
+  const canGoBack = weekOffset > 0;
+  const canGoForward = weekOffset + 12 < weeklyData.length;
 
   return (
     <Tabs defaultValue="weekly" className="space-y-4">
@@ -403,7 +409,7 @@ export default function CashFlowSimulator() {
         </TabsList>
       </div>
       <TabsContent value="weekly" className="mt-0">
-    <div className="space-y-4 overflow-x-hidden">
+    <div className="space-y-4 overflow-x-hidden max-w-full">
       {/* Weekly Stat Cards — 8 in a single row */}
       <div className="grid grid-cols-4 lg:grid-cols-8 gap-1.5">
         <Card className="bg-blue-50 border-blue-100">
@@ -473,6 +479,11 @@ export default function CashFlowSimulator() {
           <h1 className="text-xl font-bold tracking-tight">Cash Flow Simulator</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Model what-if scenarios — drag to reschedule, add funding sources and hypothetical entries.</p>
           {activeScenarioName && <p className="text-xs text-primary mt-0.5 font-medium">Active scenario: {activeScenarioName}</p>}
+          <div className="flex items-center gap-2 mt-2">
+            <Button variant="outline" size="sm" disabled={!canGoBack} onClick={() => setWeekOffset(Math.max(0, weekOffset - 12))}>&larr; Previous 12W</Button>
+            <span className="text-xs text-muted-foreground whitespace-nowrap">W{displayedWeeks[0]?.weekNum || 1}-W{displayedWeeks[displayedWeeks.length - 1]?.weekNum || 12}</span>
+            <Button variant="outline" size="sm" disabled={!canGoForward} onClick={() => setWeekOffset(Math.min(weeklyData.length - 12, weekOffset + 12))}>Next 12W &rarr;</Button>
+          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
 
@@ -501,12 +512,12 @@ export default function CashFlowSimulator() {
 
       {/* Forecast-style chart: Weekly Inflow / Outflow / Net */}
       <div className="mt-4">
-        <SimForecastChart weeklyData={weeklyData} />
+        <SimForecastChart weeklyData={displayedWeeks} />
       </div>
 
       {/* Zone 1: Collapsible chart (Simulated Cash Flow) */}
       <div className="mt-4">
-        <SimZone1Chart weeklyData={weeklyData} hasAdjustments={hasAdjustments} bankAccounts={bankAccounts} />
+        <SimZone1Chart weeklyData={displayedWeeks} hasAdjustments={hasAdjustments} bankAccounts={bankAccounts} />
       </div>
 
       {/* Hypothetical Entries & Funding — side by side, above the board */}
@@ -554,7 +565,7 @@ export default function CashFlowSimulator() {
           setRecAdj={setRecAdj}
           payAdj={payAdj}
           setPayAdj={setPayAdj}
-          weeklyData={weeklyData}
+          weeklyData={displayedWeeks}
           history={boardHistory}
           setHistory={pushHistory}
           onReset={resetAll}
@@ -567,7 +578,7 @@ export default function CashFlowSimulator() {
 
 
       {/* Funding summary */}
-      <FundingSummaryCard weeklyData={weeklyData} />
+      <FundingSummaryCard weeklyData={displayedWeeks} />
 
       {/* Disclaimer */}
       <div className="mt-6 pt-4 border-t">
