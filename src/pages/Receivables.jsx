@@ -65,6 +65,31 @@ export default function Receivables() {
     queryFn: () => base44.entities.User.list(),
   });
 
+  const { data: scheduledReminders = [] } = useQuery({
+    queryKey: ['scheduledReminders'],
+    queryFn: () => base44.entities.ScheduledReminder.list('-scheduled_send_date', 500),
+  });
+
+  // Build a map: customerId -> { nextPending, lastSent }
+  const reminderInfoByCustomer = useMemo(() => {
+    const map = {};
+    scheduledReminders.forEach(r => {
+      if (!r.customer_id) return;
+      if (!map[r.customer_id]) map[r.customer_id] = { nextPending: null, lastSent: null };
+      if (r.status === 'pending' && r.scheduled_send_date) {
+        if (!map[r.customer_id].nextPending || r.scheduled_send_date < map[r.customer_id].nextPending) {
+          map[r.customer_id].nextPending = r.scheduled_send_date;
+        }
+      }
+      if (r.status === 'sent' && r.sent_date) {
+        if (!map[r.customer_id].lastSent || r.sent_date > map[r.customer_id].lastSent) {
+          map[r.customer_id].lastSent = r.sent_date;
+        }
+      }
+    });
+    return map;
+  }, [scheduledReminders]);
+
   const deleteMut = useMutation({
     mutationFn: (id) => base44.entities.Receivable.delete(id),
     onSuccess: () => { queryClient.invalidateQueries({ queryKey: ['invoices'] }); },
@@ -435,11 +460,23 @@ export default function Receivables() {
         <div className="flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 shadow-sm">
           <span className="text-sm font-semibold text-primary">{selected.size} invoice{selected.size > 1 ? 's' : ''} selected</span>
           <div className="flex gap-2 ml-auto">
-            <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setShowScheduleModal(true)}>
-              <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleBulkReminder}>Send Quick Reminder</Button>
+            {(() => {
+              const selectedInvs = [...selected].map(id => invoices.find(i => i.id === id)).filter(Boolean);
+              const anyNoContact = selectedInvs.some(inv => {
+                const c = getCustomerInfo(inv.customer_name);
+                return !(c?.email || c?.phone || c?.contact_person);
+              });
+              return (
+                <>
+                  <Button size="sm" variant="outline" className="gap-1.5" disabled={anyNoContact} title={anyNoContact ? 'Some selected companies have no contact info' : ''} onClick={() => setShowScheduleModal(true)}>
+                    <CalendarClock className="w-3.5 h-3.5" /> Schedule Reminders
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={anyNoContact} title={anyNoContact ? 'Some selected companies have no contact info' : ''} onClick={handleBulkReminder}>Send Quick Reminder</Button>
+                </>
+              );
+            })()}
             <Button size="sm" variant="outline" onClick={() => { setBulkAction('manager'); setShowBulkModal(true); }}>Assign Manager</Button>
+
             <Button size="sm" variant="destructive" onClick={() => { setBulkAction('delete'); setShowBulkModal(true); }}>Delete</Button>
           </div>
           <button onClick={() => setSelected(new Set())} className="text-xs text-muted-foreground hover:text-destructive underline">Clear</button>
@@ -502,9 +539,15 @@ export default function Receivables() {
                    {sortItems(group.items).map((invoice) => {
                     const outstanding = invoice.amount - (invoice.amount_paid || 0);
                     const dueDate = invoice.due_date ? parseISO(invoice.due_date) : null;
+                    const _customer = getCustomerInfo(invoice.customer_name);
+                    const hasContactInfo = !!(_customer?.email || _customer?.phone || _customer?.contact_person);
+                    const reminderInfo = reminderInfoByCustomer[_customer?.id] || null;
+                    const rowBg = !hasContactInfo
+                      ? 'bg-gray-100 opacity-80'
+                      : invoice.status === 'overdue' ? 'bg-red-50/30' : '';
 
                     return (
-                      <TableRow key={invoice.id} className={`hover:bg-muted/30 transition-colors ${invoice.status === 'overdue' ? 'bg-red-50/30' : ''}`}>
+                      <TableRow key={invoice.id} className={`hover:bg-muted/30 transition-colors ${rowBg}`}>
                         <TableCell className="px-3" onClick={e => e.stopPropagation()}>
                           {groupBy === 'none' ? (
                             <Checkbox checked={selected.has(invoice.id)} onCheckedChange={() => toggleOne(invoice.id)} />
@@ -516,11 +559,22 @@ export default function Receivables() {
                                      const phone = customer.phone || '';
                                      const email = customer.email || '';
                                      const contactPerson = customer.contact_person || '';
+                                     const rInfo = reminderInfoByCustomer[customer?.id];
                             return (
                               <HoverCard openDelay={200} closeDelay={100}>
                                 <HoverCardTrigger asChild>
-                                  <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-primary transition-colors">
+                                  <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-primary transition-colors inline-flex items-center gap-1.5">
                                     {invoice.customer_name}
+                                    {rInfo?.nextPending && (
+                                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 rounded px-1 py-0.5 leading-none">
+                                        <CalendarClock className="w-2.5 h-2.5" /> Scheduled
+                                      </span>
+                                    )}
+                                    {!rInfo?.nextPending && rInfo?.lastSent && (
+                                      <span className="inline-flex items-center gap-0.5 text-[10px] font-medium bg-emerald-100 text-emerald-700 rounded px-1 py-0.5 leading-none">
+                                        <Mail className="w-2.5 h-2.5" /> Sent
+                                      </span>
+                                    )}
                                   </span>
                                 </HoverCardTrigger>
                                 <HoverCardContent className="w-72 p-0 overflow-hidden" align="start">
@@ -552,6 +606,31 @@ export default function Receivables() {
                                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                                         <Phone className="w-3.5 h-3.5 shrink-0" />
                                         <span>No phone on file</span>
+                                      </div>
+                                    )}
+                                    {/* Reminder info */}
+                                    {rInfo?.nextPending && (
+                                      <div className="flex items-center gap-2 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1">
+                                        <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Next reminder: {format(parseISO(rInfo.nextPending), 'dd MMM yyyy')}</span>
+                                      </div>
+                                    )}
+                                    {rInfo?.lastSent && (
+                                      <div className="flex items-center gap-2 text-xs text-emerald-600 bg-emerald-50 rounded px-2 py-1">
+                                        <Mail className="w-3.5 h-3.5 shrink-0" />
+                                        <span>Last sent: {format(parseISO(rInfo.lastSent), 'dd MMM yyyy')}</span>
+                                      </div>
+                                    )}
+                                    {!rInfo && hasContactInfo && (
+                                      <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted rounded px-2 py-1">
+                                        <CalendarClock className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No reminders scheduled</span>
+                                      </div>
+                                    )}
+                                    {!hasContactInfo && (
+                                      <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 rounded px-2 py-1">
+                                        <Users className="w-3.5 h-3.5 shrink-0" />
+                                        <span>No contact info — add details to enable reminders</span>
                                       </div>
                                     )}
                                   </div>
@@ -662,9 +741,10 @@ export default function Receivables() {
                                <Button
                                variant="ghost"
                                size="icon"
-                               className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                               title="Send Reminder Email"
-                               onClick={() => setReminderCustomer(getCustomerInfo(invoice.customer_name) || { id: invoice.customer_id, name: invoice.customer_name, email: '', phone: '' })}
+                               disabled={!hasContactInfo}
+                               className="h-7 w-7 text-blue-500 hover:text-blue-700 hover:bg-blue-50 disabled:opacity-30 disabled:cursor-not-allowed"
+                               title={hasContactInfo ? "Send Reminder Email" : "Add contact info to send reminders"}
+                               onClick={() => hasContactInfo && setReminderCustomer(getCustomerInfo(invoice.customer_name) || { id: invoice.customer_id, name: invoice.customer_name, email: '', phone: '' })}
                              >
                                <Mail className="w-3.5 h-3.5" />
                              </Button>
