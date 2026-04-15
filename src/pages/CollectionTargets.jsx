@@ -34,7 +34,7 @@ const EMPTY_FORM = {
 };
 
 // ─── TargetForm ────────────────────────────────────────────────────────────────
-function TargetForm({ open, onClose, onSave, editData, managers, receivableCustomers, outstandingByName, customers }) {
+function TargetForm({ open, onClose, onSave, editData, managers, receivableCustomers, outstandingByName, customers, currentUser }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
 
@@ -51,6 +51,25 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
   }, [editData, open]);
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
+
+  // For sales team: only show their assigned customers
+  const isSales = isSalesTeam(currentUser?.role);
+  const filteredCustomers = useMemo(() => {
+    if (!isSales || !currentUser?.email) return receivableCustomers;
+    const myNames = new Set(
+      customers
+        .filter(c => (c.account_manager || '').toLowerCase() === currentUser.email.toLowerCase())
+        .map(c => c.name?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    return receivableCustomers.filter(({ name }) => myNames.has(name.trim().toLowerCase()));
+  }, [isSales, currentUser, receivableCustomers, customers]);
+
+  // Determine if the selected customer already has an assigned manager
+  const selectedCustomerObj = form.customer_name
+    ? customers.find(c => c.name?.trim().toLowerCase() === form.customer_name.trim().toLowerCase())
+    : null;
+  const managerLocked = !!selectedCustomerObj?.account_manager;
 
   const handleCustomerSelect = (name) => {
     const outstanding = outstandingByName[name.trim().toLowerCase()] || 0;
@@ -103,14 +122,14 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
             <Select value={form.customer_name} onValueChange={handleCustomerSelect}>
               <SelectTrigger><SelectValue placeholder="Select customer..." /></SelectTrigger>
               <SelectContent className="max-h-60">
-                {receivableCustomers.map(({ name, outstanding }) => (
+                {filteredCustomers.map(({ name, outstanding }) => (
                   <SelectItem key={name} value={name}>
                     {name} — {formatINR(outstanding)}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            {receivableCustomers.length === 0 && (
+            {filteredCustomers.length === 0 && (
               <p className="text-xs text-muted-foreground italic">No customers with outstanding receivables found.</p>
             )}
             {form.customer_name && (
@@ -126,10 +145,15 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
 
           {/* Account Manager */}
           <div className="space-y-1.5">
-            <Label>Account Manager *</Label>
+            <Label className="flex items-center gap-2">
+              Account Manager *
+              {managerLocked && <span className="text-xs text-amber-600 font-normal">(locked — assigned to customer)</span>}
+            </Label>
             {managers.length > 0 ? (
-              <Select value={form.manager_email} onValueChange={handleManagerSelect}>
-                <SelectTrigger><SelectValue placeholder="Select manager..." /></SelectTrigger>
+              <Select value={form.manager_email} onValueChange={handleManagerSelect} disabled={managerLocked}>
+                <SelectTrigger className={managerLocked ? 'opacity-70 cursor-not-allowed' : ''}>
+                  <SelectValue placeholder="Select manager..." />
+                </SelectTrigger>
                 <SelectContent>
                   {managers.map(m => (
                     <SelectItem key={m.email} value={m.email}>{m.full_name || m.email}</SelectItem>
@@ -141,6 +165,7 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
                 value={form.manager_name || form.manager_email}
                 onChange={e => set('manager_name', e.target.value)}
                 placeholder="Enter account manager name..."
+                disabled={managerLocked}
               />
             )}
             {form.manager_email && managers.length > 0 && (
@@ -907,6 +932,7 @@ export default function CollectionTargets() {
         receivableCustomers={receivableCustomers}
         outstandingByName={outstandingByName}
         customers={customers}
+        currentUser={currentUser}
       />
       <UpdateProgressDialog
         open={!!updatingTarget}
