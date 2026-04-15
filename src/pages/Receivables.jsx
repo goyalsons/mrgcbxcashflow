@@ -20,6 +20,7 @@ import ScheduleRemindersModal from '@/components/receivables/ScheduleRemindersMo
 import QuickReminderModal from '@/components/debtors/QuickReminderModal';
 import QuickBulkReminderModal from '@/components/debtors/QuickBulkReminderModal';
 import SetTargetModal from '@/components/debtors/SetTargetModal';
+import AddCustomerInfoPopover from '@/components/receivables/AddCustomerInfoPopover';
 
 export default function Receivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -577,6 +578,12 @@ export default function Receivables() {
                                       <MessageSquare className="w-3 h-3" /> WhatsApp
                                     </button>
                                   </div>
+                                  {!email && !phone && !contactPerson && (
+                                    <AddCustomerInfoPopover
+                                      customerName={invoice.customer_name}
+                                      existingCustomer={customer}
+                                    />
+                                  )}
                                 </HoverCardContent>
                               </HoverCard>
                             );
