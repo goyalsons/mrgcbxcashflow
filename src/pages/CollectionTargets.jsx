@@ -15,7 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Medal, Target, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign, StickyNote, CheckSquare, X } from 'lucide-react';
+import { Trophy, Medal, Target, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign, StickyNote, CheckSquare, X, ChevronUp, ChevronDown, Users } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
@@ -403,6 +403,8 @@ export default function CollectionTargets() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [currentUser, setCurrentUser] = useState(null);
+  const [groupByManager, setGroupByManager] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: null, dir: 'asc' });
 
   React.useEffect(() => {
     base44.auth.me().then(u => setCurrentUser(u)).catch(() => {});
@@ -684,6 +686,19 @@ export default function CollectionTargets() {
             </div>
           )}
 
+          {/* Group by Manager toggle */}
+          <div className="flex items-center gap-2 mb-3">
+            <Button
+              size="sm"
+              variant={groupByManager ? 'default' : 'outline'}
+              className="gap-1.5"
+              onClick={() => setGroupByManager(v => !v)}
+            >
+              <Users className="w-3.5 h-3.5" />
+              {groupByManager ? 'Grouped by Manager' : 'Group by Manager'}
+            </Button>
+          </div>
+
           {isLoading ? (
             <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}</div>
           ) : targets.length === 0 ? (
@@ -695,85 +710,160 @@ export default function CollectionTargets() {
                 <Button className="mt-4" onClick={() => setShowForm(true)}><Plus className="w-4 h-4 mr-2" />Assign First Target</Button>
               </CardContent>
             </Card>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">
-                      <Checkbox
-                        checked={selectedIds.size === targets.length && targets.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
-                    <TableHead>Manager</TableHead>
-                    <TableHead>Customer</TableHead>
-                    <TableHead className="text-right">Target</TableHead>
-                    <TableHead>Month</TableHead>
-                    <TableHead className="text-right">Collected</TableHead>
-                    <TableHead>Progress</TableHead>
-                    <TableHead>Notes</TableHead>
-                    <TableHead className="w-10"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {targets.map(t => {
-                    const customerIds = managerCustomerIds[t.manager_email] || [];
-                    const monthPayments = payments.filter(p => {
-                      if (!p.payment_date) return false;
-                      const d = new Date(p.payment_date);
-                      return d.getMonth() + 1 === t.period_month && d.getFullYear() === t.period_year && customerIds.includes(p.debtor_id);
-                    });
-                    const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
-                    const collected = Math.max(autoCollected, t.collected_amount || 0);
-                    const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
+          ) : (() => {
+            // Enrich targets with computed collected/pct
+            const enriched = targets.map(t => {
+              const customerIds = managerCustomerIds[t.manager_email] || [];
+              const monthPayments = payments.filter(p => {
+                if (!p.payment_date) return false;
+                const d = new Date(p.payment_date);
+                return d.getMonth() + 1 === t.period_month && d.getFullYear() === t.period_year && customerIds.includes(p.debtor_id);
+              });
+              const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
+              const collected = Math.max(autoCollected, t.collected_amount || 0);
+              const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
+              return { ...t, collected, pct };
+            });
+
+            // Sort
+            const sorted = sortConfig.key ? [...enriched].sort((a, b) => {
+              let av = a[sortConfig.key], bv = b[sortConfig.key];
+              if (sortConfig.key === 'manager') { av = a.manager_name || a.manager_email; bv = b.manager_name || b.manager_email; }
+              if (sortConfig.key === 'month') { av = a.period_year * 100 + a.period_month; bv = b.period_year * 100 + b.period_month; }
+              const c = typeof av === 'number' ? av - bv : String(av || '').localeCompare(String(bv || ''));
+              return sortConfig.dir === 'asc' ? c : -c;
+            }) : enriched;
+
+            const SortHead = ({ label, col, className = '' }) => (
+              <TableHead
+                className={`cursor-pointer select-none hover:bg-muted/50 ${className}`}
+                onClick={() => setSortConfig(s => ({ key: col, dir: s.key === col && s.dir === 'asc' ? 'desc' : 'asc' }))}
+              >
+                <span className="inline-flex items-center gap-1">
+                  {label}
+                  {sortConfig.key === col
+                    ? sortConfig.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                    : <ChevronUp className="w-3 h-3 opacity-20" />}
+                </span>
+              </TableHead>
+            );
+
+            const TargetRow = ({ t, idx }) => (
+              <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'}>
+                <TableCell>
+                  <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
+                </TableCell>
+                <TableCell>
+                  <div className="font-medium text-sm">{t.manager_name || t.manager_email}</div>
+                  <div className="text-xs text-muted-foreground">{t.manager_email}</div>
+                </TableCell>
+                <TableCell className="text-sm">{t.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
+                <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
+                <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
+                <TableCell className="text-right text-emerald-600 font-medium text-sm">{formatINR(t.collected)}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2 min-w-[100px]">
+                    <Progress value={t.pct} className="h-2 flex-1" />
+                    <span className="text-xs font-semibold w-9 text-right">{t.pct}%</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-sm text-muted-foreground">
+                  <NotesPopover target={t} />
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setUpdatingTarget(t)}>
+                        <DollarSign className="w-4 h-4 mr-2" />Update Progress
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
+                        <Pencil className="w-4 h-4 mr-2" />Edit Target
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
+                        <Trash2 className="w-4 h-4 mr-2" />Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            );
+
+            const tableHeaders = (
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">
+                    <Checkbox checked={selectedIds.size === targets.length && targets.length > 0} onCheckedChange={toggleSelectAll} />
+                  </TableHead>
+                  <SortHead label="Manager" col="manager" />
+                  <SortHead label="Customer" col="customer_name" />
+                  <SortHead label="Target" col="target_amount" className="text-right" />
+                  <SortHead label="Month" col="month" />
+                  <SortHead label="Collected" col="collected" className="text-right" />
+                  <SortHead label="Progress" col="pct" />
+                  <TableHead>Notes</TableHead>
+                  <TableHead className="w-10"></TableHead>
+                </TableRow>
+              </TableHeader>
+            );
+
+            if (groupByManager) {
+              // Group rows by manager
+              const groups = {};
+              sorted.forEach(t => {
+                const key = t.manager_email || 'unassigned';
+                if (!groups[key]) groups[key] = { label: t.manager_name || t.manager_email || 'Unassigned', rows: [] };
+                groups[key].rows.push(t);
+              });
+
+              return (
+                <div className="space-y-4">
+                  {Object.entries(groups).map(([key, group]) => {
+                    const groupTotal = group.rows.reduce((s, t) => s + (t.target_amount || 0), 0);
+                    const groupCollected = group.rows.reduce((s, t) => s + t.collected, 0);
+                    const groupPct = groupTotal > 0 ? Math.min(100, Math.round((groupCollected / groupTotal) * 100)) : 0;
                     return (
-                      <TableRow key={t.id} className={selectedIds.has(t.id) ? 'bg-primary/5' : ''}>
-                        <TableCell>
-                          <Checkbox checked={selectedIds.has(t.id)} onCheckedChange={() => toggleSelect(t.id)} />
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-sm">{t.manager_name || t.manager_email}</div>
-                          <div className="text-xs text-muted-foreground">{t.manager_email}</div>
-                        </TableCell>
-                        <TableCell className="text-sm">{t.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
-                        <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
-                        <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
-                        <TableCell className="text-right text-emerald-600 font-medium text-sm">{formatINR(collected)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 min-w-[100px]">
-                            <Progress value={pct} className="h-2 flex-1" />
-                            <span className="text-xs font-semibold w-9 text-right">{pct}%</span>
+                      <div key={key}>
+                        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-muted/80 to-muted/30 rounded-lg border mb-1">
+                          <h3 className="font-semibold text-sm flex items-center gap-2">
+                            <Users className="w-3.5 h-3.5 text-muted-foreground" />
+                            {group.label}
+                            <span className="text-xs text-muted-foreground font-normal">({group.rows.length} target{group.rows.length !== 1 ? 's' : ''})</span>
+                          </h3>
+                          <div className="flex items-center gap-3 text-xs">
+                            <span className="text-emerald-600 font-medium">{formatINR(groupCollected)}</span>
+                            <span className="text-muted-foreground">/ {formatINR(groupTotal)}</span>
+                            <span className="font-bold text-primary">{groupPct}%</span>
                           </div>
-                        </TableCell>
-                        <TableCell className="text-sm text-muted-foreground">
-                          <NotesPopover target={t} />
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onClick={() => setUpdatingTarget(t)}>
-                                <DollarSign className="w-4 h-4 mr-2" />Update Progress
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                                <Pencil className="w-4 h-4 mr-2" />Edit Target
-                              </DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
-                                <Trash2 className="w-4 h-4 mr-2" />Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
+                        </div>
+                        <div className="overflow-x-auto rounded-lg border">
+                          <Table>
+                            {tableHeaders}
+                            <TableBody>
+                              {group.rows.map((t, idx) => <TargetRow key={t.id} t={t} idx={idx} />)}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
                     );
                   })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                </div>
+              );
+            }
+
+            return (
+              <div className="overflow-x-auto rounded-lg border">
+                <Table>
+                  {tableHeaders}
+                  <TableBody>
+                    {sorted.map((t, idx) => <TargetRow key={t.id} t={t} idx={idx} />)}
+                  </TableBody>
+                </Table>
+              </div>
+            );
+          })()}
         </TabsContent>
       </Tabs>
 
