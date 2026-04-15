@@ -14,6 +14,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
+import AddSampleExpensesButton from '@/components/expenses/AddSampleExpensesButton';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -155,6 +156,11 @@ export default function Expenses() {
         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => navigate('/csv-import?type=expense')}>
           <Upload className="w-4 h-4" /> Bulk Import
         </Button>
+        <AddSampleExpensesButton
+          existingExpenses={expenses}
+          currentUser={currentUser}
+          onAdded={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
+        />
       </PageHeader>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">

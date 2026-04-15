@@ -12,6 +12,7 @@ import { Plus, Trash2, CheckCircle, RefreshCw, Loader2, ChevronUp, ChevronDown }
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import ExpenseForm from '@/components/expenses/ExpenseForm';
+import AddSampleRecurringButton from '@/components/expenses/AddSampleRecurringButton';
 
 function getISOWeekLabel(dateStr) {
   if (!dateStr) return null;
@@ -209,12 +210,17 @@ export default function RecurringExpenses() {
         onAction={() => { setEditData(null); setShowForm(true); }}
       />
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-wrap">
         <Button variant="outline" onClick={handleGenerate} disabled={generating} className="gap-2">
           {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
           Generate Now
         </Button>
         <span className="text-xs text-muted-foreground">Generates up to 6 months of future entries</span>
+        <AddSampleRecurringButton
+          existingTemplates={templates}
+          currentUser={currentUser}
+          onAdded={() => queryClient.invalidateQueries({ queryKey: ['expenses'] })}
+        />
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
