@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Paperclip, Upload, X, ExternalLink, Loader2 } from 'lucide-react';
+import { Paperclip, Upload, X, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export default function AttachmentCell({ invoice, onUpdate }) {
   const [uploading, setUploading] = useState(false);
-  const [open, setOpen] = useState(false);
   const { toast } = useToast();
 
   const attachments = (() => {
@@ -30,7 +30,6 @@ export default function AttachmentCell({ invoice, onUpdate }) {
       const updated = [...attachments, ...newItems];
       await onUpdate(invoice.id, { attachments: JSON.stringify(updated) });
       toast({ title: `${files.length} file(s) uploaded` });
-      setOpen(true);
     } catch (err) {
       toast({ title: 'Upload failed', description: err.message, variant: 'destructive' });
     }
@@ -44,58 +43,53 @@ export default function AttachmentCell({ invoice, onUpdate }) {
   };
 
   return (
-    <div className="relative">
+    <Dialog>
       <div className="flex items-center gap-1">
-        <button
-          onClick={() => setOpen(v => !v)}
-          className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors ${attachments.length > 0 ? 'text-blue-600 hover:bg-blue-50' : 'text-muted-foreground hover:bg-muted'}`}
-        >
-          <Paperclip className="w-3 h-3" />
-          {attachments.length > 0 && <span className="font-medium">{attachments.length}</span>}
-        </button>
+        <DialogTrigger asChild>
+          <button
+            className={`flex items-center gap-1 text-xs px-1.5 py-0.5 rounded transition-colors ${attachments.length > 0 ? 'text-blue-600 hover:bg-blue-50' : 'text-muted-foreground hover:bg-muted'}`}
+          >
+            <Paperclip className="w-3 h-3" />
+            {attachments.length > 0 && <span className="font-medium">{attachments.length}</span>}
+          </button>
+        </DialogTrigger>
         <label className="cursor-pointer text-muted-foreground hover:text-primary transition-colors">
           {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
           <input type="file" multiple accept=".pdf,application/pdf" className="hidden" onChange={handleUpload} />
         </label>
       </div>
 
-      {open && (
-        <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute z-50 top-6 left-0 w-80 bg-popover border rounded-lg shadow-xl p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">Attachments ({attachments.length})</span>
-              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
-            </div>
-            {attachments.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-2">No attachments yet</p>
-            ) : (
-              <div className="space-y-2">
-                {attachments.map((item, i) => (
-                  <div key={i} className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-md group hover:bg-muted/60 transition-colors">
-                    <Paperclip className="w-4 h-4 text-primary shrink-0" />
-                    <a 
-                      href={item.url} 
-                      target="_blank" 
-                      rel="noreferrer" 
-                      className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium min-w-0 break-words"
-                    >
-                      {item.name || 'File'}
-                    </a>
-                    <button 
-                      onClick={() => removeAttachment(item.url)} 
-                      className="text-destructive hover:text-red-700 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-                      title="Remove attachment"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))}
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Attachments ({attachments.length})</DialogTitle>
+        </DialogHeader>
+        {attachments.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4">No attachments yet</p>
+        ) : (
+          <div className="space-y-2 max-h-96 overflow-y-auto">
+            {attachments.map((item, i) => (
+              <div key={i} className="flex items-center gap-2 p-3 bg-muted/40 rounded-md group hover:bg-muted/60 transition-colors">
+                <Paperclip className="w-4 h-4 text-primary shrink-0" />
+                <a 
+                  href={item.url} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium min-w-0 break-words"
+                >
+                  {item.name || 'File'}
+                </a>
+                <button 
+                  onClick={() => removeAttachment(item.url)} 
+                  className="text-destructive hover:text-red-700 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                  title="Remove attachment"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            )}
+            ))}
           </div>
-        </>
-      )}
-    </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
