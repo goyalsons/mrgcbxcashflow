@@ -111,6 +111,15 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
     return d >= w.start && d <= w.end;
   };
 
+  // Helper: convert date string to week index (must match SimTimelineBoard's dueDateToWeek)
+  const getWeekIndex = (dateStr) => {
+    if (!dateStr) return 0;
+    const d = new Date(dateStr);
+    d.setHours(12, 0, 0, 0);
+    const weekNum = Math.ceil(((d - (new Date(financialYear, 3, 1))) / 86400000 + 1) / 7);
+    return Math.max(weekNum - 1, 0);
+  };
+
   const filterAmt = (amt) => amt < minAmount ? 0 : amt;
 
   receivables.forEach(r => {
@@ -595,6 +604,8 @@ export default function CashFlowSimulator() {
           setRecAdj={setRecAdj}
           payAdj={payAdj}
           setPayAdj={setPayAdj}
+          expAdj={expAdj}
+          setExpAdj={setExpAdj}
           weeklyData={displayedWeeks}
           history={boardHistory}
           setHistory={pushHistory}

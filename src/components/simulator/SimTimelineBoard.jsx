@@ -54,7 +54,8 @@ const weekLabel = (i) => {
 
 function dueDateToWeek(dateStr) {
   if (!dateStr) return 0;
-  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
+  const d = new Date(dateStr); 
+  d.setHours(12, 0, 0, 0);
   const weekNum = getFinancialWeekNumber(d);
   return Math.max(weekNum - 1, 0);
 }
@@ -184,7 +185,7 @@ export default function SimTimelineBoard({
   receivables, invoices, payables, expenses, recurringExpenses,
   hypotheticals = [], fundingSources = [],
   setHypotheticals = () => {}, setFundingSources = () => {},
-  recAdj, setRecAdj, payAdj, setPayAdj,
+  recAdj, setRecAdj, payAdj, setPayAdj, expAdj, setExpAdj,
   weeklyData, history, setHistory, onReset, onUndo, onRedo,
 }) {
   const weekColumnRefs = useRef([]);
@@ -329,18 +330,31 @@ export default function SimTimelineBoard({
     }
 
     if (isRep) {
-      // Repayment card — update funding source
+      // Repayment card — update funding source's appropriate date field
       const repParts = itemId.split('-rep-');
       const fundId = repParts[0];
       const repIdx = parseInt(repParts[1]);
       setFundingSources(prev => prev.map(f => {
         if (f.id !== fundId) return f;
-        const { inflows, outflows } = buildSourceFlows(f);
+        const { outflows } = buildSourceFlows(f);
         if (repIdx >= outflows.length) return f;
-        const oldOutflow = outflows[repIdx];
-        const daysDiff = Math.round((new Date(newDate) - new Date(oldOutflow.date)) / 86400000);
-        const newOutflowDate = newDate;
-        return { ...f, repayDate: newOutflowDate };
+        
+        // Map funding types to their date property
+        const dateMap = {
+          informal: 'repayDate',
+          od: 'repayDate',
+          wcl: 'repayDate',
+          invoice_disc: 'collectionDate',
+          govt_loan: 'repayDate',
+          cust_advance: 'date',
+          asset_sale: 'date',
+          chit: 'date',
+          dealer_adv: 'date',
+          nbfc_loan: 'repayDate',
+          po_finance: 'fulfillDate'
+        };
+        const dateField = dateMap[f.type] || 'repayDate';
+        return { ...f, [dateField]: newDate };
       }));
       toast({ title: `Moved repayment → W${dstWeek + 1}`, duration: 2000 });
       return;
@@ -363,15 +377,18 @@ export default function SimTimelineBoard({
       const next = new Map(payAdj);
       next.set(itemId, { tranches: [{ amount: amt, date: newDate }], remainder: 0 });
       setPayAdj(next);
+    } else if (isExp || isRecur) {
+      const next = new Map(expAdj);
+      next.set(itemId, { date: newDate });
+      setExpAdj(next);
     }
-    // Expenses and recurring are not draggable with state adjustment — they're filtered out
 
     const name = isRec ? (item.customer_name || item.debtor_name)
                : isPay ? item.vendor_name
                : item.description;
     toast({ title: `Moved "${name}" → W${dstWeek + 1}`, duration: 2000 });
     setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
-  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, setRecAdj, setPayAdj, setHypotheticals, setFundingSources, setHistory]);
+  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, expAdj, setRecAdj, setPayAdj, setExpAdj, setHypotheticals, setFundingSources, setHistory]);
 
   const handleReset = useCallback(() => {
     setShowResetConfirm(false);
@@ -576,35 +593,55 @@ export default function SimTimelineBoard({
                         </>
                       )}
 
-                      {/* Expenses (static) */}
+                      {/* Expenses (draggable) */}
                       {exps.length > 0 && (
                         <>
                           <SectionSep label="Expenses" color="text-orange-500" />
-                          {exps.map(item => (
-                            <StaticCard
-                              key={`exp-${item.id}`}
-                              cardType="expense"
-                              label={item.description || '—'}
-                              sublabel={item.category || 'Expense'}
-                              amount={item.amount || 0}
-                            />
-                          ))}
+                          {exps.map(item => {
+                            const origWeek = dueDateToWeek(item.expense_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`exp-${item.id}`}
+                                draggableId={`exp-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="expense"
+                                isAdjusted={expAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Expense'}
+                                amtFn={e => e.amount || 0}
+                              />
+                            );
+                          })}
                         </>
                       )}
 
-                      {/* Recurring (static) */}
+                      {/* Recurring (draggable) */}
                       {recur.length > 0 && (
                         <>
                           <SectionSep label="Recurring" color="text-yellow-600" />
-                          {recur.map(item => (
-                            <StaticCard
-                              key={`recur-${item.id}`}
-                              cardType="recurring"
-                              label={item.description || '—'}
-                              sublabel={item.category || 'Recurring'}
-                              amount={item.amount || 0}
-                            />
-                          ))}
+                          {recur.map(item => {
+                            const origWeek = dueDateToWeek(item.expense_date);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`recur-${item.id}`}
+                                draggableId={`recur-${item.id}`}
+                                index={idx}
+                                item={item}
+                                cardType="recurring"
+                                isAdjusted={expAdj.has(item.id)}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={e => e.description || '—'}
+                                subField={e => e.category || 'Recurring'}
+                                amtFn={e => e.amount || 0}
+                              />
+                            );
+                          })}
                         </>
                       )}
 
