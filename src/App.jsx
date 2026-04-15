@@ -10,6 +10,7 @@ import AppLayout from '@/components/layout/AppLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import WaitingActivation from '@/components/WaitingActivation';
 import Dashboard from '@/pages/Dashboard';
+import SalesTeamDashboard from '@/pages/SalesTeamDashboard';
 
 import MyCollections from '@/pages/MyCollections';
 import CollectionTargets from '@/pages/CollectionTargets';
@@ -67,7 +68,7 @@ const AuthenticatedApp = () => {
   return (
     <Routes>
       <Route element={<AppLayout user={user} />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={user?.role === 'sales_team' ? <SalesTeamDashboard /> : <Dashboard />} />
 
         <Route path="/my-collections" element={<ProtectedRoute user={user} featureKey="my_collections"><MyCollections /></ProtectedRoute>} />
         <Route path="/collection-targets" element={<ProtectedRoute user={user} featureKey="collection_targets"><CollectionTargets /></ProtectedRoute>} />

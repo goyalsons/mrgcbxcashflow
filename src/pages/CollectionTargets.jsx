@@ -559,11 +559,26 @@ export default function CollectionTargets() {
     else setSelectedIds(new Set(targets.map(t => t.id)));
   };
 
+  // For sales_team: set of customer names assigned to them
+  const myCustomerNames = useMemo(() => {
+    if (!isSalesTeam(currentUser?.role) || !currentUser?.email) return null;
+    const names = new Set(
+      customers
+        .filter(c => c.account_manager === currentUser.email)
+        .map(c => c.name?.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    return names;
+  }, [customers, currentUser]);
+
   const monthlyTargets = useMemo(() => {
     let filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
-    // Account Managers only see their own targets
+    // Account Managers only see their own targets (by manager email AND by assigned customer names)
     if (isSalesTeam(currentUser?.role) && currentUser?.email) {
-      filtered = filtered.filter(t => t.manager_email === currentUser.email);
+      filtered = filtered.filter(t =>
+        t.manager_email === currentUser.email ||
+        (t.customer_name && myCustomerNames?.has(t.customer_name.trim().toLowerCase()))
+      );
     }
     return filtered.map(t => {
       const customerIds = managerCustomerIds[t.manager_email] || [];
@@ -706,7 +721,11 @@ export default function CollectionTargets() {
 
           {isLoading ? (
             <div className="space-y-2">{[...Array(3)].map((_, i) => <div key={i} className="h-12 bg-muted animate-pulse rounded" />)}</div>
-          ) : targets.length === 0 ? (
+          ) : targets.filter(t => {
+              if (!isSalesTeam(currentUser?.role) || !currentUser?.email) return true;
+              return t.manager_email === currentUser.email ||
+                (t.customer_name && myCustomerNames?.has(t.customer_name.trim().toLowerCase()));
+            }).length === 0 ? (
             <Card>
               <CardContent className="py-12 text-center">
                 <Target className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
@@ -717,7 +736,14 @@ export default function CollectionTargets() {
             </Card>
           ) : (() => {
             // Enrich targets with computed collected/pct
-            const enriched = targets.map(t => {
+            const visibleTargets = isSalesTeam(currentUser?.role) && currentUser?.email
+              ? targets.filter(t =>
+                  t.manager_email === currentUser.email ||
+                  (t.customer_name && myCustomerNames?.has(t.customer_name.trim().toLowerCase()))
+                )
+              : targets;
+
+            const enriched = visibleTargets.map(t => {
               const customerIds = managerCustomerIds[t.manager_email] || [];
               const monthPayments = payments.filter(p => {
                 if (!p.payment_date) return false;
