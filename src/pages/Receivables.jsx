@@ -776,7 +776,13 @@ export default function Receivables() {
                                size="icon"
                                className="h-7 w-7 text-purple-500 hover:text-purple-700 hover:bg-purple-50"
                                title="Set Target"
-                               onClick={() => setTargetCustomer(getCustomerInfo(invoice.customer_name))}
+                               onClick={() => {
+                                 const customerName = invoice.customer_name;
+                                 const totalOutstanding = invoices
+                                   .filter(i => i.customer_name?.toLowerCase() === customerName?.toLowerCase() && i.status !== 'paid' && i.status !== 'written_off')
+                                   .reduce((sum, i) => sum + Math.max(0, (i.amount || 0) - (i.amount_paid || 0)), 0);
+                                 setTargetCustomer({ ...getCustomerInfo(customerName), _totalOutstanding: totalOutstanding });
+                               }}
                                >
                                <Target className="w-3.5 h-3.5" />
                                </Button>

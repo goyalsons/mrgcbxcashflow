@@ -15,7 +15,7 @@ export default function SetTargetModal({ customer, onClose }) {
   const today = new Date();
 
   const [form, setForm] = useState({
-    target_amount: customer?.credit_limit || '',
+    target_amount: customer?._totalOutstanding || customer?.credit_limit || '',
     target_date: today.toISOString().split('T')[0],
     notes: '',
   });
