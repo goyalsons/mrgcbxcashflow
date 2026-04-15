@@ -285,9 +285,20 @@ export default function SimTimelineBoard({
 
     const isRec  = draggableId.startsWith('rec-');
     const isPay  = draggableId.startsWith('pay-');
+    const isExp  = draggableId.startsWith('exp-');
+    const isRecur = draggableId.startsWith('recur-');
     const isHypo = draggableId.startsWith('hypo-');
     const isFund = draggableId.startsWith('fund-inflow-');
-    const itemId = draggableId.replace(/^(rec|pay|exp|recur|hypo|fund-inflow)-/, '');
+    const isRep = draggableId.startsWith('rep-');
+    
+    let itemId = draggableId;
+    if (isRec) itemId = draggableId.replace('rec-', '');
+    else if (isPay) itemId = draggableId.replace('pay-', '');
+    else if (isExp) itemId = draggableId.replace('exp-', '');
+    else if (isRecur) itemId = draggableId.replace('recur-', '');
+    else if (isHypo) itemId = draggableId.replace('hypo-', '');
+    else if (isFund) itemId = draggableId.replace('fund-inflow-', '');
+    else if (isRep) itemId = draggableId.replace('rep-', '');
 
     const newDate = toDateStr(weekStart(dstWeek));
     const prevRecAdj = new Map(recAdj);
@@ -307,21 +318,39 @@ export default function SimTimelineBoard({
     }
 
     if (isFund) {
-      const fundId = itemId.replace(/-inflow$/, '');
       setFundingSources(prev => prev.map(f =>
-        f.id !== fundId ? f
+        f.id !== itemId ? f
           : { ...f, date: newDate, drawDate: newDate, disburseDate: newDate }
       ));
-      const f = fundingSources.find(f => f.id === fundId);
+      const f = fundingSources.find(f => f.id === itemId);
       toast({ title: `Moved "${f?.lender || f?.bank || 'Funding'}" → W${dstWeek + 1}`, duration: 2000 });
       setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
       return;
     }
 
+    if (isRep) {
+      // Repayment card — update funding source
+      const repParts = itemId.split('-rep-');
+      const fundId = repParts[0];
+      const repIdx = parseInt(repParts[1]);
+      setFundingSources(prev => prev.map(f => {
+        if (f.id !== fundId) return f;
+        const { inflows, outflows } = buildSourceFlows(f);
+        if (repIdx >= outflows.length) return f;
+        const oldOutflow = outflows[repIdx];
+        const daysDiff = Math.round((new Date(newDate) - new Date(oldOutflow.date)) / 86400000);
+        const newOutflowDate = newDate;
+        return { ...f, repayDate: newOutflowDate };
+      }));
+      toast({ title: `Moved repayment → W${dstWeek + 1}`, duration: 2000 });
+      return;
+    }
+
     const item = isRec ? allRec.find(r => r.id === itemId)
                : isPay ? allPay.find(p => p.id === itemId)
-               : draggableId.startsWith('exp-') ? allExp.find(e => e.id === itemId)
-               : allRecur.find(e => e.id === itemId);
+               : isExp ? allExp.find(e => e.id === itemId)
+               : isRecur ? allRecur.find(e => e.id === itemId)
+               : null;
     if (!item) return;
 
     if (isRec) {
@@ -335,6 +364,7 @@ export default function SimTimelineBoard({
       next.set(itemId, { tranches: [{ amount: amt, date: newDate }], remainder: 0 });
       setPayAdj(next);
     }
+    // Expenses and recurring are not draggable with state adjustment — they're filtered out
 
     const name = isRec ? (item.customer_name || item.debtor_name)
                : isPay ? item.vendor_name
@@ -546,55 +576,35 @@ export default function SimTimelineBoard({
                         </>
                       )}
 
-                      {/* Expenses */}
+                      {/* Expenses (static) */}
                       {exps.length > 0 && (
                         <>
                           <SectionSep label="Expenses" color="text-orange-500" />
-                          {exps.map(item => {
-                            const origWeek = dueDateToWeek(item.expense_date);
-                            const idx = draggableIndex++;
-                            return (
-                              <DraggableCard
-                                key={`exp-${item.id}`}
-                                draggableId={`exp-${item.id}`}
-                                index={idx}
-                                item={item}
-                                cardType="expense"
-                                isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
-                                origWeek={origWeek}
-                                curWeek={i}
-                                nameField={e => e.description || '—'}
-                                subField={e => e.category || 'Expense'}
-                                amtFn={e => e.amount || 0}
-                              />
-                            );
-                          })}
+                          {exps.map(item => (
+                            <StaticCard
+                              key={`exp-${item.id}`}
+                              cardType="expense"
+                              label={item.description || '—'}
+                              sublabel={item.category || 'Expense'}
+                              amount={item.amount || 0}
+                            />
+                          ))}
                         </>
                       )}
 
-                      {/* Recurring */}
+                      {/* Recurring (static) */}
                       {recur.length > 0 && (
                         <>
                           <SectionSep label="Recurring" color="text-yellow-600" />
-                          {recur.map(item => {
-                            const origWeek = dueDateToWeek(item.expense_date);
-                            const idx = draggableIndex++;
-                            return (
-                              <DraggableCard
-                                key={`recur-${item.id}`}
-                                draggableId={`recur-${item.id}`}
-                                index={idx}
-                                item={item}
-                                cardType="recurring"
-                                isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
-                                origWeek={origWeek}
-                                curWeek={i}
-                                nameField={e => e.description || '—'}
-                                subField={e => e.category || 'Recurring'}
-                                amtFn={e => e.amount || 0}
-                              />
-                            );
-                          })}
+                          {recur.map(item => (
+                            <StaticCard
+                              key={`recur-${item.id}`}
+                              cardType="recurring"
+                              label={item.description || '—'}
+                              sublabel={item.category || 'Recurring'}
+                              amount={item.amount || 0}
+                            />
+                          ))}
                         </>
                       )}
 
@@ -653,19 +663,28 @@ export default function SimTimelineBoard({
                        </>
                       )}
 
-                      {/* Repayment cards (static) */}
+                      {/* Repayment cards (draggable) */}
                       {repayments.length > 0 && (
                        <>
                          <SectionSep label="Repayment ↓" color="text-rose-600" />
-                         {repayments.map(r => (
-                           <StaticCard
-                             key={r.id}
-                             cardType="repayment"
-                             label={r.label}
-                             sublabel={r.date}
-                             amount={r.amount}
-                           />
-                         ))}
+                         {repayments.map(r => {
+                           const idx = draggableIndex++;
+                           return (
+                             <DraggableCard
+                               key={r.id}
+                               draggableId={r.id}
+                               index={idx}
+                               item={{ due_date: r.date }}
+                               cardType="repayment"
+                               isAdjusted={false}
+                               origWeek={r.week}
+                               curWeek={i}
+                               nameField={() => r.label}
+                               subField={() => r.date}
+                               amtFn={() => r.amount}
+                             />
+                           );
+                         })}
                        </>
                       )}
 

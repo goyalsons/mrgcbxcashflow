@@ -58,10 +58,10 @@ export default function MonthlyForecastChart({ monthlyData }) {
 
   const chartData = monthlyData.map(m => ({
     label: m.label,
-    inflow:  Math.round(m.simInflow  || 0),
-    outflow: Math.round(m.simOutflow || 0),
-    net:     Math.round(m.simNet     || 0),
-    closing: Math.round(m.simClosing || 0),
+    inflow:  Math.round(m.baseInflow  || 0),
+    outflow: Math.round(m.baseOutflow || 0),
+    net:     Math.round(m.baseNet     || 0),
+    closing: Math.round(m.baseClosing || 0),
     isCurrentMonth: m.isCurrentMonth,
     inflowReceivables: Math.round(m.inflowReceivables || 0),
     inflowInvoices:    Math.round(m.inflowInvoices    || 0),
@@ -78,7 +78,7 @@ export default function MonthlyForecastChart({ monthlyData }) {
         onClick={() => setCollapsed(v => !v)}
         className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors"
       >
-        <span className="text-sm font-semibold">Monthly Inflow, Outflow &amp; Net Cash Flow (6 Months)</span>
+        <span className="text-sm font-semibold">Actual Cash Flow (6 months)</span>
         {collapsed ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronUp className="w-4 h-4 text-muted-foreground" />}
       </button>
 
@@ -158,12 +158,12 @@ export default function MonthlyForecastChart({ monthlyData }) {
                   </TableHeader>
                   <TableBody>
                     {monthlyData.map((m, i) => (
-                      <TableRow key={i} className={`${m.simNet < 0 ? 'bg-red-50/40' : i % 2 === 0 ? 'bg-white' : 'bg-muted/20'} ${m.isCurrentMonth ? 'ring-1 ring-inset ring-indigo-300' : ''}`}>
+                      <TableRow key={i} className={`${m.baseNet < 0 ? 'bg-red-50/40' : i % 2 === 0 ? 'bg-white' : 'bg-muted/20'} ${m.isCurrentMonth ? 'ring-1 ring-inset ring-indigo-300' : ''}`}>
                         <TableCell className="font-medium text-xs whitespace-nowrap">
                           {m.label}{m.isCurrentMonth && <span className="ml-1 text-indigo-500">•</span>}
                         </TableCell>
                         <TableCell className="text-right text-emerald-600 font-medium text-xs bg-emerald-50/40">
-                          ₹{Math.round(m.simInflow || 0).toLocaleString('en-IN')}
+                          ₹{Math.round(m.baseInflow || 0).toLocaleString('en-IN')}
                         </TableCell>
                         <TableCell className="text-right text-xs text-muted-foreground cursor-pointer" onClick={() => setShowExpDetail(v => !v)}>
                           {showExpDetail ? '▲' : '▼'}
@@ -177,12 +177,12 @@ export default function MonthlyForecastChart({ monthlyData }) {
                           <TableCell className="text-right text-teal-600 text-xs bg-amber-50/40">₹{Math.round(m['Software'] || 0).toLocaleString('en-IN')}</TableCell>
                           <TableCell className="text-right text-slate-600 text-xs bg-amber-50/40">₹{Math.round(m['Office & Other'] || 0).toLocaleString('en-IN')}</TableCell>
                         </>}
-                        <TableCell className="text-right text-red-700 font-semibold text-xs">₹{Math.round(m.simOutflow || 0).toLocaleString('en-IN')}</TableCell>
-                        <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${(m.simNet || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
-                          {(m.simNet || 0) >= 0 ? '▲' : '▼'} ₹{Math.abs(Math.round(m.simNet || 0)).toLocaleString('en-IN')}
+                        <TableCell className="text-right text-red-700 font-semibold text-xs">₹{Math.round(m.baseOutflow || 0).toLocaleString('en-IN')}</TableCell>
+                        <TableCell className={`text-right font-bold text-xs bg-indigo-50 ${(m.baseNet || 0) >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                          {(m.baseNet || 0) >= 0 ? '▲' : '▼'} ₹{Math.abs(Math.round(m.baseNet || 0)).toLocaleString('en-IN')}
                         </TableCell>
-                        <TableCell className={`text-right font-bold text-xs ${(m.simClosing || 0) >= 0 ? 'text-foreground' : 'text-red-600'}`}>
-                          ₹{Math.abs(Math.round(m.simClosing || 0)).toLocaleString('en-IN')}
+                        <TableCell className={`text-right font-bold text-xs ${(m.baseClosing || 0) >= 0 ? 'text-foreground' : 'text-red-600'}`}>
+                          ₹{Math.abs(Math.round(m.baseClosing || 0)).toLocaleString('en-IN')}
                         </TableCell>
                       </TableRow>
                     ))}

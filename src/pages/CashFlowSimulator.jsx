@@ -387,6 +387,7 @@ export default function CashFlowSimulator() {
   const [secCOpen, setSecCOpen] = useState(false);
   const [secDOpen, setSecDOpen] = useState(false);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [bankSnapshotOpen, setBankSnapshotOpen] = useState(false);
 
   const INR = (v) => { const a = Math.abs(v||0); return a >= 10000000 ? `₹${(a/10000000).toFixed(1)}Cr` : a >= 100000 ? `₹${(a/100000).toFixed(1)}L` : `₹${Math.round(a).toLocaleString('en-IN')}`; };
   
@@ -538,6 +539,35 @@ export default function CashFlowSimulator() {
         </div>
       </div>
 
+      {/* Bank & Cash Snapshot (collapsed by default) */}
+      {bankAccounts.length > 0 && (
+        <Card className="bg-gradient-to-r from-blue-50 to-slate-50 border-blue-100">
+          <button
+            onClick={() => setBankSnapshotOpen(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-blue-100/30 transition-colors"
+          >
+            <div className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-blue-600" />
+              Bank & Cash Accounts Snapshot
+            </div>
+            <span className="text-xs text-slate-600">{bankSnapshotOpen ? '▲' : '▼'}</span>
+          </button>
+          {bankSnapshotOpen && (
+            <CardContent className="p-4 border-t border-blue-100">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {bankAccounts.map((account) => (
+                  <div key={account.id} className="bg-white rounded-lg border border-blue-100 p-2.5">
+                    <p className="text-[11px] text-muted-foreground font-medium truncate">{account.name}</p>
+                    <p className="text-sm font-bold text-foreground mt-1">{INR(account.balance || 0)}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{account.snapshot_date || 'Current'}</p>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Zone 2: Drag-and-drop board */}
       <div className="mt-4">
         <div className="flex items-center justify-between mb-2">
@@ -574,29 +604,6 @@ export default function CashFlowSimulator() {
         />
         </div>
       </div>
-
-
-
-      {/* Bank & Cash Snapshot */}
-      {bankAccounts.length > 0 && (
-       <Card className="bg-gradient-to-r from-blue-50 to-slate-50 border-blue-100">
-         <CardContent className="p-4">
-           <div className="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
-             <Wallet className="w-4 h-4 text-blue-600" />
-             Bank & Cash Accounts Snapshot
-           </div>
-           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-             {bankAccounts.map((account) => (
-               <div key={account.id} className="bg-white rounded-lg border border-blue-100 p-2.5">
-                 <p className="text-[11px] text-muted-foreground font-medium truncate">{account.name}</p>
-                 <p className="text-sm font-bold text-foreground mt-1">{INR(account.balance || 0)}</p>
-                 <p className="text-[10px] text-muted-foreground mt-0.5">{account.snapshot_date || 'Current'}</p>
-               </div>
-             ))}
-           </div>
-         </CardContent>
-       </Card>
-      )}
 
       {/* Funding summary */}
       <FundingSummaryCard weeklyData={displayedWeeks} />
