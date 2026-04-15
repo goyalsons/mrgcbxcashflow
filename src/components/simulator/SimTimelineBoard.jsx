@@ -20,8 +20,32 @@ const toDateStr = (d) => {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 };
-const weekStart = (i) => addDays(today, i * 7);
-const weekEnd = (i) => addDays(today, (i + 1) * 7 - 1);
+
+// Match the financial year week system from CashFlowSimulator
+function getFinancialWeekStartDate(year, weekNumber) {
+  const aprilFirst = new Date(year, 3, 1); // April 1st
+  const dayOffset = aprilFirst.getDay();
+  const weekStart = new Date(aprilFirst);
+  weekStart.setDate(aprilFirst.getDate() - dayOffset + (weekNumber - 1) * 7);
+  return weekStart;
+}
+
+function getFinancialWeekNumber(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  let yearStart;
+  if (d.getMonth() >= 3) {
+    yearStart = new Date(d.getFullYear(), 3, 1);
+  } else {
+    yearStart = new Date(d.getFullYear() - 1, 3, 1);
+  }
+  const weekNumber = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return weekNumber;
+}
+
+const financialYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
+const weekStart = (i) => getFinancialWeekStartDate(financialYear, i + 1);
+const weekEnd = (i) => addDays(weekStart(i), 6);
 const weekLabel = (i) => {
   const s = weekStart(i);
   const e = weekEnd(i);
@@ -31,9 +55,8 @@ const weekLabel = (i) => {
 function dueDateToWeek(dateStr) {
   if (!dateStr) return 0;
   const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
-  const diff = Math.floor((d - today) / 86400000);
-  if (diff < 0) return 0;
-  return Math.min(Math.floor(diff / 7), 11);
+  const weekNum = getFinancialWeekNumber(d);
+  return Math.min(Math.max(weekNum - 1, 0), 11);
 }
 
 function getWeekColors(w) {
