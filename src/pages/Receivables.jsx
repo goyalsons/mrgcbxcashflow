@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Mail, Edit, Target, Trash2, CalendarClock, MessageSquare, Phone, Building2, Search, SlidersHorizontal, IndianRupee, Users, ArrowUpDown } from 'lucide-react';
 import AttachmentCell from '@/components/receivables/AttachmentCell';
-import { HoverCard, HoverCardTrigger, HoverCardContent } from '@/components/ui/hover-card';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import { format, parseISO } from 'date-fns';
@@ -561,8 +561,8 @@ export default function Receivables() {
                                      const contactPerson = customer.contact_person || '';
                                      const rInfo = reminderInfoByCustomer[customer?.id];
                             return (
-                              <HoverCard openDelay={200} closeDelay={100}>
-                                <HoverCardTrigger asChild>
+                              <Popover>
+                                <PopoverTrigger asChild>
                                   <span className="cursor-pointer underline decoration-dotted underline-offset-2 hover:text-primary transition-colors inline-flex items-center gap-1.5">
                                     {invoice.customer_name}
                                     {rInfo?.nextPending && (
@@ -576,8 +576,8 @@ export default function Receivables() {
                                       </span>
                                     )}
                                   </span>
-                                </HoverCardTrigger>
-                                <HoverCardContent className="w-72 p-0 overflow-hidden" align="start">
+                                </PopoverTrigger>
+                                <PopoverContent className="w-72 p-0 overflow-hidden" align="start">
                                   <div className="bg-primary/5 border-b px-4 py-3 flex items-center gap-2">
                                     <Building2 className="w-4 h-4 text-primary shrink-0" />
                                     <div>
@@ -663,11 +663,11 @@ export default function Receivables() {
                                       existingCustomer={customer}
                                     />
                                   )}
-                                </HoverCardContent>
-                              </HoverCard>
-                            );
-                          })()}
-                        </TableCell>
+                                </PopoverContent>
+                                </Popover>
+                                );
+                                })()}
+                                </TableCell>
                         <TableCell className="px-3">
                            <span className="text-xs font-mono text-muted-foreground">{invoice.invoice_number || '—'}</span>
                          </TableCell>
