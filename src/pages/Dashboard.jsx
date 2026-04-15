@@ -17,6 +17,7 @@ import ProjectedCashFlow3Months from '@/components/dashboard/ProjectedCashFlow3M
 import TopOverduePayments from '@/components/dashboard/TopOverduePayments';
 import TopCollectionTargets from '@/components/dashboard/TopCollectionTargets';
 import DateRangePicker, { getPresetRange } from '@/components/dashboard/DateRangePicker';
+import PaymentDueByManager from '@/components/dashboard/PaymentDueByManager';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Link } from 'react-router-dom';
 import { isWithinInterval } from 'date-fns';
@@ -56,8 +57,16 @@ export default function Dashboard() {
     queryKey: ['payments'],
     queryFn: () => base44.entities.Payment.list(),
   });
+  const { data: collectionTargets = [], isLoading: loadingTargets } = useQuery({
+    queryKey: ['collectionTargets'],
+    queryFn: () => base44.entities.CollectionTarget.list(),
+  });
+  const { data: customers = [], isLoading: loadingCustomers } = useQuery({
+    queryKey: ['customers'],
+    queryFn: () => base44.entities.Customer.list(),
+  });
 
-  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors || loadingPayments;
+  const isLoading = loadingBanks || loadingRec || loadingPay || loadingExp || loadingDebtors || loadingPayments || loadingTargets || loadingCustomers;
 
   const { from, to } = dateRange;
 
@@ -86,8 +95,10 @@ export default function Dashboard() {
 
   const activeDebtors = receivables.filter(r => !['paid', 'written_off'].includes(r.status)).length;
 
-  const totalReceivable = filteredReceivables
-    .reduce((sum, r) => sum + (r.amount_received || 0), 0);
+  // Calculate received amount from collection targets (which tracks via payments)
+  const totalReceivable = useMemo(() => {
+    return collectionTargets.reduce((sum, t) => sum + (t.collected_amount || 0), 0);
+  }, [collectionTargets]);
 
   const totalPayable = payables
     .filter(p => p.status !== 'paid')
@@ -149,6 +160,9 @@ export default function Dashboard() {
         <TopOverduePayments receivables={receivables} />
         <TopCollectionTargets />
       </div>
+
+      {/* Payment Due by Manager */}
+      <PaymentDueByManager receivables={receivables} customers={customers} />
 
       {/* Recent Transactions */}
       <RecentTransactions receivables={filteredReceivables} payables={filteredPayables} expenses={filteredExpenses} debtors={debtors} />
