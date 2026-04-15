@@ -12,7 +12,6 @@ const INR = (v) => {
   return `₹${Math.round(abs).toLocaleString('en-IN')}`;
 };
 
-const today = new Date(); today.setHours(0,0,0,0);
 const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 const toDateStr = (d) => {
@@ -20,10 +19,17 @@ const toDateStr = (d) => {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 };
 
+function getTodayNormalized() {
+  const d = new Date();
+  d.setHours(12, 0, 0, 0);
+  return d;
+}
+
 // Returns which month index (0-5) a date falls into, relative to current month
-function dateToMonthIndex(dateStr) {
-  if (!dateStr) return 0;
-  const d = new Date(dateStr); d.setHours(12,0,0,0);
+function dateToMonthIndex(dateStr, today) {
+  if (!dateStr || !today) return 0;
+  const d = new Date(dateStr);
+  d.setHours(12, 0, 0, 0);
   const thisMonth = new Date(today.getFullYear(), today.getMonth(), 1);
   const diff = (d.getFullYear() - thisMonth.getFullYear()) * 12 + (d.getMonth() - thisMonth.getMonth());
   if (diff < 0) return 0;
@@ -32,7 +38,7 @@ function dateToMonthIndex(dateStr) {
 }
 
 // Returns first day of the nth month from today
-function monthStartStr(idx) {
+function monthStartStr(idx, today) {
   const d = new Date(today.getFullYear(), today.getMonth() + idx, 1);
   return toDateStr(d);
 }
@@ -121,6 +127,9 @@ export default function MonthlyTimelineBoard({
     return saved ? Number(saved) : 0;
   });
 
+  // Memoize today as noon UTC to ensure consistent month calculations
+  const today = useMemo(() => getTodayNormalized(), []);
+
   useEffect(() => {
     localStorage.setItem('monthlyTimelineMinAmount', String(minAmount));
   }, [minAmount]);
@@ -130,14 +139,14 @@ export default function MonthlyTimelineBoard({
       ['pending','overdue','partially_paid','partial'].includes(r.status) &&
       (r.amount || 0) - (r.amount_received || r.amount_paid || 0) >= minAmount
     ),
-    [receivables, invoices, minAmount]
+    [receivables, invoices, minAmount, today]
   );
   const allPay = useMemo(() =>
     payables.filter(p => 
       ['pending','partially_paid','overdue'].includes(p.status) &&
       (p.amount || 0) - (p.amount_paid || 0) >= minAmount
     ),
-    [payables, minAmount]
+    [payables, minAmount, today]
   );
 
   // Sync assignments from current adj state
@@ -146,17 +155,17 @@ export default function MonthlyTimelineBoard({
       const m = new Map(prev);
       allRec.forEach(r => {
         const adjDate = recAdj.get(r.id)?.tranches?.[0]?.date;
-        m.set(`rec-${r.id}`, dateToMonthIndex(adjDate || r.due_date));
+        m.set(`rec-${r.id}`, dateToMonthIndex(adjDate || r.due_date, today));
       });
       allPay.forEach(p => {
         const adjDate = payAdj.get(p.id)?.tranches?.[0]?.date;
-        m.set(`pay-${p.id}`, dateToMonthIndex(adjDate || p.due_date));
+        m.set(`pay-${p.id}`, dateToMonthIndex(adjDate || p.due_date, today));
       });
-      hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dateToMonthIndex(h.tranches?.[0]?.date)));
-      fundingSources.forEach(f => m.set(`fund-${f.id}`, dateToMonthIndex(f.date || f.drawDate || f.disburseDate)));
+      hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dateToMonthIndex(h.tranches?.[0]?.date, today)));
+      fundingSources.forEach(f => m.set(`fund-${f.id}`, dateToMonthIndex(f.date || f.drawDate || f.disburseDate, today)));
       return m;
     });
-  }, [allRec, allPay, recAdj, payAdj, hypotheticals, fundingSources]);
+  }, [allRec, allPay, recAdj, payAdj, hypotheticals, fundingSources, today]);
 
   const matchSearch = (name) => !search || (name || '').toLowerCase().includes(search.toLowerCase());
 
@@ -181,7 +190,7 @@ export default function MonthlyTimelineBoard({
     const isHypo = draggableId.startsWith('hypo-');
     const isFund = draggableId.startsWith('fund-');
     const itemId = draggableId.replace(/^(rec|pay|hypo|fund)-/, '');
-    const newDate = monthStartStr(dstIdx);
+    const newDate = monthStartStr(dstIdx, today);
 
     setAssignments(prev => { const m = new Map(prev); m.set(draggableId, dstIdx); return m; });
     const prevRecAdj = new Map(recAdj);
