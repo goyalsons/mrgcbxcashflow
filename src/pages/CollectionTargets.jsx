@@ -206,7 +206,7 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
 }
 
 // ─── UpdateProgressDialog ──────────────────────────────────────────────────────
-function UpdateProgressDialog({ open, onClose, target, currentUser, onSave }) {
+function UpdateProgressDialog({ open, onClose, target, currentUser, onSave, outstandingByName }) {
   const [noteText, setNoteText] = useState('');
   const [addedAmount, setAddedAmount] = useState('');
   const [saving, setSaving] = useState(false);
@@ -245,6 +245,17 @@ function UpdateProgressDialog({ open, onClose, target, currentUser, onSave }) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Update Progress — {target?.manager_name || target?.manager_email}</DialogTitle>
+          {target?.customer_name && (() => {
+            const outstanding = outstandingByName?.[target.customer_name.trim().toLowerCase()] || 0;
+            return (
+              <p className="text-sm text-muted-foreground mt-1">
+                {target.customer_name} — Net Outstanding:{' '}
+                <span className={`font-semibold ${outstanding > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                  {formatINR(outstanding)}
+                </span>
+              </p>
+            );
+          })()}
         </DialogHeader>
 
         {existingNotes.length > 0 && (
@@ -938,6 +949,7 @@ export default function CollectionTargets() {
         target={updatingTarget}
         currentUser={currentUser}
         onSave={handleProgressSave}
+        outstandingByName={outstandingByName}
       />
       <BulkEditDialog
         open={showBulkEdit}
