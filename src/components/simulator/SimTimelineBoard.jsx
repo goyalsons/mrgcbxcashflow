@@ -310,7 +310,10 @@ export default function SimTimelineBoard({
     else if (isRep) itemId = draggableId.replace('rep-', '');
 
     // Set the date to noon on the Monday of the destination week
-    const newDate = toDateStr(weekStart(dstWeek));
+    // Use dstWeek directly since it's already 0-indexed (week-0 = W1, week-5 = W6)
+    const destWeekStart = getFinancialWeekStartDate(financialYear, dstWeek + 2);
+    destWeekStart.setHours(12, 0, 0, 0);
+    const newDate = toDateStr(destWeekStart);
     const prevRecAdj = new Map(recAdj);
     const prevPayAdj = new Map(payAdj);
     const prevExpAdj = new Map(expAdj);
