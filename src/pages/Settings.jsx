@@ -1,3 +1,8 @@
+/**
+ * Settings.jsx
+ * © 2025 CEOITBOX Tech Services LLP. All rights reserved.
+ * https://www.ceoitbox.com
+ */
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';

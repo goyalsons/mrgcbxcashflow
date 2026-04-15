@@ -1,3 +1,8 @@
+/**
+ * AIInsights.jsx
+ * © 2025 CEOITBOX Tech Services LLP. All rights reserved.
+ * https://www.ceoitbox.com
+ */
 import React, { useState } from 'react';
 import { loadActiveLLM } from '@/components/settings/LLMSettings';
 import { useQuery } from '@tanstack/react-query';

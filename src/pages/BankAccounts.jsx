@@ -1,3 +1,8 @@
+/**
+ * BankAccounts.jsx
+ * © 2025 CEOITBOX Tech Services LLP. All rights reserved.
+ * https://www.ceoitbox.com
+ */
 import React, { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/lib/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
