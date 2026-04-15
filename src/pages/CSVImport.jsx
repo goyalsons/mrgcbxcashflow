@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Upload, FileText, CheckCircle, AlertCircle, Play, Download, ArrowLeft } from 'lucide-react';
+import { Upload, FileText, CheckCircle, AlertCircle, Play, Download, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import { useNavigate } from 'react-router-dom';
@@ -271,6 +271,9 @@ export default function CSVImport() {
   const [preview, setPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const [results, setResults] = useState(null);
+  const [importMode, setImportMode] = useState('update'); // 'update' | 'replace'
+
+  const supportsReplace = entityType === 'receivable' || entityType === 'payables_tally';
 
   const config = ENTITY_CONFIGS[entityType];
 
@@ -403,61 +406,98 @@ export default function CSVImport() {
     let success = 0, updated = 0, duplicates = 0;
     const BATCH = 10;
 
-    if (entityType === 'payables_tally') {
-      // Upsert logic for Tally Payables: match on bill_number
-      const existingPayables = await base44.entities.Payable.list().catch(() => []);
-      const existingMap = {};
-      existingPayables.forEach(p => {
-        if (p.bill_number) existingMap[p.bill_number.trim().toLowerCase()] = p;
-      });
-      const toCreate = [];
-      for (const row of validRows) {
-        const billNum = (row.data.bill_number || '').trim().toLowerCase();
-        if (billNum && existingMap[billNum]) {
-           await base44.entities.Payable.update(existingMap[billNum].id, {
-             amount: row.data.amount,
-             due_date: row.data.due_date,
-             status: row.data.status,
-           });
-           updated++;
-           await sleep(500);
-        } else {
-          toCreate.push(row.data);
+    // Handle replace mode: delete all existing records first
+    if (importMode === 'replace') {
+      if (entityType === 'receivable') {
+        const existing = await base44.entities.Receivable.list().catch(() => []);
+        for (const r of existing) {
+          await base44.entities.Receivable.delete(r.id);
+          await sleep(150);
+        }
+      } else if (entityType === 'payables_tally') {
+        const existing = await base44.entities.Payable.list().catch(() => []);
+        for (const r of existing) {
+          await base44.entities.Payable.delete(r.id);
+          await sleep(150);
         }
       }
-      for (let i = 0; i < toCreate.length; i += BATCH) {
-         const batch = toCreate.slice(i, i + BATCH);
-         await base44.entities.Payable.bulkCreate(batch);
-         success += batch.length;
-         await sleep(1200);
-       }
-    } else if (entityType === 'receivable') {
-      // Upsert Receivables — match by invoice_number (Ref. No.)
-      const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
-      const receivableByRefNo = {};
-      existingReceivables.forEach(r => {
-        if (r.invoice_number) receivableByRefNo[r.invoice_number.trim().toLowerCase()] = r;
-      });
+    }
 
-      for (const row of validRows) {
-        const refKey = (row.data.invoice_number || '').trim().toLowerCase();
-        const existing = refKey ? receivableByRefNo[refKey] : null;
-
-        if (existing) {
-          await base44.entities.Receivable.update(existing.id, {
-            amount: row.data.amount,
-            due_date: row.data.due_date,
-            invoice_date: row.data.invoice_date,
-            status: row.data.status,
-            notes: row.data.notes,
-            customer_name: row.data.customer_name,
-          });
-          updated++;
-        } else {
-          await base44.entities.Receivable.create(row.data);
-          success++;
+    if (entityType === 'payables_tally') {
+      if (importMode === 'replace') {
+        // Already deleted existing — just bulk create all
+        for (let i = 0; i < validRows.length; i += BATCH) {
+          const batch = validRows.slice(i, i + BATCH).map(r => r.data);
+          await base44.entities.Payable.bulkCreate(batch);
+          success += batch.length;
+          await sleep(1200);
         }
-        await sleep(300);
+      } else {
+        // Upsert logic for Tally Payables: match on bill_number
+        const existingPayables = await base44.entities.Payable.list().catch(() => []);
+        const existingMap = {};
+        existingPayables.forEach(p => {
+          if (p.bill_number) existingMap[p.bill_number.trim().toLowerCase()] = p;
+        });
+        const toCreate = [];
+        for (const row of validRows) {
+          const billNum = (row.data.bill_number || '').trim().toLowerCase();
+          if (billNum && existingMap[billNum]) {
+            await base44.entities.Payable.update(existingMap[billNum].id, {
+              amount: row.data.amount,
+              due_date: row.data.due_date,
+              status: row.data.status,
+            });
+            updated++;
+            await sleep(500);
+          } else {
+            toCreate.push(row.data);
+          }
+        }
+        for (let i = 0; i < toCreate.length; i += BATCH) {
+          const batch = toCreate.slice(i, i + BATCH);
+          await base44.entities.Payable.bulkCreate(batch);
+          success += batch.length;
+          await sleep(1200);
+        }
+      }
+    } else if (entityType === 'receivable') {
+      if (importMode === 'replace') {
+        // Already deleted existing — just bulk create all
+        for (let i = 0; i < validRows.length; i += BATCH) {
+          const batch = validRows.slice(i, i + BATCH).map(r => r.data);
+          await base44.entities.Receivable.bulkCreate(batch);
+          success += batch.length;
+          await sleep(1200);
+        }
+      } else {
+        // Upsert Receivables — match by invoice_number (Ref. No.)
+        const existingReceivables = await base44.entities.Receivable.list().catch(() => []);
+        const receivableByRefNo = {};
+        existingReceivables.forEach(r => {
+          if (r.invoice_number) receivableByRefNo[r.invoice_number.trim().toLowerCase()] = r;
+        });
+
+        for (const row of validRows) {
+          const refKey = (row.data.invoice_number || '').trim().toLowerCase();
+          const existing = refKey ? receivableByRefNo[refKey] : null;
+
+          if (existing) {
+            await base44.entities.Receivable.update(existing.id, {
+              amount: row.data.amount,
+              due_date: row.data.due_date,
+              invoice_date: row.data.invoice_date,
+              status: row.data.status,
+              notes: row.data.notes,
+              customer_name: row.data.customer_name,
+            });
+            updated++;
+          } else {
+            await base44.entities.Receivable.create(row.data);
+            success++;
+          }
+          await sleep(300);
+        }
       }
 
     } else if (entityType === 'vendor') {
@@ -548,6 +588,7 @@ export default function CSVImport() {
     setFile(null);
     setPreview(null);
     setResults(null);
+    setImportMode('update');
   };
 
   return (
@@ -592,6 +633,25 @@ export default function CSVImport() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {supportsReplace && (
+                <div className="space-y-1.5">
+                  <Label>Import Mode</Label>
+                  <Select value={importMode} onValueChange={setImportMode}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="update">Update — add new, update existing</SelectItem>
+                      <SelectItem value="replace">Replace — delete all &amp; reimport</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  {importMode === 'replace' && (
+                    <div className="flex items-start gap-2 mt-2 p-3 rounded-lg bg-red-50 border border-red-200 text-xs text-red-700">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <p><strong>Warning:</strong> All existing {config.label.toLowerCase()} will be permanently deleted before importing. This cannot be undone.</p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-colors"
