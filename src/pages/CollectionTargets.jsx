@@ -788,7 +788,8 @@ export default function CollectionTargets() {
               const autoCollected = monthPayments.reduce((s, p) => s + (p.amount || 0), 0);
               const collected = Math.max(autoCollected, t.collected_amount || 0);
               const pct = t.target_amount > 0 ? Math.min(100, Math.round((collected / t.target_amount) * 100)) : 0;
-              return { ...t, collected, pct };
+              const outstanding = getOutstanding(t);
+              return { ...t, collected, pct, outstanding };
             });
 
             // Sort
@@ -825,6 +826,11 @@ export default function CollectionTargets() {
                 </TableCell>
                 <TableCell className="text-sm">{t.customer_name || <span className="text-muted-foreground">—</span>}</TableCell>
                 <TableCell className="text-right text-sm">{formatINR(t.target_amount)}</TableCell>
+                <TableCell className="text-right text-sm">
+                  {t.customer_name
+                    ? <span className={t.outstanding > 0 ? 'text-red-600 font-medium' : 'text-muted-foreground'}>{formatINR(t.outstanding)}</span>
+                    : <span className="text-muted-foreground">—</span>}
+                </TableCell>
                 <TableCell className="text-sm">{t.period_month ? `${MONTHS[t.period_month - 1]} ${t.period_year}` : '-'}</TableCell>
                 <TableCell className="text-right text-emerald-600 font-medium text-sm">{formatINR(t.collected)}</TableCell>
                 <TableCell>
@@ -865,6 +871,7 @@ export default function CollectionTargets() {
                   <SortHead label="Manager" col="manager" />
                   <SortHead label="Customer" col="customer_name" />
                   <SortHead label="Target" col="target_amount" className="text-right" />
+                  <SortHead label="Net Outstanding" col="outstanding" className="text-right" />
                   <SortHead label="Month" col="month" />
                   <SortHead label="Collected" col="collected" className="text-right" />
                   <SortHead label="Progress" col="pct" />

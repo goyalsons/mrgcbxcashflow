@@ -192,7 +192,7 @@ export default function Customers() {
               <SelectItem value="all">All Account Managers</SelectItem>
               <SelectItem value="__unassigned__">Unassigned</SelectItem>
               {users.map(u => (
-                <SelectItem key={u.email} value={u.email.toLowerCase()}>{u.full_name || u.email}</SelectItem>
+                <SelectItem key={u.email} value={u.email.toLowerCase()}>{u.full_name ? `${u.full_name} (${u.email})` : u.email}</SelectItem>
               ))}
             </SelectContent>
           </Select>
