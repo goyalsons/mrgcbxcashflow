@@ -57,7 +57,9 @@ function dueDateToWeek(dateStr) {
   const d = new Date(dateStr); 
   d.setHours(12, 0, 0, 0);
   const weekNum = getFinancialWeekNumber(d);
-  return Math.max(weekNum - 1, 0);
+  const weekIndex = Math.max(weekNum - 1, 0);
+  // Clamp to 0-11 range (12 weeks max)
+  return Math.min(weekIndex, 11);
 }
 
 function getWeekColors(w) {
@@ -307,7 +309,10 @@ export default function SimTimelineBoard({
     else if (isFund) itemId = draggableId.replace('fund-inflow-', '');
     else if (isRep) itemId = draggableId.replace('rep-', '');
 
-    const newDate = toDateStr(weekStart(dstWeek));
+    // Set the date to noon on the Monday of the destination week to ensure consistent week calculation
+    const destWeekStart = weekStart(dstWeek);
+    destWeekStart.setHours(12, 0, 0, 0);
+    const newDate = toDateStr(destWeekStart);
     const prevRecAdj = new Map(recAdj);
     const prevPayAdj = new Map(payAdj);
     const prevExpAdj = new Map(expAdj);
