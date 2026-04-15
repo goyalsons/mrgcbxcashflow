@@ -186,12 +186,12 @@ export default function Customers() {
         {!isSalesTeam(currentUser?.role) && (
           <Select value={managerFilter} onValueChange={v => { setManagerFilter(v); setCurrentPage(1); }}>
             <SelectTrigger className="w-52">
-              <SelectValue placeholder="All Account Managers" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Account Managers</SelectItem>
               <SelectItem value="__unassigned__">Unassigned</SelectItem>
-              {users.filter(u => u.role === 'sales_team' || u.role === 'admin').map(u => (
+              {users.filter(u => u.role === 'sales_team').map(u => (
                 <SelectItem key={u.email} value={u.email}>{u.full_name || u.email}</SelectItem>
               ))}
             </SelectContent>
