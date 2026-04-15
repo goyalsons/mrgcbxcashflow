@@ -60,27 +60,41 @@ export default function AttachmentCell({ invoice, onUpdate }) {
       </div>
 
       {open && (
-        <div className="absolute z-50 top-6 left-0 w-64 bg-popover border rounded-lg shadow-lg p-2 space-y-1">
-          <div className="flex items-center justify-between pb-1 border-b">
-            <span className="text-xs font-semibold">Attachments ({attachments.length})</span>
-            <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3 h-3" /></button>
-          </div>
-          {attachments.length === 0 ? (
-            <p className="text-xs text-muted-foreground py-1">No attachments yet</p>
-          ) : (
-            attachments.map((item, i) => (
-              <div key={i} className="flex items-center gap-1 group">
-                <a href={item.url} target="_blank" rel="noreferrer" className="flex-1 flex items-center gap-1.5 text-xs text-blue-600 hover:underline min-w-0">
-                  <ExternalLink className="w-3 h-3 shrink-0" />
-                  <span className="truncate">{item.name || 'File'}</span>
-                </a>
-                <button onClick={() => removeAttachment(item.url)} className="opacity-0 group-hover:opacity-100 text-destructive hover:text-red-700 transition-opacity shrink-0">
-                  <X className="w-3 h-3" />
-                </button>
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute z-50 top-6 left-0 w-80 bg-popover border rounded-lg shadow-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">Attachments ({attachments.length})</span>
+              <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
+            </div>
+            {attachments.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-2">No attachments yet</p>
+            ) : (
+              <div className="space-y-2">
+                {attachments.map((item, i) => (
+                  <div key={i} className="flex items-center gap-2 p-2.5 bg-muted/40 rounded-md group hover:bg-muted/60 transition-colors">
+                    <Paperclip className="w-4 h-4 text-primary shrink-0" />
+                    <a 
+                      href={item.url} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="flex-1 text-sm text-blue-600 hover:text-blue-700 hover:underline font-medium min-w-0 break-words"
+                    >
+                      {item.name || 'File'}
+                    </a>
+                    <button 
+                      onClick={() => removeAttachment(item.url)} 
+                      className="text-destructive hover:text-red-700 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
+                      title="Remove attachment"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))
-          )}
-        </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
