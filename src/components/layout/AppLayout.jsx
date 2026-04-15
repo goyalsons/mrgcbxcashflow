@@ -18,6 +18,23 @@ export default function AppLayout({ user }) {
             <Outlet />
           </div>
         </main>
+        <footer className="border-t bg-card py-3 px-6">
+          <a
+            href="https://www.ceoitbox.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors group"
+          >
+            <img
+              src="https://media.base44.com/images/public/69de1de00c0dbb6d8107d446/acbbaab0a_CEOITBOXLogoSmall.png"
+              alt="CEOITBOX Logo"
+              className="h-6 w-auto opacity-80 group-hover:opacity-100 transition-opacity"
+            />
+            <span className="text-xs">
+              © {new Date().getFullYear()} CEOITBOX Tech Services LLP. All rights reserved.
+            </span>
+          </a>
+        </footer>
       </div>
     </div>
   );
