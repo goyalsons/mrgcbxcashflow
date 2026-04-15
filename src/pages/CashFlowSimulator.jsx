@@ -25,20 +25,24 @@ import SimExport from '@/components/simulator/SimExport';
 
 function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 
-function getISOWeekNumber(date) {
+function getFinancialWeekNumber(date) {
   const d = new Date(date);
   d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
-  const yearStart = new Date(d.getFullYear(), 0, 1);
+  let yearStart;
+  if (d.getMonth() >= 3) { // April or later
+    yearStart = new Date(d.getFullYear(), 3, 1); // April 1st of current year
+  } else {
+    yearStart = new Date(d.getFullYear() - 1, 3, 1); // April 1st of previous year
+  }
   const weekNumber = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
   return weekNumber;
 }
 
-function getWeekStartDate(year, weekNumber) {
-  const jan4 = new Date(year, 0, 4);
-  const dayOffset = jan4.getDay() || 7;
-  const weekStart = new Date(jan4);
-  weekStart.setDate(jan4.getDate() - dayOffset + 1 + (weekNumber - 1) * 7);
+function getFinancialWeekStartDate(year, weekNumber) {
+  const aprilFirst = new Date(year, 3, 1); // April 1st
+  const dayOffset = aprilFirst.getDay();
+  const weekStart = new Date(aprilFirst);
+  weekStart.setDate(aprilFirst.getDate() - dayOffset + (weekNumber - 1) * 7);
   return weekStart;
 }
 
@@ -52,7 +56,7 @@ const EXPENSE_GROUPS = ['Salary', 'Rent/Utilities', 'Travel', 'Marketing', 'Soft
 
 export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = [], expAdj = new Map(), minAmount = 0) {
   const today = new Date(); today.setHours(0,0,0,0);
-  const currentYear = today.getFullYear();
+  const financialYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
   
   // Use only the latest snapshot per account (same as CashFlowForecast)
   const latestByAccount = {};
@@ -76,12 +80,12 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   });
   EXPENSE_GROUPS.forEach(k => expByGroup[k] = expByGroup[k] / 12);
 
-  // Build 52 weeks for the current calendar year using ISO week numbers
+  // Build 52 weeks starting from April 1st (financial year)
   const weeks = Array.from({ length: 52 }, (_, i) => {
     const weekNum = i + 1;
-    const start = getWeekStartDate(currentYear, weekNum);
+    const start = getFinancialWeekStartDate(financialYear, weekNum);
     const end = addDays(start, 6);
-    const isCurrentWeek = getISOWeekNumber(today) === weekNum && today.getFullYear() === currentYear;
+    const isCurrentWeek = getFinancialWeekNumber(today) === weekNum;
     
     const row = {
       start, end,
