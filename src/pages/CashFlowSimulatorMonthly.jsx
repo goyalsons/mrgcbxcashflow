@@ -8,6 +8,7 @@ import SimSectionC from '@/components/simulator/SimSectionC';
 import SimSectionD, { buildSourceFlows } from '@/components/simulator/SimSectionD';
 
 import SimZone1Chart from '@/components/simulator/SimZone1Chart';
+import MonthlyForecastChart from '@/components/simulator/MonthlyForecastChart';
 import { Card, CardContent } from '@/components/ui/card';
 import { TrendingUp, TrendingDown, Wallet, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import MonthlyTimelineBoard from '@/components/simulator/MonthlyTimelineBoard';
@@ -405,6 +406,8 @@ export default function CashFlowSimulatorMonthly() {
       </div>
 
       <SimImpactBar baseNet={baseNet6M} simNet={simNet6M} improvement={improvement} onReset={resetAll} />
+
+      <MonthlyForecastChart monthlyData={monthlyData} />
 
       <SimZone1Chart weeklyData={monthlyData} />
 

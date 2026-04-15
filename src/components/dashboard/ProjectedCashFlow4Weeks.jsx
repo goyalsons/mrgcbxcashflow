@@ -71,7 +71,11 @@ export default function ProjectedCashFlow4Weeks({ receivables = [], payables = [
             <Bar dataKey="inflow" name="Inflow" fill="hsl(var(--accent))" radius={[3, 3, 0, 0]} />
             <Bar dataKey="outflow" name="Outflow" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
             <Bar dataKey="net" name="Net" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-            <Line type="monotone" dataKey="closing" name="Closing Balance" stroke="#15803d" strokeWidth={2} dot={false} />
+            <Line type="monotone" dataKey="closing" name="Closing Balance" stroke="#15803d" strokeWidth={2} dot={(props) => {
+              const { cx, cy, payload } = props;
+              const isNegative = payload && payload.closing < 0;
+              return <circle cx={cx} cy={cy} r={isNegative ? 5 : 3} fill={isNegative ? '#dc2626' : '#15803d'} stroke={isNegative ? '#fff' : 'none'} strokeWidth={isNegative ? 1.5 : 0} />;
+            }} />
           </ComposedChart>
         </ResponsiveContainer>
       </CardContent>
