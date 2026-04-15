@@ -56,9 +56,11 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Inactive users (or users with no recognized role) see a holding page
+  // Only explicitly whitelisted roles get access — everything else sees the holding page.
+  // This prevents platform-default roles (e.g. 'user', 'sales_team' assigned at signup)
+  // from bypassing activation. New users must be manually promoted by an admin.
   const ACTIVE_ROLES = ['admin', 'accounts_team', 'sales_team'];
-  if (user && !ACTIVE_ROLES.includes(user?.role)) {
+  if (!user || !ACTIVE_ROLES.includes(user?.role)) {
     return <WaitingActivation />;
   }
 

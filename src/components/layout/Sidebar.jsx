@@ -70,7 +70,7 @@ const NAV_GROUPS = [
 
 export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobileClose }) {
   const location = useLocation();
-  const role = user?.role || 'user';
+  const role = user?.role || 'inactive';
   
   return (
     <aside className={`fixed left-0 top-0 h-screen bg-sidebar text-sidebar-foreground flex flex-col transition-all duration-300 z-50
