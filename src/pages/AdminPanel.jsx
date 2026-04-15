@@ -20,19 +20,20 @@ import { Users, Shield, UserCheck, UserX, MoreHorizontal, Mail, Search, UserPlus
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 
-const ROLES = ['admin', 'user', 'account_manager'];
+const ROLES = ['admin', 'accounts_team', 'sales_team', 'inactive'];
 const ROLE_COLORS = {
   admin: 'bg-purple-50 text-purple-700 border-purple-200',
-  user: 'bg-blue-50 text-blue-700 border-blue-200',
-  account_manager: 'bg-amber-50 text-amber-700 border-amber-200',
+  accounts_team: 'bg-blue-50 text-blue-700 border-blue-200',
+  sales_team: 'bg-amber-50 text-amber-700 border-amber-200',
+  inactive: 'bg-gray-50 text-gray-500 border-gray-200',
 };
-const ROLE_LABELS = { admin: 'Admin', user: 'User', account_manager: 'Account Manager' };
+const ROLE_LABELS = { admin: 'Admin', accounts_team: 'User', sales_team: 'Account Manager', inactive: 'Inactive' };
 
 function InviteModal({ open, onClose, onInvited }) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState('user');
-  const INVITE_ROLES = ['admin', 'user', 'account_manager'];
+  const [role, setRole] = useState('accounts_team');
+  const INVITE_ROLES = ['admin', 'accounts_team', 'sales_team', 'inactive'];
   const [inviting, setInviting] = useState(false);
   const queryClient = useQueryClient();
 
@@ -40,9 +41,9 @@ function InviteModal({ open, onClose, onInvited }) {
     e.preventDefault();
     setInviting(true);
     // Platform only supports 'user' or 'admin' — invite as 'user' then upgrade role
-    const platformRole = role === 'account_manager' ? 'user' : role;
+    const platformRole = (role === 'accounts_team' || role === 'sales_team' || role === 'inactive') ? 'user' : role;
     await base44.users.inviteUser(email, platformRole);
-    // If account_manager, the role will be updated once they log in via the pending invitation record
+    // The actual role will be set via pending invitation once they log in
     const me = await base44.auth.me();
     await base44.entities.PendingInvitation.create({ email, role, invited_by: me?.email, invited_by_name: me?.full_name });
     queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] });
@@ -100,10 +101,10 @@ export default function AdminPanel() {
   // Remove pending invitation once the user has joined with the correct role
   const joinedEmails = new Set(users.map(u => u.email));
   const stillPending = pendingInvitations.filter(inv => !joinedEmails.has(inv.email));
-  // Account managers who joined as 'user' and need role upgrade
+  // Users who joined but need their custom role applied
   const needsRoleUpgrade = pendingInvitations.filter(inv =>
-    inv.role === 'account_manager' &&
-    users.find(u => u.email === inv.email && u.role !== 'account_manager')
+    ['accounts_team', 'sales_team', 'inactive'].includes(inv.role) &&
+    users.find(u => u.email === inv.email && u.role !== inv.role)
   );
 
   const { data: currentUser } = useQuery({
@@ -128,6 +129,7 @@ export default function AdminPanel() {
   );
 
   const roleCount = ROLES.reduce((acc, r) => ({ ...acc, [r]: users.filter(u => u.role === r).length }), {});
+  const inactiveCount = users.filter(u => !u.role || u.role === 'inactive').length;
 
   return (
     <div className="space-y-6">
@@ -154,14 +156,14 @@ export default function AdminPanel() {
                   <div key={inv.id} className="flex items-center justify-between bg-white rounded-lg border border-blue-200 px-3 py-2">
                     <div>
                       <div className="text-sm font-medium">{u?.full_name || inv.email}</div>
-                      <div className="text-xs text-muted-foreground">{inv.email} · joined as User, needs Account Manager role</div>
+                      <div className="text-xs text-muted-foreground">{inv.email} · needs role: <span className="font-medium">{ROLE_LABELS[inv.role] || inv.role}</span></div>
                     </div>
                     <Button size="sm" className="h-7 text-xs" onClick={async () => {
-                      await base44.functions.invoke('updateUserRole', { userId: u?.id, role: 'account_manager' });
+                      await base44.functions.invoke('updateUserRole', { userId: u?.id, role: inv.role });
                       await base44.entities.PendingInvitation.delete(inv.id);
                       queryClient.invalidateQueries({ queryKey: ['users'] });
                       queryClient.invalidateQueries({ queryKey: ['pendingInvitations'] });
-                      toast({ title: `${u?.full_name || inv.email} is now an Account Manager` });
+                      toast({ title: `${u?.full_name || inv.email} assigned role: ${ROLE_LABELS[inv.role] || inv.role}` });
                     }}>Assign Role</Button>
                   </div>
                 );
@@ -206,7 +208,7 @@ export default function AdminPanel() {
       )}
 
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <Card className="bg-purple-50 border-purple-100">
           <CardContent className="p-4 flex items-center gap-3">
             <Shield className="w-8 h-8 text-purple-600" />
@@ -216,13 +218,19 @@ export default function AdminPanel() {
         <Card className="bg-blue-50 border-blue-100">
           <CardContent className="p-4 flex items-center gap-3">
             <Users className="w-8 h-8 text-blue-600" />
-            <div><div className="text-xs text-blue-600 font-medium">Users</div><div className="text-xl font-bold text-blue-700">{roleCount.user || 0}</div></div>
+            <div><div className="text-xs text-blue-600 font-medium">Users</div><div className="text-xl font-bold text-blue-700">{roleCount.accounts_team || 0}</div></div>
           </CardContent>
         </Card>
         <Card className="bg-amber-50 border-amber-100">
           <CardContent className="p-4 flex items-center gap-3">
             <UserCheck className="w-8 h-8 text-amber-600" />
-            <div><div className="text-xs text-amber-600 font-medium">Account Managers</div><div className="text-xl font-bold text-amber-700">{roleCount.account_manager || 0}</div></div>
+            <div><div className="text-xs text-amber-600 font-medium">Account Managers</div><div className="text-xl font-bold text-amber-700">{roleCount.sales_team || 0}</div></div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gray-50 border-gray-200">
+          <CardContent className="p-4 flex items-center gap-3">
+            <UserX className="w-8 h-8 text-gray-400" />
+            <div><div className="text-xs text-gray-500 font-medium">Inactive</div><div className="text-xl font-bold text-gray-500">{inactiveCount}</div></div>
           </CardContent>
         </Card>
       </div>

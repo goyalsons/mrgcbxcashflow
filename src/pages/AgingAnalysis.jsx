@@ -14,6 +14,7 @@ import { MoreHorizontal, AlertTriangle, TrendingDown, ShieldAlert, Search, Arrow
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
 import { getCreditStatus } from '@/components/shared/CreditStatusBadge';
+import { isSalesTeam } from '@/lib/utils/roles';
 
 const BUCKETS = [
   { label: '0–30 days',  key: 'b0', min: 0,  max: 30,       color: 'bg-emerald-500', border: 'border-emerald-400', text: 'text-emerald-700' },
@@ -560,12 +561,25 @@ export default function AgingAnalysis() {
   const queryClient = useQueryClient();
   const [capitalRate, setCapitalRate] = useState(12);
 
+  const { data: currentUser } = useQuery({ queryKey: ['me'], queryFn: () => base44.auth.me() });
   const { data: receivables = [] } = useQuery({ queryKey: ['receivables'], queryFn: () => base44.entities.Receivable.list() });
   const { data: payables = [] }    = useQuery({ queryKey: ['payables'],    queryFn: () => base44.entities.Payable.list()  });
   const { data: debtors = [] }     = useQuery({ queryKey: ['debtors'],     queryFn: () => base44.entities.Debtor.list()   });
+  const { data: customers = [] }   = useQuery({ queryKey: ['customers'],   queryFn: () => base44.entities.Customer.list() });
 
-  const unpaidReceivables = receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off');
-  const unpaidPayables    = payables.filter(p => p.status !== 'paid');
+  // Account Managers only see their assigned customers
+  const myCustomerNames = useMemo(() => {
+    if (!isSalesTeam(currentUser?.role) || !currentUser?.email) return null;
+    return new Set(customers.filter(c => c.account_manager === currentUser.email).map(c => c.name?.toLowerCase()));
+  }, [currentUser, customers]);
+
+  const unpaidReceivables = useMemo(() => {
+    let result = receivables.filter(r => r.status !== 'paid' && r.status !== 'written_off');
+    if (myCustomerNames) result = result.filter(r => myCustomerNames.has(r.customer_name?.toLowerCase()));
+    return result;
+  }, [receivables, myCustomerNames]);
+
+  const unpaidPayables = payables.filter(p => p.status !== 'paid');
 
   const updateStatusMut = useMutation({
     mutationFn: ({ id, status, type }) => type === 'receivable'

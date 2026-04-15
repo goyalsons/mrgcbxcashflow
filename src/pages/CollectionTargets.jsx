@@ -20,6 +20,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
+import { isSalesTeam } from '@/lib/utils/roles';
 
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -435,7 +436,7 @@ export default function CollectionTargets() {
     queryFn: () => base44.entities.Customer.list(),
   });
 
-  const managers = useMemo(() => allUsers.filter(u => u.role === 'account_manager' || u.role === 'admin'), [allUsers]);
+  const managers = useMemo(() => allUsers.filter(u => u.role === 'sales_team' || u.role === 'admin'), [allUsers]);
 
   // Build outstanding map keyed by lowercase customer_name from receivables
   const outstandingByName = useMemo(() => {
@@ -559,7 +560,11 @@ export default function CollectionTargets() {
   };
 
   const monthlyTargets = useMemo(() => {
-    const filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
+    let filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
+    // Account Managers only see their own targets
+    if (isSalesTeam(currentUser?.role) && currentUser?.email) {
+      filtered = filtered.filter(t => t.manager_email === currentUser.email);
+    }
     return filtered.map(t => {
       const customerIds = managerCustomerIds[t.manager_email] || [];
       const monthPayments = payments.filter(p => {

@@ -26,6 +26,7 @@ import QuickReminderModal from '@/components/debtors/QuickReminderModal';
 import QuickBulkReminderModal from '@/components/debtors/QuickBulkReminderModal';
 import SetTargetModal from '@/components/debtors/SetTargetModal';
 import AddCustomerInfoPopover from '@/components/receivables/AddCustomerInfoPopover';
+import { isSalesTeam } from '@/lib/utils/roles';
 
 export default function Receivables() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -68,6 +69,11 @@ export default function Receivables() {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => base44.entities.User.list(),
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => base44.auth.me(),
   });
 
   const { data: scheduledReminders = [] } = useQuery({
@@ -140,6 +146,16 @@ export default function Receivables() {
 
   const filteredData = useMemo(() => {
     let result = invoices;
+
+    // Account Managers (sales_team) only see their assigned customers
+    if (isSalesTeam(currentUser?.role) && currentUser?.email) {
+      const myCustomerNames = new Set(
+        customers
+          .filter(c => c.account_manager === currentUser.email)
+          .map(c => c.name?.toLowerCase())
+      );
+      result = result.filter(inv => myCustomerNames.has(inv.customer_name?.toLowerCase()));
+    }
 
     if (searchTerm) {
       result = result.filter(inv =>

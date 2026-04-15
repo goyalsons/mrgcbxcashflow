@@ -8,6 +8,7 @@ import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 
 import AppLayout from '@/components/layout/AppLayout';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
+import WaitingActivation from '@/components/WaitingActivation';
 import Dashboard from '@/pages/Dashboard';
 
 import MyCollections from '@/pages/MyCollections';
@@ -53,6 +54,11 @@ const AuthenticatedApp = () => {
       navigateToLogin();
       return null;
     }
+  }
+
+  // Inactive users see a holding page instead of the app
+  if (user?.role === 'inactive') {
+    return <WaitingActivation />;
   }
 
   return (

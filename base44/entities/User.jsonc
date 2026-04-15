@@ -1,0 +1,18 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "admin",
+        "accounts_team",
+        "sales_team",
+        "inactive"
+      ],
+      "default": "inactive",
+      "description": "User role: admin (full access), accounts_team (full access except admin/settings), sales_team (account manager - limited to assigned customers), inactive (no access, pending activation)"
+    }
+  },
+  "required": []
+}

@@ -21,6 +21,7 @@ import PageHeader from '@/components/shared/PageHeader';
 import EmptyState from '@/components/shared/EmptyState';
 import ContactForm from '@/components/contacts/ContactForm';
 import { useToast } from '@/components/ui/use-toast';
+import { isSalesTeam } from '@/lib/utils/roles';
 
 const ITEMS_PER_PAGE = 50;
 
@@ -47,6 +48,11 @@ export default function Customers() {
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
     queryFn: () => base44.entities.User.list(),
+  });
+
+  const { data: currentUser } = useQuery({
+    queryKey: ['me'],
+    queryFn: () => base44.auth.me(),
   });
 
   const createMut = useMutation({
@@ -91,6 +97,12 @@ export default function Customers() {
 
   const filtered = useMemo(() => {
     let result = customers;
+
+    // Account Managers (sales_team) only see their assigned customers
+    if (isSalesTeam(currentUser?.role) && currentUser?.email) {
+      result = result.filter(c => c.account_manager === currentUser.email);
+    }
+
     if (search) {
       const q = search.toLowerCase();
       result = customers.filter(c =>
