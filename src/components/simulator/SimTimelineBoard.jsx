@@ -20,32 +20,8 @@ const toDateStr = (d) => {
   const dt = new Date(d);
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
 };
-
-// Match the financial year week system from CashFlowSimulator
-function getFinancialWeekStartDate(year, weekNumber) {
-  const aprilFirst = new Date(year, 3, 1); // April 1st
-  const dayOffset = aprilFirst.getDay();
-  const weekStart = new Date(aprilFirst);
-  weekStart.setDate(aprilFirst.getDate() - dayOffset + (weekNumber - 1) * 7);
-  return weekStart;
-}
-
-function getFinancialWeekNumber(date) {
-  const d = new Date(date);
-  d.setHours(0, 0, 0, 0);
-  let yearStart;
-  if (d.getMonth() >= 3) {
-    yearStart = new Date(d.getFullYear(), 3, 1);
-  } else {
-    yearStart = new Date(d.getFullYear() - 1, 3, 1);
-  }
-  const weekNumber = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
-  return weekNumber;
-}
-
-const financialYear = today.getMonth() >= 3 ? today.getFullYear() : today.getFullYear() - 1;
-const weekStart = (i) => getFinancialWeekStartDate(financialYear, i + 1);
-const weekEnd = (i) => addDays(weekStart(i), 6);
+const weekStart = (i) => addDays(today, i * 7);
+const weekEnd = (i) => addDays(today, (i + 1) * 7 - 1);
 const weekLabel = (i) => {
   const s = weekStart(i);
   const e = weekEnd(i);
@@ -54,12 +30,10 @@ const weekLabel = (i) => {
 
 function dueDateToWeek(dateStr) {
   if (!dateStr) return 0;
-  const d = new Date(dateStr); 
-  d.setHours(12, 0, 0, 0);
-  const weekNum = getFinancialWeekNumber(d);
-  const weekIndex = Math.max(weekNum - 1, 0);
-  // Clamp to 0-11 range (12 weeks max)
-  return Math.min(weekIndex, 11);
+  const d = new Date(dateStr); d.setHours(0, 0, 0, 0);
+  const diff = Math.floor((d - today) / 86400000);
+  if (diff < 0) return 0;
+  return Math.min(Math.floor(diff / 7), 11);
 }
 
 function getWeekColors(w) {
@@ -106,7 +80,7 @@ function StaticCard({ item, cardType, label, sublabel, amount }) {
   );
 }
 
-function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn, actualCurWeek }) {
+function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn }) {
   const style = CARD_STYLES[cardType];
   const moved = isAdjusted && origWeek !== curWeek;
   const overdue = item.due_date && new Date(item.due_date) < today;
@@ -138,7 +112,7 @@ function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWee
             <p className="text-[9px] text-muted-foreground truncate">{subField(item)}</p>
             {moved && (
               <p className="text-[9px] font-semibold text-primary/80 mt-0.5">
-                ↔ W{origWeek + 1} → W{(actualCurWeek != null ? actualCurWeek : curWeek) + 1}
+                ↔ Moved from W{origWeek + 1}
               </p>
             )}
           </div>
@@ -187,20 +161,14 @@ export default function SimTimelineBoard({
   receivables, invoices, payables, expenses, recurringExpenses,
   hypotheticals = [], fundingSources = [],
   setHypotheticals = () => {}, setFundingSources = () => {},
-  recAdj, setRecAdj, payAdj, setPayAdj, expAdj, setExpAdj,
+  recAdj, setRecAdj, payAdj, setPayAdj,
   weeklyData, history, setHistory, onReset, onUndo, onRedo,
 }) {
   const weekColumnRefs = useRef([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [minAmount, setMinAmount] = useState(() => {
-    const saved = localStorage.getItem('simTimelineMinAmount');
-    return saved ? Number(saved) : 0;
-  });
-  const [minAmountInput, setMinAmountInput] = useState(() => {
-    const saved = localStorage.getItem('simTimelineMinAmount');
-    return saved ? Number(saved) : 0;
-  });
+  const [minAmount, setMinAmount] = useState(0);
+  const [minAmountInput, setMinAmountInput] = useState(0);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const allRec = useMemo(() =>
@@ -231,60 +199,45 @@ export default function SimTimelineBoard({
 
 
 
-  // Local assignments Map<draggableId, weekIndex> — always derived fresh from source data
-  const assignments = useMemo(() => {
-    const m = new Map();
-    allRec.forEach(r => {
-      const adjDate = recAdj.get(r.id)?.tranches?.[0]?.date;
-      m.set(`rec-${r.id}`, dueDateToWeek(adjDate || r.due_date));
+  // Local assignments Map<draggableId, weekIndex>
+  const [assignments, setAssignments] = useState(() => new Map());
+
+  // Sync assignments when data or adj state changes
+  useEffect(() => {
+    setAssignments(prev => {
+      const m = new Map(prev);
+      allRec.forEach(r => {
+        const key = `rec-${r.id}`;
+        const adjDate = recAdj.get(r.id)?.tranches?.[0]?.date;
+        m.set(key, dueDateToWeek(adjDate || r.due_date));
+      });
+      allPay.forEach(p => {
+        const key = `pay-${p.id}`;
+        const adjDate = payAdj.get(p.id)?.tranches?.[0]?.date;
+        m.set(key, dueDateToWeek(adjDate || p.due_date));
+      });
+      allExp.forEach(e => { if (!m.has(`exp-${e.id}`)) m.set(`exp-${e.id}`, dueDateToWeek(e.expense_date)); });
+      allRecur.forEach(e => { if (!m.has(`recur-${e.id}`)) m.set(`recur-${e.id}`, dueDateToWeek(e.expense_date)); });
+      // Hypo and funding: always sync from source-of-truth dates
+      hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dueDateToWeek(h.tranches?.[0]?.date)));
+      fundingSources.forEach(f => m.set(`fund-${f.id}`, dueDateToWeek(f.date || f.drawDate || f.disburseDate)));
+      return m;
     });
-    allPay.forEach(p => {
-      const adjDate = payAdj.get(p.id)?.tranches?.[0]?.date;
-      m.set(`pay-${p.id}`, dueDateToWeek(adjDate || p.due_date));
-    });
-    allExp.forEach(e => {
-      const adjDate = expAdj.get(e.id)?.date;
-      m.set(`exp-${e.id}`, dueDateToWeek(adjDate || e.expense_date));
-    });
-    allRecur.forEach(e => {
-      const adjDate = expAdj.get(e.id)?.date;
-      m.set(`recur-${e.id}`, dueDateToWeek(adjDate || e.expense_date));
-    });
-    hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dueDateToWeek(h.tranches?.[0]?.date)));
-    fundingSources.forEach(f => m.set(`fund-inflow-${f.id}`, dueDateToWeek(f.date || f.drawDate || f.disburseDate)));
-    return m;
-  }, [allRec, allPay, allExp, allRecur, expAdj, recAdj, payAdj, hypotheticals, fundingSources]);
+  }, [allRec, allPay, allExp, allRecur, recAdj, payAdj, hypotheticals, fundingSources]);
 
   const matchSearch = (name) => !search || (name || '').toLowerCase().includes(search.toLowerCase());
-
-  // Build repayment items from fundingSources outflows
-  const repaymentItems = useMemo(() => {
-    const items = [];
-    fundingSources.forEach(f => {
-      const { outflows } = buildSourceFlows(f);
-      outflows.forEach((out, idx) => {
-        items.push({ id: `${f.id}-rep-${idx}`, fundingId: f.id, label: out.label, amount: out.amount, date: out.date, week: dueDateToWeek(out.date) });
-      });
-    });
-    return items;
-  }, [fundingSources]);
 
   const weekItems = useMemo(() => {
     const show = typeFilter;
     return Array.from({ length: 12 }, (_, i) => ({
-      recs:      (show === 'all' || show === 'receivable') ? allRec.filter(r  => assignments.get(`rec-${r.id}`) === i && matchSearch(r.customer_name || r.debtor_name)) : [],
-      pays:      (show === 'all' || show === 'payable')    ? allPay.filter(p  => assignments.get(`pay-${p.id}`) === i && matchSearch(p.vendor_name)) : [],
-      exps:      (show === 'all' || show === 'expense')    ? allExp.filter(e  => assignments.get(`exp-${e.id}`) === i && matchSearch(e.description)) : [],
-      recur:     (show === 'all' || show === 'recurring')  ? allRecur.filter(e => assignments.get(`recur-${e.id}`) === i && matchSearch(e.description)) : [],
-      hypos:     (show === 'all' || show === 'hypo')       ? hypotheticals.filter(h => assignments.get(`hypo-${h.id}`) === i && matchSearch(h.label)) : [],
-      funding:   (show === 'all' || show === 'funding')    ? fundingSources.filter(f => assignments.get(`fund-inflow-${f.id}`) === i && matchSearch(f.lender || f.bank || f.customer || f.asset || 'Funding')) : [],
-      repayments:(show === 'all' || show === 'funding')    ? repaymentItems.filter(r => r.week === i) : [],
+      recs:    (show === 'all' || show === 'receivable') ? allRec.filter(r  => assignments.get(`rec-${r.id}`) === i && matchSearch(r.customer_name || r.debtor_name)) : [],
+      pays:    (show === 'all' || show === 'payable')    ? allPay.filter(p  => assignments.get(`pay-${p.id}`) === i && matchSearch(p.vendor_name)) : [],
+      exps:    (show === 'all' || show === 'expense')    ? allExp.filter(e  => assignments.get(`exp-${e.id}`) === i && matchSearch(e.description)) : [],
+      recur:   (show === 'all' || show === 'recurring')  ? allRecur.filter(e => assignments.get(`recur-${e.id}`) === i && matchSearch(e.description)) : [],
+      hypos:   (show === 'all' || show === 'hypo')       ? hypotheticals.filter(h => assignments.get(`hypo-${h.id}`) === i && matchSearch(h.label)) : [],
+      funding: (show === 'all' || show === 'funding')    ? fundingSources.filter(f => assignments.get(`fund-${f.id}`) === i && matchSearch(f.lender || f.bank || f.customer || f.asset || 'Funding')) : [],
     }));
-  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, repaymentItems, assignments, typeFilter, search]);
-
-  useEffect(() => {
-    localStorage.setItem('simTimelineMinAmount', String(minAmount));
-  }, [minAmount]);
+  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, assignments, typeFilter, search]);
 
   const onDragEnd = useCallback(({ source, destination, draggableId }) => {
     if (!destination) return;
@@ -294,29 +247,16 @@ export default function SimTimelineBoard({
 
     const isRec  = draggableId.startsWith('rec-');
     const isPay  = draggableId.startsWith('pay-');
-    const isExp  = draggableId.startsWith('exp-');
-    const isRecur = draggableId.startsWith('recur-');
     const isHypo = draggableId.startsWith('hypo-');
-    const isFund = draggableId.startsWith('fund-inflow-');
-    const isRep = draggableId.startsWith('rep-');
-    
-    let itemId = draggableId;
-    if (isRec) itemId = draggableId.replace('rec-', '');
-    else if (isPay) itemId = draggableId.replace('pay-', '');
-    else if (isExp) itemId = draggableId.replace('exp-', '');
-    else if (isRecur) itemId = draggableId.replace('recur-', '');
-    else if (isHypo) itemId = draggableId.replace('hypo-', '');
-    else if (isFund) itemId = draggableId.replace('fund-inflow-', '');
-    else if (isRep) itemId = draggableId.replace('rep-', '');
+    const isFund = draggableId.startsWith('fund-');
+    const itemId = draggableId.replace(/^(rec|pay|exp|recur|hypo|fund)-/, '');
 
-    // Set the date to noon on the Monday of the destination week
-    // Use dstWeek + 2 to match the original week calculation for visual placement
-    const newDateRaw = getFinancialWeekStartDate(financialYear, dstWeek + 1);
-    newDateRaw.setHours(12, 0, 0, 0);
-    const newDate = toDateStr(newDateRaw);
+    // Update local assignment immediately for instant visual feedback
+    setAssignments(prev => { const m = new Map(prev); m.set(draggableId, dstWeek); return m; });
+
+    const newDate = toDateStr(weekStart(dstWeek));
     const prevRecAdj = new Map(recAdj);
     const prevPayAdj = new Map(payAdj);
-    const prevExpAdj = new Map(expAdj);
     const prevHypo = hypotheticals;
     const prevFunding = fundingSources;
 
@@ -342,42 +282,10 @@ export default function SimTimelineBoard({
       return;
     }
 
-    if (isRep) {
-      // Repayment card — update funding source's appropriate date field
-      const repParts = itemId.split('-rep-');
-      const fundId = repParts[0];
-      const repIdx = parseInt(repParts[1]);
-      setFundingSources(prev => prev.map(f => {
-        if (f.id !== fundId) return f;
-        const { outflows } = buildSourceFlows(f);
-        if (repIdx >= outflows.length) return f;
-        
-        // Map funding types to their date property
-        const dateMap = {
-          informal: 'repayDate',
-          od: 'repayDate',
-          wcl: 'repayDate',
-          invoice_disc: 'collectionDate',
-          govt_loan: 'repayDate',
-          cust_advance: 'date',
-          asset_sale: 'date',
-          chit: 'date',
-          dealer_adv: 'date',
-          nbfc_loan: 'repayDate',
-          po_finance: 'fulfillDate'
-        };
-        const dateField = dateMap[f.type] || 'repayDate';
-        return { ...f, [dateField]: newDate };
-      }));
-      toast({ title: `Moved repayment → W${dstWeek + 1}`, duration: 2000 });
-      return;
-    }
-
     const item = isRec ? allRec.find(r => r.id === itemId)
                : isPay ? allPay.find(p => p.id === itemId)
-               : isExp ? allExp.find(e => e.id === itemId)
-               : isRecur ? allRecur.find(e => e.id === itemId)
-               : null;
+               : draggableId.startsWith('exp-') ? allExp.find(e => e.id === itemId)
+               : allRecur.find(e => e.id === itemId);
     if (!item) return;
 
     if (isRec) {
@@ -390,21 +298,18 @@ export default function SimTimelineBoard({
       const next = new Map(payAdj);
       next.set(itemId, { tranches: [{ amount: amt, date: newDate }], remainder: 0 });
       setPayAdj(next);
-    } else if (isExp || isRecur) {
-      const next = new Map(expAdj);
-      next.set(itemId, { date: newDate });
-      setExpAdj(next);
     }
 
     const name = isRec ? (item.customer_name || item.debtor_name)
                : isPay ? item.vendor_name
                : item.description;
     toast({ title: `Moved "${name}" → W${dstWeek + 1}`, duration: 2000 });
-    setHistory({ prevRecAdj, prevPayAdj, prevExpAdj, prevHypo, prevFunding });
-  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, expAdj, setRecAdj, setPayAdj, setExpAdj, setHypotheticals, setFundingSources, setHistory]);
+    setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
+  }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, setRecAdj, setPayAdj, setHypotheticals, setFundingSources, setHistory]);
 
   const handleReset = useCallback(() => {
     setShowResetConfirm(false);
+    setAssignments(new Map());
     if (onReset) onReset();
   }, [onReset]);
 
@@ -465,12 +370,12 @@ export default function SimTimelineBoard({
                 ↪ Redo
               </button>
             )}
-            <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-input bg-background">
+            <div className="flex items-center gap-1 ml-auto">
               <Filter className="w-3 h-3 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground whitespace-nowrap">Min ₹</span>
+              <span className="text-[11px] text-muted-foreground">Min ₹</span>
               <input
                 type="number"
-                className="w-16 px-1 text-xs rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+                className="h-7 w-20 px-2 text-xs rounded-md border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
                 value={minAmountInput}
                 min={0}
                 onChange={e => setMinAmountInput(Number(e.target.value) || 0)}
@@ -501,7 +406,7 @@ export default function SimTimelineBoard({
             {Array.from({ length: 12 }, (_, i) => {
               const w = weeklyData[i] || { simNet: 0, baseNet: 0, simInflow: 0, simOutflow: 0 };
               const { dot, text, header } = getWeekColors(w);
-              const { recs, pays, exps, recur, hypos, funding, repayments } = weekItems[i];
+              const { recs, pays, exps, recur, hypos, funding } = weekItems[i];
               const netChanged = w.baseNet !== w.simNet;
               let draggableIndex = 0;
 
@@ -571,7 +476,6 @@ export default function SimTimelineBoard({
                                 isAdjusted={recAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
-                                actualCurWeek={i}
                                 nameField={r => r.customer_name || r.debtor_name || '—'}
                                 subField={r => r.invoice_number || '—'}
                                 amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
@@ -598,7 +502,6 @@ export default function SimTimelineBoard({
                                 isAdjusted={payAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
-                                actualCurWeek={i}
                                 nameField={p => p.vendor_name || '—'}
                                 subField={p => p.bill_number || '—'}
                                 amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
@@ -608,7 +511,7 @@ export default function SimTimelineBoard({
                         </>
                       )}
 
-                      {/* Expenses (draggable) */}
+                      {/* Expenses */}
                       {exps.length > 0 && (
                         <>
                           <SectionSep label="Expenses" color="text-orange-500" />
@@ -622,10 +525,9 @@ export default function SimTimelineBoard({
                                 index={idx}
                                 item={item}
                                 cardType="expense"
-                                isAdjusted={expAdj.has(item.id)}
+                                isAdjusted={assignments.get(`exp-${item.id}`) !== origWeek}
                                 origWeek={origWeek}
                                 curWeek={i}
-                                actualCurWeek={i}
                                 nameField={e => e.description || '—'}
                                 subField={e => e.category || 'Expense'}
                                 amtFn={e => e.amount || 0}
@@ -635,7 +537,7 @@ export default function SimTimelineBoard({
                         </>
                       )}
 
-                      {/* Recurring (draggable) */}
+                      {/* Recurring */}
                       {recur.length > 0 && (
                         <>
                           <SectionSep label="Recurring" color="text-yellow-600" />
@@ -649,10 +551,9 @@ export default function SimTimelineBoard({
                                 index={idx}
                                 item={item}
                                 cardType="recurring"
-                                isAdjusted={expAdj.has(item.id)}
+                                isAdjusted={assignments.get(`recur-${item.id}`) !== origWeek}
                                 origWeek={origWeek}
                                 curWeek={i}
-                                actualCurWeek={i}
                                 nameField={e => e.description || '—'}
                                 subField={e => e.category || 'Recurring'}
                                 amtFn={e => e.amount || 0}
@@ -682,7 +583,6 @@ export default function SimTimelineBoard({
                                 isAdjusted={assignments.get(`hypo-${h.id}`) !== dueDateToWeek(h.tranches?.[0]?.date)}
                                 origWeek={origWeek}
                                 curWeek={i}
-                                actualCurWeek={i}
                                 nameField={h => h.label || '—'}
                                 subField={h => h.type === 'inflow' ? 'Hypothetical inflow' : 'Hypothetical outflow'}
                                 amtFn={h => h.tranches?.reduce((s, t) => s + Number(t.amount || 0), 0) || 0}
@@ -692,60 +592,33 @@ export default function SimTimelineBoard({
                         </>
                       )}
 
-                      {/* Funding sources inflow (draggable) */}
+                      {/* Funding sources (draggable) */}
                       {funding.length > 0 && (
-                       <>
-                         <SectionSep label="Funding ↑" color="text-teal-600" />
-                         {funding.map(f => {
-                           const origWeek = dueDateToWeek(f.date || f.drawDate || f.disburseDate);
-                           const idx = draggableIndex++;
-                           return (
-                             <DraggableCard
-                               key={`fund-inflow-${f.id}`}
-                               draggableId={`fund-inflow-${f.id}`}
-                               index={idx}
-                               item={f}
-                               cardType="funding"
-                               isAdjusted={assignments.get(`fund-inflow-${f.id}`) !== origWeek}
-                               origWeek={origWeek}
-                               curWeek={i}
-                               actualCurWeek={i}
-                               nameField={f => f.lender || f.bank || f.customer || f.asset || 'Funding'}
-                               subField={f => f.type || 'Funding Source'}
-                               amtFn={f => Number(f.amount || f.drawAmt || 0)}
-                             />
-                           );
-                         })}
-                       </>
+                        <>
+                          <SectionSep label="Funding" color="text-teal-600" />
+                          {funding.map(f => {
+                            const origWeek = dueDateToWeek(f.date || f.drawDate || f.disburseDate);
+                            const idx = draggableIndex++;
+                            return (
+                              <DraggableCard
+                                key={`fund-${f.id}`}
+                                draggableId={`fund-${f.id}`}
+                                index={idx}
+                                item={f}
+                                cardType="funding"
+                                isAdjusted={assignments.get(`fund-${f.id}`) !== origWeek}
+                                origWeek={origWeek}
+                                curWeek={i}
+                                nameField={f => f.lender || f.bank || f.customer || f.asset || 'Funding'}
+                                subField={f => f.type || 'Funding Source'}
+                                amtFn={f => Number(f.amount || f.drawAmt || 0)}
+                              />
+                            );
+                          })}
+                        </>
                       )}
 
-                      {/* Repayment cards (draggable) */}
-                      {repayments.length > 0 && (
-                       <>
-                         <SectionSep label="Repayment ↓" color="text-rose-600" />
-                         {repayments.map(r => {
-                           const idx = draggableIndex++;
-                           return (
-                             <DraggableCard
-                               key={r.id}
-                               draggableId={r.id}
-                               index={idx}
-                               item={{ due_date: r.date }}
-                               cardType="repayment"
-                               isAdjusted={false}
-                               origWeek={r.week}
-                               curWeek={i}
-                               actualCurWeek={i}
-                               nameField={() => r.label}
-                               subField={() => r.date}
-                               amtFn={() => r.amount}
-                             />
-                           );
-                         })}
-                       </>
-                      )}
-
-                      {recs.length === 0 && pays.length === 0 && exps.length === 0 && recur.length === 0 && hypos.length === 0 && funding.length === 0 && repayments.length === 0 && !snapshot.isDraggingOver && (
+                      {recs.length === 0 && pays.length === 0 && exps.length === 0 && recur.length === 0 && hypos.length === 0 && funding.length === 0 && !snapshot.isDraggingOver && (
                         <div className="flex items-center justify-center text-[10px] text-muted-foreground border border-dashed rounded mx-1 my-2 py-3">
                           Drop here
                         </div>
