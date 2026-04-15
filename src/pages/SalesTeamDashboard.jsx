@@ -264,8 +264,10 @@ function ReceivablesTable({ myReceivables }) {
   };
 
   const SortIcon = ({ col }) => {
-    if (sortKey !== col) return null;
-    return sortDir === 'asc' ? <ArrowUp className="w-3 h-3 inline ml-1" /> : <ArrowDown className="w-3 h-3 inline ml-1" />;
+    if (sortKey !== col) return <span className="inline-flex ml-1 opacity-30 group-hover:opacity-60"><ArrowUp className="w-3 h-3 -mb-1" /><ArrowDown className="w-3 h-3" /></span>;
+    return sortDir === 'asc'
+      ? <ArrowUp className="w-3 h-3 inline ml-1 text-primary" />
+      : <ArrowDown className="w-3 h-3 inline ml-1 text-primary" />;
   };
 
   const activeRows = useMemo(() =>
@@ -302,7 +304,7 @@ function ReceivablesTable({ myReceivables }) {
     });
   };
 
-  const thClass = "cursor-pointer select-none hover:bg-muted/50";
+  const thClass = "cursor-pointer select-none hover:bg-muted/60 group";
 
   return (
     <Card>
@@ -320,12 +322,12 @@ function ReceivablesTable({ myReceivables }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className={thClass} onClick={() => handleSort('customer_name')}>Customer <SortIcon col="customer_name" /></TableHead>
-                  <TableHead className={thClass} onClick={() => handleSort('invoice_number')}>Invoice # <SortIcon col="invoice_number" /></TableHead>
-                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('amount')}>Amount <SortIcon col="amount" /></TableHead>
-                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('outstanding')}>Outstanding <SortIcon col="outstanding" /></TableHead>
-                  <TableHead className={thClass} onClick={() => handleSort('due_date')}>Due Date <SortIcon col="due_date" /></TableHead>
-                  <TableHead className={thClass} onClick={() => handleSort('status')}>Status <SortIcon col="status" /></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('customer_name')}><span className="inline-flex items-center gap-1">Customer <SortIcon col="customer_name" /></span></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('invoice_number')}><span className="inline-flex items-center gap-1">Invoice # <SortIcon col="invoice_number" /></span></TableHead>
+                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('amount')}><span className="inline-flex items-center justify-end gap-1 w-full">Amount <SortIcon col="amount" /></span></TableHead>
+                  <TableHead className={`text-right ${thClass}`} onClick={() => handleSort('outstanding')}><span className="inline-flex items-center justify-end gap-1 w-full">Outstanding <SortIcon col="outstanding" /></span></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('due_date')}><span className="inline-flex items-center gap-1">Due Date <SortIcon col="due_date" /></span></TableHead>
+                  <TableHead className={thClass} onClick={() => handleSort('status')}><span className="inline-flex items-center gap-1">Status <SortIcon col="status" /></span></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

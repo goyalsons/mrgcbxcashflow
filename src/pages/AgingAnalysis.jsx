@@ -591,13 +591,15 @@ export default function AgingAnalysis() {
     },
   });
 
+  const isSales = isSalesTeam(currentUser?.role);
+
   return (
     <div className="space-y-6">
       <PageHeader title="Aging Analysis" subtitle="Track overdue receivables and payables by aging buckets" />
       <Tabs defaultValue="receivables">
         <TabsList>
           <TabsTrigger value="receivables">Receivables ({unpaidReceivables.length})</TabsTrigger>
-          <TabsTrigger value="payables">Payables ({unpaidPayables.length})</TabsTrigger>
+          {!isSales && <TabsTrigger value="payables">Payables ({unpaidPayables.length})</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="receivables" className="mt-4 space-y-4">
@@ -605,9 +607,11 @@ export default function AgingAnalysis() {
           <AgingTable items={unpaidReceivables} type="receivable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} capitalRate={capitalRate} />
         </TabsContent>
 
-        <TabsContent value="payables" className="mt-4">
-          <AgingTable items={unpaidPayables} type="payable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} capitalRate={capitalRate} />
-        </TabsContent>
+        {!isSales && (
+          <TabsContent value="payables" className="mt-4">
+            <AgingTable items={unpaidPayables} type="payable" onStatusChange={(id, status, type) => updateStatusMut.mutate({ id, status, type })} capitalRate={capitalRate} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
