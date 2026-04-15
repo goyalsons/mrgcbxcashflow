@@ -723,12 +723,35 @@ export default function CSVImport() {
             </div>
           )}
           {!preview ? (
-            <Card className="h-full flex items-center justify-center min-h-[300px]">
-              <CardContent className="text-center py-16">
-                <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-                <p className="text-muted-foreground">Upload a CSV file to preview data</p>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              {(entityType === 'receivable' || entityType === 'payables_tally') && (
+                <Card className="border-amber-200 bg-amber-50/50">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-amber-800 flex items-center gap-2">
+                      📋 How to prepare your file before uploading
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <p className="text-xs text-amber-700">
+                      Your Tally export may contain company header rows and sub-header rows at the top. 
+                      <strong> Remove all rows above the column header row</strong> (Date, Ref. No., Party's Name, etc.) before uploading. 
+                      The app will automatically detect and skip the sub-header row below the column names.
+                    </p>
+                    <img
+                      src="https://media.base44.com/images/public/69de1de00c0dbb6d8107d446/3af1dddde_FileUploadProcess.jpg"
+                      alt="File preparation guide — remove header rows before upload"
+                      className="w-full rounded-lg border border-amber-200 shadow-sm"
+                    />
+                  </CardContent>
+                </Card>
+              )}
+              <Card className="h-full flex items-center justify-center min-h-[200px]">
+                <CardContent className="text-center py-10">
+                  <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">Upload a CSV file to preview data</p>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <Card>
               <CardHeader>
