@@ -15,8 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Trophy, Medal, Target, Plus, Pencil, Trash2, MoreHorizontal, Award, DollarSign, StickyNote, CheckSquare, X, ChevronUp, ChevronDown, Users } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Trophy, Medal, Target, Plus, Pencil, Trash2, Award, DollarSign, StickyNote, CheckSquare, X, ChevronUp, ChevronDown, Users } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/components/ui/use-toast';
 import PageHeader from '@/components/shared/PageHeader';
@@ -704,19 +703,16 @@ export default function CollectionTargets() {
                           <span>{formatINR(t.target_amount)}</span>
                         </div>
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                            <Pencil className="w-3.5 h-3.5 mr-2" />Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
-                            <Trash2 className="w-3.5 h-3.5 mr-2" />Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {!isSalesTeam(currentUser?.role) && (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted" title="Edit Target" onClick={() => { setEditingTarget(t); setShowForm(true); }}>
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" title="Delete" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -836,22 +832,21 @@ export default function CollectionTargets() {
                   <NotesPopover target={t} />
                 </TableCell>
                 <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-3.5 h-3.5" /></Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setUpdatingTarget(t)}>
-                        <DollarSign className="w-4 h-4 mr-2" />Update Progress
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => { setEditingTarget(t); setShowForm(true); }}>
-                        <Pencil className="w-4 h-4 mr-2" />Edit Target
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
-                        <Trash2 className="w-4 h-4 mr-2" />Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" title="Update Progress" onClick={() => setUpdatingTarget(t)}>
+                      <DollarSign className="w-3.5 h-3.5" />
+                    </Button>
+                    {!isSalesTeam(currentUser?.role) && (
+                      <>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground hover:bg-muted" title="Edit Target" onClick={() => { setEditingTarget(t); setShowForm(true); }}>
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 hover:text-red-600 hover:bg-red-50" title="Delete" onClick={() => { if (confirm('Delete this target?')) deleteMut.mutate(t.id); }}>
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </>
+                    )}
+                  </div>
                 </TableCell>
               </TableRow>
             );
