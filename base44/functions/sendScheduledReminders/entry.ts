@@ -79,6 +79,26 @@ function buildSignature(companySettings) {
   return lines.length > 0 ? `\n\n--\n${lines.join('\n')}` : '';
 }
 
+/**
+ * Given a sent date and campaign frequency, calculate the next send date.
+ * frequency: 'daily' | 'weekly' | 'monthly'
+ */
+function calcNextDate(sentDateStr, frequency) {
+  if (!sentDateStr || !frequency) return null;
+  const d = new Date(sentDateStr);
+  if (isNaN(d.getTime())) return null;
+  if (frequency === 'daily') {
+    d.setDate(d.getDate() + 1);
+  } else if (frequency === 'weekly') {
+    d.setDate(d.getDate() + 7);
+  } else if (frequency === 'monthly') {
+    d.setMonth(d.getMonth() + 1);
+  } else {
+    return null;
+  }
+  return d.toISOString().split('T')[0];
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -112,7 +132,7 @@ Deno.serve(async (req) => {
     const signature = buildSignature(companySettings);
 
     // Fetch all pending scheduled reminders that are due
-    const pendingReminders = await base44.entities.ScheduledReminder.filter(
+    const pendingReminders = await base44.asServiceRole.entities.ScheduledReminder.filter(
       { status: 'pending' },
       '-created_date',
       1000
@@ -165,28 +185,63 @@ Deno.serve(async (req) => {
         }
         // WhatsApp: extend here when API is ready
 
-        await base44.entities.ScheduledReminder.update(reminder.id, {
+        await base44.asServiceRole.entities.ScheduledReminder.update(reminder.id, {
           status: 'sent',
           sent_date: currentDate,
           sent_time: currentTime,
         });
 
+        // Schedule next reminder in the recurring series
+        if (reminder.campaign_id) {
+          try {
+            const campaign = await base44.asServiceRole.entities.ReminderCampaign.get(reminder.campaign_id);
+            if (campaign && campaign.status === 'active') {
+              const nextDate = calcNextDate(reminder.scheduled_send_date, campaign.frequency);
+              if (nextDate) {
+                await base44.asServiceRole.entities.ScheduledReminder.create({
+                  campaign_id: reminder.campaign_id,
+                  customer_id: reminder.customer_id,
+                  customer_email: reminder.customer_email,
+                  customer_phone: reminder.customer_phone,
+                  message_subject: reminder.message_subject,
+                  message_body: reminder.message_body,
+                  scheduled_send_date: nextDate,
+                  scheduled_send_time: reminder.scheduled_send_time || '09:00',
+                  status: 'pending',
+                  send_type: reminder.send_type,
+                  reminder_number: (reminder.reminder_number || 1) + 1,
+                });
+                // Update campaign next_send_date and last_sent_date
+                await base44.asServiceRole.entities.ReminderCampaign.update(campaign.id, {
+                  last_sent_date: currentDate,
+                  next_send_date: nextDate,
+                });
+                console.log(`[sendScheduledReminders] Scheduled next reminder for campaign ${campaign.id} on ${nextDate}`);
+              }
+            }
+          } catch (schedErr) {
+            console.warn(`[sendScheduledReminders] Could not schedule next reminder for campaign ${reminder.campaign_id}:`, schedErr.message);
+          }
+        }
+
         // Write success log
-        await base44.asServiceRole.entities.ReminderLog.create({
-          reminder_id: reminder.id,
-          customer_id: reminder.customer_id,
-          customer_name: customer?.name || reminder.customer_name || '',
-          recipient: reminder.customer_email || reminder.customer_phone || '',
-          channel: reminder.send_type || 'email',
-          status: 'sent',
-          subject: subject || '',
-          triggered_by: 'auto',
-        });
+        try {
+          await base44.asServiceRole.entities.ReminderLog.create({
+            reminder_id: reminder.id,
+            customer_id: reminder.customer_id,
+            customer_name: customer?.name || reminder.customer_name || '',
+            recipient: reminder.customer_email || reminder.customer_phone || '',
+            channel: reminder.send_type || 'email',
+            status: 'sent',
+            subject: subject || '',
+            triggered_by: 'auto',
+          });
+        } catch (_) { /* don't block on log failure */ }
 
         sentCount++;
       } catch (e) {
         console.error(`Failed to send reminder ${reminder.id}:`, e.message);
-        await base44.entities.ScheduledReminder.update(reminder.id, { status: 'failed' });
+        await base44.asServiceRole.entities.ScheduledReminder.update(reminder.id, { status: 'failed' });
 
         // Write failure log
         try {
