@@ -605,14 +605,8 @@ export default function CollectionTargets() {
   }, [customers, currentUser]);
 
   const monthlyTargets = useMemo(() => {
-    let filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
-    // Account Managers only see their own targets (by manager email AND by assigned customer names)
-    if (isSalesTeam(currentUser?.role) && currentUser?.email) {
-      filtered = filtered.filter(t =>
-        t.manager_email === currentUser.email ||
-        (t.customer_name && myCustomerNames?.has(t.customer_name.trim().toLowerCase()))
-      );
-    }
+    // All targets for the period — no user filter (used by leaderboard)
+    const filtered = targets.filter(t => t.period_month === selectedMonth && t.period_year === selectedYear);
     return filtered.map(t => {
       const customerIds = managerCustomerIds[t.manager_email] || [];
       const monthPayments = payments.filter(p => {
