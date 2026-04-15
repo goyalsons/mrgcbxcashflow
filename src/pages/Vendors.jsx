@@ -107,7 +107,13 @@ export default function Vendors() {
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
   const SortHeader = ({ label, col }) => (
-    <TableHead className="cursor-pointer hover:bg-muted/50 select-none" onClick={() => toggleSort(col)}>
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50 select-none" 
+      onClick={() => toggleSort(col)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') toggleSort(col); }}
+    >
       <div className="flex items-center gap-1.5 font-semibold">
         {label}
         {sortBy === col ? (

@@ -55,13 +55,13 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Missing LLM configuration (provider, api_key, model).' }, { status: 400 });
     }
 
-    const [receivables, payables, expenses, payments, bankAccounts, debtors] = await Promise.all([
+    const [receivables, payables, expenses, payments, bankAccounts, customers] = await Promise.all([
       base44.entities.Receivable.list(),
       base44.entities.Payable.list(),
       base44.entities.Expense.list(),
       base44.entities.Payment.list(),
       base44.entities.BankAccount.list(),
-      base44.entities.Debtor.list(),
+      base44.entities.Customer.list(),
     ]);
 
     const currentBalance = bankAccounts.reduce((s, a) => s + (a.balance || 0), 0);
@@ -123,8 +123,12 @@ Deno.serve(async (req) => {
         category: p.category,
       }));
 
-    const totalOutstandingDebt = debtors.reduce((s, d) => s + (d.total_outstanding || 0), 0);
-    const activeDebtors = debtors.filter(d => (d.total_outstanding || 0) > 0).length;
+    const totalOutstandingDebt = receivables
+      .filter(r => r.status !== 'paid' && r.status !== 'written_off')
+      .reduce((s, r) => s + ((r.amount || 0) - (r.amount_received || 0)), 0);
+    const activeDebtors = receivables
+      .filter(r => r.status !== 'paid' && r.status !== 'written_off')
+      .length;
 
     const prompt = `You are a financial analyst AI for an Indian SME. Analyze the following financial data and provide a detailed cash flow projection for the next 6 months.
 
