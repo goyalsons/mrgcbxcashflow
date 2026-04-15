@@ -167,8 +167,14 @@ export default function SimTimelineBoard({
   const weekColumnRefs = useRef([]);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [minAmount, setMinAmount] = useState(0);
-  const [minAmountInput, setMinAmountInput] = useState(0);
+  const [minAmount, setMinAmount] = useState(() => {
+    const saved = localStorage.getItem('simTimelineMinAmount');
+    return saved ? Number(saved) : 0;
+  });
+  const [minAmountInput, setMinAmountInput] = useState(() => {
+    const saved = localStorage.getItem('simTimelineMinAmount');
+    return saved ? Number(saved) : 0;
+  });
   const [showResetConfirm, setShowResetConfirm] = useState(false);
 
   const allRec = useMemo(() =>
@@ -238,6 +244,10 @@ export default function SimTimelineBoard({
       funding: (show === 'all' || show === 'funding')    ? fundingSources.filter(f => assignments.get(`fund-${f.id}`) === i && matchSearch(f.lender || f.bank || f.customer || f.asset || 'Funding')) : [],
     }));
   }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, assignments, typeFilter, search]);
+
+  useEffect(() => {
+    localStorage.setItem('simTimelineMinAmount', String(minAmount));
+  }, [minAmount]);
 
   const onDragEnd = useCallback(({ source, destination, draggableId }) => {
     if (!destination) return;
@@ -370,12 +380,12 @@ export default function SimTimelineBoard({
                 ↪ Redo
               </button>
             )}
-            <div className="flex items-center gap-1 ml-auto">
+            <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-input bg-background">
               <Filter className="w-3 h-3 text-muted-foreground shrink-0" />
-              <span className="text-[11px] text-muted-foreground">Min ₹</span>
+              <span className="text-[11px] text-muted-foreground whitespace-nowrap">Min ₹</span>
               <input
                 type="number"
-                className="h-7 w-20 px-2 text-xs rounded-md border border-input bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+                className="w-16 px-1 text-xs rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
                 value={minAmountInput}
                 min={0}
                 onChange={e => setMinAmountInput(Number(e.target.value) || 0)}

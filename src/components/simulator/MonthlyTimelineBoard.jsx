@@ -112,14 +112,32 @@ export default function MonthlyTimelineBoard({
   const [search, setSearch] = useState('');
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [assignments, setAssignments] = useState(() => new Map());
+  const [minAmount, setMinAmount] = useState(() => {
+    const saved = localStorage.getItem('monthlyTimelineMinAmount');
+    return saved ? Number(saved) : 0;
+  });
+  const [minAmountInput, setMinAmountInput] = useState(() => {
+    const saved = localStorage.getItem('monthlyTimelineMinAmount');
+    return saved ? Number(saved) : 0;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('monthlyTimelineMinAmount', String(minAmount));
+  }, [minAmount]);
 
   const allRec = useMemo(() =>
-    [...receivables, ...invoices].filter(r => ['pending','overdue','partially_paid','partial'].includes(r.status)),
-    [receivables, invoices]
+    [...receivables, ...invoices].filter(r => 
+      ['pending','overdue','partially_paid','partial'].includes(r.status) &&
+      (r.amount || 0) - (r.amount_received || r.amount_paid || 0) >= minAmount
+    ),
+    [receivables, invoices, minAmount]
   );
   const allPay = useMemo(() =>
-    payables.filter(p => ['pending','partially_paid','overdue'].includes(p.status)),
-    [payables]
+    payables.filter(p => 
+      ['pending','partially_paid','overdue'].includes(p.status) &&
+      (p.amount || 0) - (p.amount_paid || 0) >= minAmount
+    ),
+    [payables, minAmount]
   );
 
   // Sync assignments from current adj state
@@ -236,6 +254,19 @@ export default function MonthlyTimelineBoard({
           {onRedo && (
             <button onClick={onRedo} className="flex items-center gap-1 h-7 px-2 text-xs rounded-md border border-input bg-background hover:bg-muted font-medium">↪ Redo</button>
           )}
+          <div className="flex items-center gap-1.5 h-7 px-2.5 rounded-md border border-input bg-background">
+            <span className="text-[11px] text-muted-foreground whitespace-nowrap">Min ₹</span>
+            <input
+              type="number"
+              className="w-16 px-1 text-xs rounded bg-transparent focus:outline-none focus:ring-1 focus:ring-ring"
+              value={minAmountInput}
+              min={0}
+              onChange={e => setMinAmountInput(Number(e.target.value) || 0)}
+              onBlur={() => setMinAmount(minAmountInput)}
+              onKeyDown={e => e.key === 'Enter' && setMinAmount(minAmountInput)}
+              placeholder="0"
+            />
+          </div>
         </div>
 
         {/* Minimap */}

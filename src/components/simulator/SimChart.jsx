@@ -95,8 +95,8 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
               </div>
             </div>
           )}
-          <div className="overflow-x-auto"><div style={{ minWidth: 620 }}>
-          <ResponsiveContainer width="100%" height={280}>
+          <div className="overflow-x-auto">
+            <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
               <defs>
                 <linearGradient id="posGrad" x1="0" y1="0" x2="0" y2="1">
@@ -143,9 +143,9 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
               )}
               <Line type="monotone" dataKey="simClosing" name="Closing" stroke="#15803d" strokeWidth={2.5} dot={false} isAnimationActive={false} />
             </ComposedChart>
-          </ResponsiveContainer>
-          </div></div>
-        </div>
+            </ResponsiveContainer>
+            </div>
+            </div>
 
         {/* Collapsible Weekly Comparison Table */}
         <div className="mt-3 border rounded-lg overflow-hidden">
