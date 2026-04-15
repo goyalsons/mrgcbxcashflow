@@ -104,9 +104,12 @@ export default function SetTargetModal({ customer, onClose }) {
           </div>
 
           <div>
-            <Label>Assign Manager</Label>
-            <Select value={selectedManagerEmail} onValueChange={setSelectedManagerEmail}>
-              <SelectTrigger className="mt-1">
+            <Label className="flex items-center gap-2">
+              Assign Manager
+              {customer?.account_manager && <span className="text-xs text-amber-600 font-normal">(locked — already assigned)</span>}
+            </Label>
+            <Select value={selectedManagerEmail} onValueChange={setSelectedManagerEmail} disabled={!!customer?.account_manager}>
+              <SelectTrigger className={`mt-1 ${customer?.account_manager ? 'opacity-70 cursor-not-allowed' : ''}`}>
                 <SelectValue placeholder="Select a manager..." />
               </SelectTrigger>
               <SelectContent>
