@@ -106,7 +106,7 @@ function StaticCard({ item, cardType, label, sublabel, amount }) {
   );
 }
 
-function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn }) {
+function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWeek, curWeek, nameField, subField, amtFn, actualCurWeek }) {
   const style = CARD_STYLES[cardType];
   const moved = isAdjusted && origWeek !== curWeek;
   const overdue = item.due_date && new Date(item.due_date) < today;
@@ -138,7 +138,7 @@ function DraggableCard({ draggableId, index, item, cardType, isAdjusted, origWee
             <p className="text-[9px] text-muted-foreground truncate">{subField(item)}</p>
             {moved && (
               <p className="text-[9px] font-semibold text-primary/80 mt-0.5">
-                ↔ Moved from W{origWeek + 1}
+                ↔ W{origWeek + 1} → W{(actualCurWeek != null ? actualCurWeek : curWeek) + 1}
               </p>
             )}
           </div>
@@ -311,7 +311,7 @@ export default function SimTimelineBoard({
 
     // Set the date to noon on the Monday of the destination week
     // Use dstWeek + 2 to match the original week calculation for visual placement
-    const newDateRaw = getFinancialWeekStartDate(financialYear, dstWeek + 2);
+    const newDateRaw = getFinancialWeekStartDate(financialYear, dstWeek + 1);
     newDateRaw.setHours(12, 0, 0, 0);
     const newDate = toDateStr(newDateRaw);
     const prevRecAdj = new Map(recAdj);
@@ -571,6 +571,7 @@ export default function SimTimelineBoard({
                                 isAdjusted={recAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
+                                actualCurWeek={i}
                                 nameField={r => r.customer_name || r.debtor_name || '—'}
                                 subField={r => r.invoice_number || '—'}
                                 amtFn={r => (r.amount || 0) - (r.amount_received || r.amount_paid || 0)}
@@ -597,6 +598,7 @@ export default function SimTimelineBoard({
                                 isAdjusted={payAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
+                                actualCurWeek={i}
                                 nameField={p => p.vendor_name || '—'}
                                 subField={p => p.bill_number || '—'}
                                 amtFn={p => (p.amount || 0) - (p.amount_paid || 0)}
@@ -623,6 +625,7 @@ export default function SimTimelineBoard({
                                 isAdjusted={expAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
+                                actualCurWeek={i}
                                 nameField={e => e.description || '—'}
                                 subField={e => e.category || 'Expense'}
                                 amtFn={e => e.amount || 0}
@@ -649,6 +652,7 @@ export default function SimTimelineBoard({
                                 isAdjusted={expAdj.has(item.id)}
                                 origWeek={origWeek}
                                 curWeek={i}
+                                actualCurWeek={i}
                                 nameField={e => e.description || '—'}
                                 subField={e => e.category || 'Recurring'}
                                 amtFn={e => e.amount || 0}
@@ -678,6 +682,7 @@ export default function SimTimelineBoard({
                                 isAdjusted={assignments.get(`hypo-${h.id}`) !== dueDateToWeek(h.tranches?.[0]?.date)}
                                 origWeek={origWeek}
                                 curWeek={i}
+                                actualCurWeek={i}
                                 nameField={h => h.label || '—'}
                                 subField={h => h.type === 'inflow' ? 'Hypothetical inflow' : 'Hypothetical outflow'}
                                 amtFn={h => h.tranches?.reduce((s, t) => s + Number(t.amount || 0), 0) || 0}
@@ -704,6 +709,7 @@ export default function SimTimelineBoard({
                                isAdjusted={assignments.get(`fund-inflow-${f.id}`) !== origWeek}
                                origWeek={origWeek}
                                curWeek={i}
+                               actualCurWeek={i}
                                nameField={f => f.lender || f.bank || f.customer || f.asset || 'Funding'}
                                subField={f => f.type || 'Funding Source'}
                                amtFn={f => Number(f.amount || f.drawAmt || 0)}
@@ -729,6 +735,7 @@ export default function SimTimelineBoard({
                                isAdjusted={false}
                                origWeek={r.week}
                                curWeek={i}
+                               actualCurWeek={i}
                                nameField={() => r.label}
                                subField={() => r.date}
                                amtFn={() => r.amount}
