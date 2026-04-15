@@ -25,6 +25,23 @@ import SimExport from '@/components/simulator/SimExport';
 
 function addDays(date, days) { const d = new Date(date); d.setDate(d.getDate() + days); return d; }
 
+function getISOWeekNumber(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNumber = Math.ceil(((d - yearStart) / 86400000 + 1) / 7);
+  return weekNumber;
+}
+
+function getWeekStartDate(year, weekNumber) {
+  const jan4 = new Date(year, 0, 4);
+  const dayOffset = jan4.getDay() || 7;
+  const weekStart = new Date(jan4);
+  weekStart.setDate(jan4.getDate() - dayOffset + 1 + (weekNumber - 1) * 7);
+  return weekStart;
+}
+
 const EXP_CATEGORIES = {
   salary: 'Salary', rent: 'Rent/Utilities', utilities: 'Rent/Utilities',
   travel: 'Travel', marketing: 'Marketing', software: 'Software',
@@ -35,6 +52,8 @@ const EXPENSE_GROUPS = ['Salary', 'Rent/Utilities', 'Travel', 'Marketing', 'Soft
 
 export function buildWeeklyData(receivables, invoices, payables, expenses, bankAccounts, recAdj, payAdj, hypotheticals, fundingSources, levers, taxItems, collectionTargets = [], expAdj = new Map(), minAmount = 0) {
   const today = new Date(); today.setHours(0,0,0,0);
+  const currentYear = today.getFullYear();
+  
   // Use only the latest snapshot per account (same as CashFlowForecast)
   const latestByAccount = {};
   bankAccounts.forEach(a => {
@@ -57,13 +76,18 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   });
   EXPENSE_GROUPS.forEach(k => expByGroup[k] = expByGroup[k] / 12);
 
-  const weeks = Array.from({ length: 12 }, (_, i) => {
-    const start = addDays(today, i * 7);
-    const end   = addDays(today, (i + 1) * 7 - 1);
+  // Build 52 weeks for the current calendar year using ISO week numbers
+  const weeks = Array.from({ length: 52 }, (_, i) => {
+    const weekNum = i + 1;
+    const start = getWeekStartDate(currentYear, weekNum);
+    const end = addDays(start, 6);
+    const isCurrentWeek = getISOWeekNumber(today) === weekNum && today.getFullYear() === currentYear;
+    
     const row = {
       start, end,
-      label: `W${i+1} (${String(start.getDate()).padStart(2,'0')}/${String(start.getMonth()+1).padStart(2,'0')})`,
-      isCurrentWeek: i === 0,
+      weekNum,
+      label: `W${weekNum} (${String(start.getDate()).padStart(2,'0')}/${String(start.getMonth()+1).padStart(2,'0')})`,
+      isCurrentWeek,
       baseInflow: 0, baseOutflow: 0,
       simInflow: 0, simOutflow: 0,
       fundingInflow: 0, repaymentOutflow: 0,
@@ -101,7 +125,11 @@ export function buildWeeklyData(receivables, invoices, payables, expenses, bankA
   collectionTargets.forEach(ct => {
     const remaining = (ct.target_amount || 0) - (ct.collected_amount || 0);
     if (remaining <= 0) return;
-    const matchingWeeks = weeks.filter(w => w.start.getMonth() + 1 === ct.period_month && w.start.getFullYear() === ct.period_year);
+    const matchingWeeks = weeks.filter(w => {
+      const wMonth = w.start.getMonth() + 1;
+      const wYear = w.start.getFullYear();
+      return wMonth === ct.period_month && wYear === ct.period_year;
+    });
     if (matchingWeeks.length > 0) {
       const perWeek = remaining / matchingWeeks.length;
       matchingWeeks.forEach(w => { w.baseInflow += perWeek; w.inflowTargets += perWeek; });
