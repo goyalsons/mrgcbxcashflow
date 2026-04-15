@@ -37,6 +37,7 @@ export default function Customers() {
   const [sortBy, setSortBy] = useState('name');
   const [sortDir, setSortDir] = useState('asc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [managerFilter, setManagerFilter] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -105,12 +106,18 @@ export default function Customers() {
 
     if (search) {
       const q = search.toLowerCase();
-      result = customers.filter(c =>
+      result = result.filter(c =>
         (c.name || '').toLowerCase().includes(q) ||
         (c.email || '').toLowerCase().includes(q) ||
         (c.phone || '').toLowerCase().includes(q) ||
         (c.contact_person || '').toLowerCase().includes(q)
       );
+    }
+
+    if (managerFilter === '__unassigned__') {
+      result = result.filter(c => !c.account_manager);
+    } else if (managerFilter !== 'all') {
+      result = result.filter(c => c.account_manager === managerFilter);
     }
     result.sort((a, b) => {
       let aVal = a[sortBy];
@@ -125,7 +132,7 @@ export default function Customers() {
       return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     });
     return result;
-  }, [customers, search, sortBy, sortDir]);
+  }, [customers, search, sortBy, sortDir, managerFilter, currentUser]);
 
   const toggleSort = (col) => {
     if (sortBy === col) setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -170,10 +177,26 @@ export default function Customers() {
         </div>
       )}
 
-      {/* Search */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
-        <Input placeholder="Search customers..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 border-primary/20 focus:border-primary" />
+      {/* Search + Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-primary/60" />
+          <Input placeholder="Search customers..." value={search} onChange={e => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9 border-primary/20 focus:border-primary" />
+        </div>
+        {!isSalesTeam(currentUser?.role) && (
+          <Select value={managerFilter} onValueChange={v => { setManagerFilter(v); setCurrentPage(1); }}>
+            <SelectTrigger className="w-52">
+              <SelectValue placeholder="All Account Managers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Account Managers</SelectItem>
+              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+              {users.filter(u => u.role === 'sales_team' || u.role === 'admin').map(u => (
+                <SelectItem key={u.email} value={u.email}>{u.full_name || u.email}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <Card className="border-0 shadow-sm bg-gradient-to-br from-white to-slate-50/50">
