@@ -309,8 +309,8 @@ export default function SimTimelineBoard({
     else if (isFund) itemId = draggableId.replace('fund-inflow-', '');
     else if (isRep) itemId = draggableId.replace('rep-', '');
 
-    // Set the date to noon on the Monday of the NEXT week (one column ahead of drop target)
-    const destWeekStart = weekStart(dstWeek + 1);
+    // Set the date to noon on the Monday of the destination week
+    const destWeekStart = weekStart(dstWeek);
     destWeekStart.setHours(12, 0, 0, 0);
     const newDate = toDateStr(destWeekStart);
     const prevRecAdj = new Map(recAdj);
@@ -325,7 +325,7 @@ export default function SimTimelineBoard({
           : { ...h, tranches: h.tranches.map(t => ({ ...t, date: newDate })) }
       ));
       const h = hypotheticals.find(h => h.id === itemId);
-      toast({ title: `Moved "${h?.label || 'Entry'}" → W${dstWeek + 2}`, duration: 2000 });
+      toast({ title: `Moved "${h?.label || 'Entry'}" → W${dstWeek + 1}`, duration: 2000 });
       setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
       return;
     }
@@ -336,7 +336,7 @@ export default function SimTimelineBoard({
           : { ...f, date: newDate, drawDate: newDate, disburseDate: newDate }
       ));
       const f = fundingSources.find(f => f.id === itemId);
-      toast({ title: `Moved "${f?.lender || f?.bank || 'Funding'}" → W${dstWeek + 2}`, duration: 2000 });
+      toast({ title: `Moved "${f?.lender || f?.bank || 'Funding'}" → W${dstWeek + 1}`, duration: 2000 });
       setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
       return;
     }
@@ -368,7 +368,7 @@ export default function SimTimelineBoard({
         const dateField = dateMap[f.type] || 'repayDate';
         return { ...f, [dateField]: newDate };
       }));
-      toast({ title: `Moved repayment → W${dstWeek + 2}`, duration: 2000 });
+      toast({ title: `Moved repayment → W${dstWeek + 1}`, duration: 2000 });
       return;
     }
 
@@ -398,7 +398,7 @@ export default function SimTimelineBoard({
     const name = isRec ? (item.customer_name || item.debtor_name)
                : isPay ? item.vendor_name
                : item.description;
-    toast({ title: `Moved "${name}" → W${dstWeek + 2}`, duration: 2000 });
+    toast({ title: `Moved "${name}" → W${dstWeek + 1}`, duration: 2000 });
     setHistory({ prevRecAdj, prevPayAdj, prevExpAdj, prevHypo, prevFunding });
   }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, expAdj, setRecAdj, setPayAdj, setExpAdj, setHypotheticals, setFundingSources, setHistory]);
 
