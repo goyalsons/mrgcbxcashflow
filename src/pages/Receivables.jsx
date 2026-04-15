@@ -313,16 +313,27 @@ export default function Receivables() {
   const handleBulkAssignManager = async () => {
     if (!assigningManager) return;
     setBulkLoading(true);
+    const mgr = users.find(u => u.email === assigningManager);
+    const mgrName = mgr ? mgr.full_name : assigningManager;
     try {
-      await Promise.all([...selected].map(id => {
+      // Deduplicate by customer id to avoid redundant updates
+      const customerUpdates = new Map();
+      [...selected].forEach(id => {
         const inv = invoices.find(i => i.id === id);
         const customer = getCustomerInfo(inv?.customer_name);
         if (customer?.id) {
-          return base44.entities.Customer.update(customer.id, { account_manager: assigningManager });
+          customerUpdates.set(customer.id, customer);
         }
-      }).filter(Boolean));
-      queryClient.invalidateQueries({ queryKey: ['invoices', 'customers'] });
-      toast({ title: `Assigned manager to ${selected.size} invoice(s)` });
+      });
+      await Promise.all([...customerUpdates.values()].map(customer =>
+        base44.entities.Customer.update(customer.id, {
+          account_manager: assigningManager.toLowerCase(),
+          account_manager_name: mgrName,
+        })
+      ));
+      queryClient.invalidateQueries({ queryKey: ['customers'] });
+      queryClient.invalidateQueries({ queryKey: ['invoices'] });
+      toast({ title: `Assigned manager to ${customerUpdates.size} customer(s)` });
       setSelected(new Set());
     } finally {
       setBulkLoading(false);
