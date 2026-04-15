@@ -425,15 +425,14 @@ export default function Settings() {
       <PageHeader title="Settings" subtitle="Configure company profile, integrations, and system settings" />
 
       <Tabs defaultValue="company">
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
-          <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email</TabsTrigger>
-          <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
-          <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Storage</TabsTrigger>
-          <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates</TabsTrigger>
-          <TabsTrigger value="reports"><Clock className="w-4 h-4 mr-1.5" />Reports</TabsTrigger>
-          <TabsTrigger value="llm"><BrainCircuit className="w-4 h-4 mr-1.5" />AI / LLM</TabsTrigger>
-        </TabsList>
+         <TabsList className="grid w-full grid-cols-6">
+           <TabsTrigger value="company"><Building2 className="w-4 h-4 mr-1.5" />Company</TabsTrigger>
+           <TabsTrigger value="smtp"><Mail className="w-4 h-4 mr-1.5" />Email</TabsTrigger>
+           <TabsTrigger value="whatsapp"><MessageSquare className="w-4 h-4 mr-1.5" />WhatsApp</TabsTrigger>
+           <TabsTrigger value="cloudinary"><Cloud className="w-4 h-4 mr-1.5" />Storage</TabsTrigger>
+           <TabsTrigger value="templates"><Mail className="w-4 h-4 mr-1.5" />Templates</TabsTrigger>
+           <TabsTrigger value="llm"><BrainCircuit className="w-4 h-4 mr-1.5" />AI / LLM</TabsTrigger>
+         </TabsList>
 
         {/* Company */}
         <TabsContent value="company" className="mt-4">
@@ -772,165 +771,6 @@ export default function Settings() {
         </TabsContent>
 
 
-
-        {/* Reports Tab */}
-        <TabsContent value="reports" className="mt-4">
-          {/* Daily Cash Digest */}
-          <Card className="mb-4">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">☀️ Daily Cash Digest</CardTitle>
-              <p className="text-sm text-muted-foreground">Send a morning summary of cash position, overdue amounts, due-today invoices, top debtors, and yesterday's payments.</p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
-                <div>
-                  <p className="font-medium">Enable Daily Digest</p>
-                  <p className="text-xs text-muted-foreground">Automatically delivered each morning</p>
-                </div>
-                <input type="checkbox" checked={digest.enabled} onChange={e => setD('enabled', e.target.checked)} className="w-5 h-5" />
-              </div>
-
-              {digest.enabled && (
-                <div className="space-y-4 p-4 rounded-lg bg-amber-50 border border-amber-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Send Time</Label>
-                      <Input type="time" value={digest.time} onChange={e => setD('time', e.target.value)} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Channels</Label>
-                      <div className="flex items-center gap-4 pt-2">
-                        <label className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input type="checkbox" checked={digest.send_email} onChange={e => setD('send_email', e.target.checked)} className="w-4 h-4" />
-                          📧 Email
-                        </label>
-                        <label className="flex items-center gap-2 text-sm cursor-pointer">
-                          <input type="checkbox" checked={digest.send_whatsapp} onChange={e => setD('send_whatsapp', e.target.checked)} className="w-4 h-4" />
-                          💬 WhatsApp
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {digest.send_email && (
-                    <div className="space-y-1.5">
-                      <Label>Recipient Email *</Label>
-                      <Input type="email" value={digest.recipient_email} onChange={e => setD('recipient_email', e.target.value)} placeholder="owner@company.com" />
-                    </div>
-                  )}
-
-                  {digest.send_whatsapp && (
-                    <div className="space-y-1.5">
-                      <Label>Recipient Phone (WhatsApp) *</Label>
-                      <Input value={digest.recipient_phone} onChange={e => setD('recipient_phone', e.target.value)} placeholder="+919876543210" />
-                      <p className="text-xs text-muted-foreground">Requires WhatsApp Business API configured in the WhatsApp tab.</p>
-                    </div>
-                  )}
-
-                  <div className="p-3 rounded-lg bg-white border border-amber-200 text-xs text-amber-700">
-                    <strong>Digest includes:</strong> Net cash position · Overdue receivables · Invoices due today · Top 3 debtors · Today's follow-ups · Yesterday's payments received
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end">
-                <Button variant="outline" size="sm" onClick={handleSendTestDigest} disabled={digestSending} className="gap-2">
-                  {digestSending ? 'Sending...' : '📨 Send Test Digest Now'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle className="text-base">Recurring Reminders</CardTitle></CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
-                <div>
-                  <p className="font-medium">Enable Automatic Reminders</p>
-                  <p className="text-xs text-muted-foreground">Send payment reminders on a schedule</p>
-                </div>
-                <input 
-                  type="checkbox" 
-                  checked={reminderSchedule.enabled}
-                  onChange={(e) => setReminder('enabled', e.target.checked)}
-                  className="w-5 h-5"
-                />
-              </div>
-
-              {reminderSchedule.enabled && (
-                <div className="space-y-4 p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Frequency</Label>
-                      <Select value={reminderSchedule.frequency} onValueChange={(v) => setReminder('frequency', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="daily">Daily</SelectItem>
-                          <SelectItem value="weekly">Weekly</SelectItem>
-                          <SelectItem value="monthly">Monthly (1st of month)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Time to Send</Label>
-                      <Input 
-                        type="time" 
-                        value={reminderSchedule.time}
-                        onChange={(e) => setReminder('time', e.target.value)}
-                      />
-                    </div>
-                  </div>
-
-                  {reminderSchedule.frequency === 'weekly' && (
-                    <div className="space-y-2">
-                      <Label>Days of Week</Label>
-                      <div className="grid grid-cols-7 gap-2">
-                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => (
-                          <button
-                            key={i}
-                            onClick={() => toggleDay(i)}
-                            className={`p-2 rounded-lg font-medium text-sm transition-colors ${
-                              reminderSchedule.daysOfWeek.includes(i)
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-                            }`}
-                          >
-                            {day}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label>Channel</Label>
-                      <Select value={reminderSchedule.channel} onValueChange={(v) => setReminder('channel', v)}>
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="email">📧 Email</SelectItem>
-                          <SelectItem value="whatsapp">💬 WhatsApp</SelectItem>
-                          <SelectItem value="sms">📱 SMS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label>Template</Label>
-                      <Select value={reminderSchedule.templateId} onValueChange={(v) => setReminder('templateId', v)}>
-                        <SelectTrigger><SelectValue placeholder="Select template..." /></SelectTrigger>
-                        <SelectContent>
-                          {templates.filter(t => t.type === reminderSchedule.channel).map(t => (
-                                             <SelectItem key={t.id} value={t.id}>{t.meta_template_name || t.name}</SelectItem>
-                                           ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Templates Tab */}
         <TabsContent value="templates" className="mt-4">

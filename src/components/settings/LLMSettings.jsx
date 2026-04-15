@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Eye, EyeOff, Zap, Bot, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { useToast } from '@/components/ui/use-toast';
+import { useQuery } from '@tanstack/react-query';
 
 const GEMINI_MODELS = [
   { value: 'gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview' },
@@ -31,6 +32,7 @@ const CLAUDE_MODELS = [
 ];
 
 const LLM_SETTINGS_KEY = 'cashflow_pro_llm_settings';
+const DB_LLM_SETTINGS_KEY = 'llm_settings_v1';
 
 function loadLLMSettings() {
   try { return JSON.parse(localStorage.getItem(LLM_SETTINGS_KEY) || '{}'); } catch { return {}; }
@@ -52,42 +54,72 @@ export function loadActiveLLM() {
 }
 
 export default function LLMSettings() {
-  const { toast } = useToast();
-  const [settings, setSettings] = useState({
-    active_provider: '',
-    gemini_api_key: '',
-    gemini_model: 'gemini-2.5-flash',
-    gemini_custom_model: '',
-    claude_api_key: '',
-    claude_model: 'claude-sonnet-4-6',
-    claude_custom_model: '',
-  });
-  const [showGeminiKey, setShowGeminiKey] = useState(false);
-  const [showClaudeKey, setShowClaudeKey] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState(null);
-  const [testPrompt, setTestPrompt] = useState('Say "Hello! LLM is working correctly." and nothing else.');
-  const [saved, setSaved] = useState(false);
+   const { toast } = useToast();
+   const [settings, setSettings] = useState({
+     active_provider: '',
+     gemini_api_key: '',
+     gemini_model: 'gemini-2.5-flash',
+     gemini_custom_model: '',
+     claude_api_key: '',
+     claude_model: 'claude-sonnet-4-6',
+     claude_custom_model: '',
+   });
+   const [showGeminiKey, setShowGeminiKey] = useState(false);
+   const [showClaudeKey, setShowClaudeKey] = useState(false);
+   const [testing, setTesting] = useState(false);
+   const [testResult, setTestResult] = useState(null);
+   const [testPrompt, setTestPrompt] = useState('Say "Hello! LLM is working correctly." and nothing else.');
+   const [saved, setSaved] = useState(false);
 
-  useEffect(() => {
-    const s = loadLLMSettings();
-    if (Object.keys(s).length > 0) {
-      setSettings(prev => ({ ...prev, ...s }));
-    }
-  }, []);
+   // Load settings from DB
+   const { data: dbSettingsRecords = [] } = useQuery({
+     queryKey: ['appSettings'],
+     queryFn: () => base44.entities.AppSettings.list(),
+   });
 
-  // Auto-save whenever settings change (no separate save button needed)
-  useEffect(() => {
-    saveLLMSettings(settings);
-  }, [settings]);
+   useEffect(() => {
+     // Try DB first, fall back to localStorage
+     const dbRecord = Array.isArray(dbSettingsRecords) ? dbSettingsRecords.find(r => r.key === DB_LLM_SETTINGS_KEY) : undefined;
+     let s = {};
+     if (dbRecord?.value) {
+       try { s = JSON.parse(dbRecord.value); } catch {}
+     }
+     // Merge with localStorage as fallback
+     const local = loadLLMSettings();
+     s = { ...local, ...s };
+     if (Object.keys(s).length > 0) {
+       setSettings(prev => ({ ...prev, ...s }));
+     }
+   }, [dbSettingsRecords]);
+
+   // Auto-save to both localStorage and DB whenever settings change
+   useEffect(() => {
+     saveLLMSettings(settings);
+     persistSettingsToDb(settings);
+   }, [settings]);
+
+   const persistSettingsToDb = async (settingsData) => {
+     try {
+       const existing = await base44.entities.AppSettings.filter({ key: DB_LLM_SETTINGS_KEY });
+       const payload = { key: DB_LLM_SETTINGS_KEY, value: JSON.stringify(settingsData) };
+       if (existing.length > 0) {
+         await base44.entities.AppSettings.update(existing[0].id, payload);
+       } else {
+         await base44.entities.AppSettings.create(payload);
+       }
+     } catch (e) {
+       console.warn('Could not persist LLM settings to DB:', e.message);
+     }
+   };
 
   const set = (k, v) => setSettings(f => ({ ...f, [k]: v }));
 
   const effectiveGeminiModel = settings.gemini_model === '__custom__' ? settings.gemini_custom_model : settings.gemini_model;
   const effectiveClaudeModel = settings.claude_model === '__custom__' ? settings.claude_custom_model : settings.claude_model;
 
-  const handleSave = () => {
+  const handleSave = async () => {
     saveLLMSettings(settings);
+    await persistSettingsToDb(settings);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     toast({ title: 'LLM settings saved' });
@@ -251,7 +283,7 @@ export default function LLMSettings() {
           )}
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-muted-foreground">Save settings before testing to ensure latest keys are used.</p>
+            <p className="text-xs text-muted-foreground">Settings auto-save to database. API keys will persist across browsers.</p>
             <Button onClick={handleTest} disabled={testing || !settings.active_provider} variant="outline" className="gap-2">
               {testing ? <><Loader2 className="w-4 h-4 animate-spin" /> Testing...</> : '🧪 Run Test'}
             </Button>
