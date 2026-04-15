@@ -240,12 +240,18 @@ export default function SimTimelineBoard({
       const adjDate = payAdj.get(p.id)?.tranches?.[0]?.date;
       m.set(`pay-${p.id}`, dueDateToWeek(adjDate || p.due_date));
     });
-    allExp.forEach(e => m.set(`exp-${e.id}`, dueDateToWeek(e.expense_date)));
-    allRecur.forEach(e => m.set(`recur-${e.id}`, dueDateToWeek(e.expense_date)));
+    allExp.forEach(e => {
+      const adjDate = expAdj.get(e.id)?.date;
+      m.set(`exp-${e.id}`, dueDateToWeek(adjDate || e.expense_date));
+    });
+    allRecur.forEach(e => {
+      const adjDate = expAdj.get(e.id)?.date;
+      m.set(`recur-${e.id}`, dueDateToWeek(adjDate || e.expense_date));
+    });
     hypotheticals.forEach(h => m.set(`hypo-${h.id}`, dueDateToWeek(h.tranches?.[0]?.date)));
     fundingSources.forEach(f => m.set(`fund-inflow-${f.id}`, dueDateToWeek(f.date || f.drawDate || f.disburseDate)));
     return m;
-  }, [allRec, allPay, allExp, allRecur, recAdj, payAdj, hypotheticals, fundingSources]);
+  }, [allRec, allPay, allExp, allRecur, expAdj, recAdj, payAdj, hypotheticals, fundingSources]);
 
   const matchSearch = (name) => !search || (name || '').toLowerCase().includes(search.toLowerCase());
 
@@ -304,6 +310,7 @@ export default function SimTimelineBoard({
     const newDate = toDateStr(weekStart(dstWeek));
     const prevRecAdj = new Map(recAdj);
     const prevPayAdj = new Map(payAdj);
+    const prevExpAdj = new Map(expAdj);
     const prevHypo = hypotheticals;
     const prevFunding = fundingSources;
 
@@ -387,7 +394,7 @@ export default function SimTimelineBoard({
                : isPay ? item.vendor_name
                : item.description;
     toast({ title: `Moved "${name}" → W${dstWeek + 1}`, duration: 2000 });
-    setHistory({ prevRecAdj, prevPayAdj, prevHypo, prevFunding });
+    setHistory({ prevRecAdj, prevPayAdj, prevExpAdj, prevHypo, prevFunding });
   }, [allRec, allPay, allExp, allRecur, hypotheticals, fundingSources, recAdj, payAdj, expAdj, setRecAdj, setPayAdj, setExpAdj, setHypotheticals, setFundingSources, setHistory]);
 
   const handleReset = useCallback(() => {

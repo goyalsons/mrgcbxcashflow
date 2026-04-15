@@ -369,24 +369,26 @@ export default function CashFlowSimulator() {
   const undoBoard = useCallback(() => {
     if (!boardHistory.length) return;
     const last = boardHistory[boardHistory.length - 1];
-    setRedoHistory(r => [...r, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
+    setRedoHistory(r => [...r, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevExpAdj: expAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
     setRecAdj(last.prevRecAdj);
     setPayAdj(last.prevPayAdj);
+    if (last.prevExpAdj) setExpAdj(last.prevExpAdj);
     if (last.prevHypo) setHypo(last.prevHypo);
     if (last.prevFunding) setFunding(last.prevFunding);
     setBoardHistory(h => h.slice(0, -1));
-  }, [boardHistory, recAdj, payAdj, hypotheticals, fundingSources]);
+  }, [boardHistory, recAdj, payAdj, expAdj, hypotheticals, fundingSources]);
 
   const redoBoard = useCallback(() => {
     if (!redoHistory.length) return;
     const last = redoHistory[redoHistory.length - 1];
-    setBoardHistory(h => [...h, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
+    setBoardHistory(h => [...h, { prevRecAdj: recAdj, prevPayAdj: payAdj, prevExpAdj: expAdj, prevHypo: hypotheticals, prevFunding: fundingSources }]);
     setRecAdj(last.prevRecAdj);
     setPayAdj(last.prevPayAdj);
+    if (last.prevExpAdj) setExpAdj(last.prevExpAdj);
     if (last.prevHypo) setHypo(last.prevHypo);
     if (last.prevFunding) setFunding(last.prevFunding);
     setRedoHistory(r => r.slice(0, -1));
-  }, [redoHistory, recAdj, payAdj, hypotheticals, fundingSources]);
+  }, [redoHistory, recAdj, payAdj, expAdj, hypotheticals, fundingSources]);
 
   const totalAdjCount = recAdj.size + payAdj.size + expAdj.size + hypotheticals.length + fundingSources.length + levers.length + taxItems.length;
   const hasAdjustments = totalAdjCount > 0;
