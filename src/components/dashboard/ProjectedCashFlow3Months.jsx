@@ -67,8 +67,16 @@ export default function ProjectedCashFlow3Months({ receivables = [], payables = 
               </linearGradient>
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tickFormatter={fmt} tick={{ fontSize: 11 }} width={52} />
+             <XAxis dataKey="label" tick={(props) => {
+               const { x, y, payload } = props;
+               const isNegative = data[data.findIndex(d => d.label === payload.value)]?.closing < 0;
+               return (
+                 <text x={x} y={y} textAnchor="middle" fontSize={11} fill={isNegative ? '#dc2626' : 'hsl(var(--foreground))'} fontWeight={isNegative ? 'bold' : 'normal'}>
+                   {payload.value}
+                 </text>
+               );
+             }} />
+             <YAxis tickFormatter={fmt} tick={{ fontSize: 11 }} width={52} />
             <Tooltip
               formatter={(v, name) => [formatINR(v), name.charAt(0).toUpperCase() + name.slice(1)]}
               contentStyle={{ fontSize: 12 }}

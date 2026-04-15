@@ -104,8 +104,17 @@ export default function SimChart({ weeklyData, hasAdjustments = true, bankAccoun
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="1 1" stroke="hsl(var(--border))" strokeOpacity={0.7} />
-              <XAxis dataKey="name" tick={{ fontSize: 9 }} stroke="hsl(var(--muted-foreground))" interval={0} angle={-30} textAnchor="end" height={40} />
-              <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={10} />
+               <XAxis dataKey="name" tick={(props) => {
+                 const { x, y, payload } = props;
+                 const dataPoint = chartData.find(d => d.name === payload.value);
+                 const isNegative = dataPoint && dataPoint.simClosing < 0;
+                 return (
+                   <text x={x} y={y} textAnchor="end" fontSize={9} fill={isNegative ? '#dc2626' : 'hsl(var(--muted-foreground))'} fontWeight={isNegative ? 'bold' : 'normal'}>
+                     {payload.value}
+                   </text>
+                 );
+               }} interval={0} angle={-30} height={40} />
+               <YAxis tick={{ fontSize: 10 }} tickFormatter={v => INR(v)} stroke="hsl(var(--muted-foreground))" tickCount={10} />
               <Tooltip content={<SimTooltip />} />
               {chartData.map((d, i) => d.simNet < 0 && (
                 <ReferenceArea key={`sim-neg-${i}`} x1={d.name} x2={d.name} fill="#ef444415" />

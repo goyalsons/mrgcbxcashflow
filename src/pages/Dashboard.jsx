@@ -89,7 +89,7 @@ export default function Dashboard() {
   const totalReceivable = filteredReceivables
     .reduce((sum, r) => sum + (r.amount_received || 0), 0);
 
-  const totalPayable = filteredPayables
+  const totalPayable = payables
     .filter(p => p.status !== 'paid')
     .reduce((sum, p) => sum + ((p.amount || 0) - (p.amount_paid || 0)), 0);
 

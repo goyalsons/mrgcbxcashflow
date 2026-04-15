@@ -89,10 +89,19 @@ export default function MonthlyForecastChart({ monthlyData }) {
             <ResponsiveContainer width="100%" height={380}>
               <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <ReferenceArea y1={-9999999999} y2={0} fill="#ef4444" fillOpacity={0.07} />
-                <ReferenceLine x={currentMonthLabel} stroke="#6366f1" strokeDasharray="4 2" strokeWidth={2}
-                  label={{ value: 'Now', position: 'top', fontSize: 10, fill: '#6366f1' }} />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
+                 <ReferenceArea y1={-9999999999} y2={0} fill="#ef4444" fillOpacity={0.07} />
+                 <ReferenceLine x={currentMonthLabel} stroke="#6366f1" strokeDasharray="4 2" strokeWidth={2}
+                   label={{ value: 'Now', position: 'top', fontSize: 10, fill: '#6366f1' }} />
+                 <XAxis dataKey="label" tick={(props) => {
+                   const { x, y, payload } = props;
+                   const dataPoint = chartData.find(d => d.label === payload.value);
+                   const isNegative = dataPoint && dataPoint.closing < 0;
+                   return (
+                     <text x={x} y={y} textAnchor="middle" fontSize={11} fill={isNegative ? '#dc2626' : 'hsl(var(--foreground))'} fontWeight={isNegative ? 'bold' : 'normal'}>
+                       {payload.value}
+                     </text>
+                   );
+                 }} />
                 <YAxis tickFormatter={INR_FMT} tick={{ fontSize: 10 }} />
                 <Tooltip content={<MonthlyTooltip />} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
