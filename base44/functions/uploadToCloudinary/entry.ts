@@ -82,12 +82,6 @@ Deno.serve(async (req) => {
       return Response.json({ error: `Upload failed (${response.status}): ${errMsg}` });
     }
 
-    // Replace .pdf with .png in the URL
-    let fileUrl = data.secure_url;
-    if (fileUrl.toLowerCase().endsWith('.pdf')) {
-      fileUrl = fileUrl.slice(0, -4) + '.png';
-    }
-
     return Response.json({
       url: fileUrl,
       public_id: data.public_id,

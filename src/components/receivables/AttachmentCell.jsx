@@ -55,7 +55,7 @@ export default function AttachmentCell({ invoice, onUpdate }) {
         </button>
         <label className="cursor-pointer text-muted-foreground hover:text-primary transition-colors">
           {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-          <input type="file" multiple className="hidden" onChange={handleUpload} />
+          <input type="file" multiple accept=".pdf,application/pdf" className="hidden" onChange={handleUpload} />
         </label>
       </div>
 
