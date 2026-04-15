@@ -80,7 +80,7 @@ export default function Customers() {
     const mgr = users.find(u => u.email === assigningManager);
     const mgrName = mgr ? mgr.full_name : assigningManager;
     await Promise.all([...selected].map(id =>
-      base44.entities.Customer.update(id, { account_manager: assigningManager, account_manager_name: mgrName })
+      base44.entities.Customer.update(id, { account_manager: assigningManager.toLowerCase(), account_manager_name: mgrName })
     ));
     queryClient.invalidateQueries({ queryKey: ['customers'] });
     toast({ title: `Account manager assigned to ${selected.size} customer(s)` });
@@ -117,7 +117,7 @@ export default function Customers() {
     if (managerFilter === '__unassigned__') {
       result = result.filter(c => !c.account_manager);
     } else if (managerFilter !== 'all') {
-      result = result.filter(c => c.account_manager === managerFilter);
+      result = result.filter(c => (c.account_manager || '').toLowerCase() === managerFilter.toLowerCase());
     }
     result.sort((a, b) => {
       let aVal = a[sortBy];
@@ -192,7 +192,7 @@ export default function Customers() {
               <SelectItem value="all">All Account Managers</SelectItem>
               <SelectItem value="__unassigned__">Unassigned</SelectItem>
               {users.filter(u => u.role === 'sales_team').map(u => (
-                <SelectItem key={u.email} value={u.email}>{u.full_name || u.email}</SelectItem>
+                <SelectItem key={u.email} value={u.email.toLowerCase()}>{u.full_name || u.email}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -297,8 +297,8 @@ export default function Customers() {
               <SelectValue placeholder="Select account manager..." />
             </SelectTrigger>
             <SelectContent>
-              {users.map(u => (
-                <SelectItem key={u.id} value={u.email}>
+              {users.filter(u => u.role === 'sales_team').map(u => (
+                <SelectItem key={u.id} value={u.email.toLowerCase()}>
                   {u.full_name} <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
                 </SelectItem>
               ))}
