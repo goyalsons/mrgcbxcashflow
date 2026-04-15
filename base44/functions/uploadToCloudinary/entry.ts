@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     }
 
     return Response.json({
-      url: fileUrl,
+      url: data.secure_url,
       public_id: data.public_id,
       size: data.bytes,
       format: data.format,
