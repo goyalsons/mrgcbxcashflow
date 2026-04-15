@@ -191,7 +191,7 @@ export default function Customers() {
             <SelectContent>
               <SelectItem value="all">All Account Managers</SelectItem>
               <SelectItem value="__unassigned__">Unassigned</SelectItem>
-              {users.filter(u => u.role === 'sales_team').map(u => (
+              {users.map(u => (
                 <SelectItem key={u.email} value={u.email.toLowerCase()}>{u.full_name || u.email}</SelectItem>
               ))}
             </SelectContent>
@@ -297,9 +297,9 @@ export default function Customers() {
               <SelectValue placeholder="Select account manager..." />
             </SelectTrigger>
             <SelectContent>
-              {users.filter(u => u.role === 'sales_team').map(u => (
+              {users.map(u => (
                 <SelectItem key={u.id} value={u.email.toLowerCase()}>
-                  {u.full_name} <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
+                  {u.full_name || u.email} <span className="text-muted-foreground text-xs ml-1">({u.email})</span>
                 </SelectItem>
               ))}
             </SelectContent>

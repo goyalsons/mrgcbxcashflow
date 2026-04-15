@@ -96,6 +96,15 @@ function TargetForm({ open, onClose, onSave, editData, managers, receivableCusto
     e.preventDefault();
     setSaving(true);
     const date = new Date(form.target_date);
+
+    // If customer has no account manager yet, assign the selected one
+    if (form.customer_name && form.manager_email && !managerLocked && selectedCustomerObj?.id) {
+      await base44.entities.Customer.update(selectedCustomerObj.id, {
+        account_manager: form.manager_email,
+        account_manager_name: form.manager_name || form.manager_email,
+      });
+    }
+
     await onSave({
       ...form,
       target_amount: parseFloat(form.target_amount) || 0,
