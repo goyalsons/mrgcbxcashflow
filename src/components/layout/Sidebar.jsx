@@ -85,7 +85,7 @@ export default function Sidebar({ user, collapsed, onToggle, mobileOpen, onMobil
         </div>
         {!collapsed && (
           <div className="overflow-hidden">
-            <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground leading-tight">CashFlow Pro</h1>
+            <h1 className="text-sm font-bold tracking-tight text-sidebar-foreground leading-tight">CashFlow MRG</h1>
             <p className="text-[9px] text-sidebar-foreground/40 uppercase tracking-widest">Finance Manager</p>
           </div>
         )}
