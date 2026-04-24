@@ -266,7 +266,7 @@ export default function CSVImport() {
   const urlParams = new URLSearchParams(window.location.search);
   const defaultType = urlParams.get('type') || 'receivable';
 
-  const [entityType, setEntityType] = useState(ENTITY_CONFIGS[defaultType] ? defaultType : 'payable');
+  const [entityType, setEntityType] = useState(ENTITY_CONFIGS[defaultType] ? defaultType : 'receivable');
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
   const [importing, setImporting] = useState(false);
